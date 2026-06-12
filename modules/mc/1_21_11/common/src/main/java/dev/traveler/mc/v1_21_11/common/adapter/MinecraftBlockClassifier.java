@@ -30,11 +30,11 @@ public final class MinecraftBlockClassifier {
         if (state.isAir()) {
             return BlockPassability.PASSABLE;
         }
-        if (hasFluid(state.getFluidState())) {
-            return BlockPassability.PASSABLE;
-        }
         if (!state.getCollisionShape(blockGetter, position).isEmpty()) {
             return BlockPassability.SOLID;
+        }
+        if (hasFluid(state.getFluidState())) {
+            return BlockPassability.PASSABLE;
         }
         return BlockPassability.WALKABLE;
     }

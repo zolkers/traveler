@@ -7,35 +7,38 @@ import java.util.Objects;
 import java.util.Optional;
 
 public final class PathfinderDebugState {
-    private PathfinderResult<BlockPosition> latestResult;
-    private String latestMessage;
-    private Instant updatedAt;
+    private PathfinderDebugSnapshot latestSnapshot;
 
     public synchronized void update(PathfinderResult<BlockPosition> result) {
         update(result, null);
     }
 
     public synchronized void update(PathfinderResult<BlockPosition> result, String message) {
-        latestResult = Objects.requireNonNull(result, "result");
-        latestMessage = message;
-        updatedAt = Instant.now();
+        latestSnapshot = new PathfinderDebugSnapshot(
+                copyResult(Objects.requireNonNull(result, "result")), message, Instant.now());
     }
 
     public synchronized void clear() {
-        latestResult = null;
-        latestMessage = null;
-        updatedAt = null;
+        latestSnapshot = null;
+    }
+
+    public synchronized Optional<PathfinderDebugSnapshot> latestSnapshot() {
+        return Optional.ofNullable(latestSnapshot);
     }
 
     public synchronized Optional<PathfinderResult<BlockPosition>> latestResult() {
-        return Optional.ofNullable(latestResult);
+        return latestSnapshot().map(PathfinderDebugSnapshot::result);
     }
 
     public synchronized Optional<String> latestMessage() {
-        return Optional.ofNullable(latestMessage);
+        return latestSnapshot().map(PathfinderDebugSnapshot::message);
     }
 
     public synchronized Optional<Instant> updatedAt() {
-        return Optional.ofNullable(updatedAt);
+        return latestSnapshot().map(PathfinderDebugSnapshot::updatedAt);
+    }
+
+    private static PathfinderResult<BlockPosition> copyResult(PathfinderResult<BlockPosition> result) {
+        return new PathfinderResult<>(result.status(), ImmutableGraphPath.copyOf(result.path()));
     }
 }
