@@ -11,6 +11,15 @@ import org.junit.jupiter.api.Test;
 
 class TravelerCommandModuleTest {
     @Test
+    void exposesModularCommandCatalog() {
+        TravelerCommandModule module = new TravelerCommandModule();
+
+        assertEquals(2, module.catalog().routes().size());
+        assertTrue(module.catalog().route("traveler path test").isPresent());
+        assertTrue(module.catalog().route("traveler path block <x:int> <y:int> <z:int>").isPresent());
+    }
+
+    @Test
     void registersPathTestCommandAndUpdatesDebugState() {
         TravelerCommandModule module = new TravelerCommandModule();
         TestSource source = new TestSource();
