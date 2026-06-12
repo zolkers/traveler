@@ -1,7 +1,7 @@
 package dev.traveler.core.layer;
 
-import dev.traveler.core.world.BlockPassability;
-import dev.traveler.core.world.FluidHandling;
+import dev.traveler.core.world.block.BlockPassability;
+import dev.traveler.core.world.movement.FluidHandling;
 import java.util.Objects;
 
 public record BlockClassification(BlockPassability passability, FluidHandling fluidHandling) {

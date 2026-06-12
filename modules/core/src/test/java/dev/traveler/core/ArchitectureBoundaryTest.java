@@ -2,8 +2,8 @@ package dev.traveler.core;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.traveler.core.architecture.JavaSourceRules;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -19,34 +19,16 @@ class ArchitectureBoundaryTest {
 
     @Test
     void coreDoesNotImportMinecraftLoadersMixinBrigadierOrBuildMyCommand() throws IOException {
-        List<String> violations = findForbiddenImports(Path.of("src/main/java"), FORBIDDEN_IMPORTS);
+        List<String> violations = JavaSourceRules.forbiddenImports(Path.of("src/main/java"), FORBIDDEN_IMPORTS);
 
         assertTrue(violations.isEmpty(), () -> "Forbidden core imports: " + violations);
     }
 
-    private static List<String> findForbiddenImports(Path sourceRoot, List<String> forbiddenImports)
-            throws IOException {
-        try (var files = Files.walk(sourceRoot)) {
-            return files.filter(Files::isRegularFile)
-                    .filter(path -> path.toString().endsWith(".java"))
-                    .flatMap(path -> violationsIn(path, forbiddenImports).stream())
-                    .toList();
-        }
-    }
+    @Test
+    void worldDomainTypesLiveInFocusedSubpackages() throws IOException {
+        List<String> directWorldSources =
+                JavaSourceRules.directJavaSources(Path.of("src/main/java/dev/traveler/core/world"));
 
-    private static List<String> violationsIn(Path path, List<String> forbiddenImports) {
-        String source = read(path);
-        return forbiddenImports.stream()
-                .filter(source::contains)
-                .map(forbidden -> path + " imports " + forbidden)
-                .toList();
-    }
-
-    private static String read(Path path) {
-        try {
-            return Files.readString(path);
-        } catch (IOException exception) {
-            throw new IllegalStateException("Unable to read " + path, exception);
-        }
+        assertTrue(directWorldSources.isEmpty(), () -> "Flat core world package sources: " + directWorldSources);
     }
 }

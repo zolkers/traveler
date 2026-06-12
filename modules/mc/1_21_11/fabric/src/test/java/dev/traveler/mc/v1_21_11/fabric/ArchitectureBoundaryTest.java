@@ -2,8 +2,8 @@ package dev.traveler.mc.v1_21_11.fabric;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.traveler.core.architecture.JavaSourceRules;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -17,34 +17,19 @@ class ArchitectureBoundaryTest {
 
     @Test
     void fabricDoesNotImplementPathfinderLogicDirectly() throws IOException {
-        List<String> violations = findForbiddenImports(Path.of("src/main/java"), FORBIDDEN_IMPORTS);
+        List<String> violations = JavaSourceRules.forbiddenImports(Path.of("src/main/java"), FORBIDDEN_IMPORTS);
 
         assertTrue(violations.isEmpty(), () -> "Core imports in fabric bootstrap: " + violations);
     }
 
-    private static List<String> findForbiddenImports(Path sourceRoot, List<String> forbiddenImports)
-            throws IOException {
-        try (var files = Files.walk(sourceRoot)) {
-            return files.filter(Files::isRegularFile)
-                    .filter(path -> path.toString().endsWith(".java"))
-                    .flatMap(path -> violationsIn(path, forbiddenImports).stream())
-                    .toList();
-        }
-    }
-
-    private static List<String> violationsIn(Path path, List<String> forbiddenImports) {
-        String source = read(path);
-        return forbiddenImports.stream()
-                .filter(source::contains)
-                .map(forbidden -> path + " imports " + forbidden)
+    @Test
+    void fabricRootPackageOnlyContainsEntrypoint() throws IOException {
+        List<String> unexpectedSources = JavaSourceRules.directJavaSources(
+                        Path.of("src/main/java/dev/traveler/mc/v1_21_11/fabric"))
+                .stream()
+                .filter(path -> !path.endsWith("TravelerFabricClientMod.java"))
                 .toList();
-    }
 
-    private static String read(Path path) {
-        try {
-            return Files.readString(path);
-        } catch (IOException exception) {
-            throw new IllegalStateException("Unable to read " + path, exception);
-        }
+        assertTrue(unexpectedSources.isEmpty(), () -> "Flat Fabric root sources: " + unexpectedSources);
     }
 }

@@ -10,10 +10,7 @@ import org.junit.jupiter.api.Test;
 class TravelerCommandCatalogTest {
     @Test
     void composesRoutesFromFeaturesAndFindsThemByPath() {
-        TravelerCommandRoute route = new TravelerCommandRoute(
-                "traveler test",
-                "Runs a test command",
-                context -> TravelerCommandResult.success("ok"));
+        TravelerCommandRoute route = testRoute();
 
         TravelerCommandCatalog catalog = TravelerCommandCatalog.fromFeatures(registry -> registry.add(route));
 
@@ -23,10 +20,7 @@ class TravelerCommandCatalogTest {
 
     @Test
     void routeListIsImmutable() {
-        TravelerCommandRoute route = new TravelerCommandRoute(
-                "traveler test",
-                "Runs a test command",
-                context -> TravelerCommandResult.success("ok"));
+        TravelerCommandRoute route = testRoute();
         TravelerCommandCatalog catalog = TravelerCommandCatalog.fromFeatures(registry -> registry.add(route));
 
         assertThrows(UnsupportedOperationException.class, () -> catalog.routes().add(route));
@@ -37,5 +31,12 @@ class TravelerCommandCatalogTest {
         TravelerCommandCatalog catalog = TravelerCommandCatalog.fromFeatures();
 
         assertTrue(catalog.route("traveler missing").isEmpty());
+    }
+
+    private static TravelerCommandRoute testRoute() {
+        return new TravelerCommandRoute(
+                "traveler test",
+                "Runs a test command",
+                context -> TravelerCommandResult.success("ok"));
     }
 }

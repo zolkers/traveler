@@ -1,5 +1,7 @@
 package dev.traveler.mc.v1_21_11.fabric;
 
+import dev.traveler.mc.v1_21_11.fabric.command.FabricCommandBootstrap;
+import dev.traveler.mc.v1_21_11.fabric.event.FabricEventBootstrap;
 import dev.traveler.mc.v1_21_11.common.command.TravelerCommandModule;
 import dev.traveler.core.debug.PathfinderDebugState;
 import net.fabricmc.api.ClientModInitializer;

@@ -1,8 +1,11 @@
 package dev.traveler.core.debug;
 
+import dev.traveler.core.graph.MutableGraphPath;
 import dev.traveler.core.path.PathfinderResult;
-import dev.traveler.core.world.BlockPosition;
+import dev.traveler.core.world.block.BlockPosition;
+import dev.traveler.core.world.surface.SurfaceNode;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -16,6 +19,16 @@ public final class PathfinderDebugState {
     public synchronized void update(PathfinderResult<BlockPosition> result, String message) {
         latestSnapshot = new PathfinderDebugSnapshot(
                 copyResult(Objects.requireNonNull(result, "result")), message, Instant.now());
+    }
+
+    public synchronized void updateSurface(PathfinderResult<SurfaceNode> result) {
+        updateSurface(result, null);
+    }
+
+    public synchronized void updateSurface(PathfinderResult<SurfaceNode> result, String message) {
+        PathfinderResult<SurfaceNode> safeResult = Objects.requireNonNull(result, "result");
+        latestSnapshot = new PathfinderDebugSnapshot(
+                copySurfaceResult(safeResult), message, Instant.now(), copySurfaceNodes(safeResult));
     }
 
     public synchronized void clear() {
@@ -45,4 +58,18 @@ public final class PathfinderDebugState {
     private static PathfinderResult<BlockPosition> copyResult(PathfinderResult<BlockPosition> result) {
         return new PathfinderResult<>(result.status(), ImmutableGraphPath.copyOf(result.path()));
     }
+
+    private static PathfinderResult<BlockPosition> copySurfaceResult(PathfinderResult<SurfaceNode> result) {
+        MutableGraphPath<BlockPosition> path = new MutableGraphPath<>();
+        for (SurfaceNode node : result.path()) {
+            path.addNode(node.renderBlockPosition());
+        }
+        path.setCost(result.path().cost());
+        return new PathfinderResult<>(result.status(), ImmutableGraphPath.copyOf(path));
+    }
+
+    private static List<SurfaceNode> copySurfaceNodes(PathfinderResult<SurfaceNode> result) {
+        return List.copyOf(result.path().nodes());
+    }
+
 }

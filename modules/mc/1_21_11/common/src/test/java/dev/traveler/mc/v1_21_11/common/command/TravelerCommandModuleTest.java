@@ -5,16 +5,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.riege.buildmycommand.api.CommandResult;
 import dev.riege.buildmycommand.api.CommandSource;
+import dev.traveler.core.debug.PathfinderDebugSnapshot;
 import dev.traveler.core.graph.GraphPath;
 import dev.traveler.core.layer.BlockClassification;
+import dev.traveler.core.layer.SurfaceBlock;
+import dev.traveler.core.layer.SurfaceWorldLayer;
 import dev.traveler.core.layer.WorldLayer;
 import dev.traveler.core.path.PathfinderResult;
-import dev.traveler.core.world.BlockPosition;
-import dev.traveler.core.world.BlockPassability;
-import dev.traveler.core.world.FluidHandling;
+import dev.traveler.core.world.geometry.BlockShape;
+import dev.traveler.core.world.block.BlockPosition;
+import dev.traveler.core.world.block.BlockPassability;
+import dev.traveler.core.world.movement.FluidHandling;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -82,6 +87,36 @@ class TravelerCommandModuleTest {
         assertEquals(goal, path.nodeAt(path.nodeCount() - 1));
     }
 
+    @Test
+    void pathBlockStoresSmoothedPathWhenLineOfWalkIsClear() {
+        BlockPosition start = new BlockPosition(0, 64, 0);
+        BlockPosition goal = new BlockPosition(4, 64, 4);
+        TravelerCommandModule module = new TravelerCommandModule(new TestWorldLayer(Set.of()));
+
+        module.framework().dispatch(new TestSource(start), "traveler path block 4 64 4");
+
+        GraphPath<BlockPosition> path = module.debugState().latestResult().orElseThrow().path();
+        assertEquals(2, path.nodeCount());
+        assertEquals(start, path.nodeAt(0));
+        assertEquals(goal, path.nodeAt(path.nodeCount() - 1));
+    }
+
+    @Test
+    void pathBlockStoresSurfacePathWhenLayerProvidesSurfaceGeometry() {
+        BlockPosition startFeet = new BlockPosition(0, 64, 0);
+        BlockPosition startSupport = new BlockPosition(0, 63, 0);
+        BlockPosition goalSlab = new BlockPosition(1, 63, 0);
+        TravelerCommandModule module = new TravelerCommandModule(new TestSurfaceWorldLayer(Map.of(
+                startSupport, surfaceBlock(BlockShape.fullCube()),
+                goalSlab, surfaceBlock(BlockShape.bottomSlab()))));
+
+        module.framework().dispatch(new TestSource(startFeet), "traveler path block 1 63 0");
+
+        PathfinderDebugSnapshot snapshot = module.debugState().latestSnapshot().orElseThrow();
+        assertTrue(snapshot.hasSurfaceNodes());
+        assertEquals(63.5, snapshot.surfaceNodes().getLast().floorY());
+    }
+
     private static void assertPathAvoids(GraphPath<BlockPosition> path, BlockPosition blocked) {
         for (BlockPosition node : path) {
             assertTrue(!node.equals(blocked));
@@ -138,6 +173,17 @@ class TravelerCommandModuleTest {
                 return new BlockClassification(BlockPassability.SOLID, FluidHandling.AVOID);
             }
             return new BlockClassification(BlockPassability.PASSABLE, FluidHandling.AVOID);
+        }
+    }
+
+    private static SurfaceBlock surfaceBlock(BlockShape shape) {
+        return SurfaceBlock.solid(shape);
+    }
+
+    private record TestSurfaceWorldLayer(Map<BlockPosition, SurfaceBlock> blocks) implements SurfaceWorldLayer {
+        @Override
+        public SurfaceBlock surfaceBlock(BlockPosition position) {
+            return blocks.getOrDefault(position, SurfaceBlock.empty());
         }
     }
 }

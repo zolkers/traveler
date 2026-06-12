@@ -1,0 +1,190 @@
+package dev.traveler.core.world.surface;
+
+import static dev.traveler.core.world.surface.FakeSurfaceWorldLayer.bottomSlab;
+import static dev.traveler.core.world.surface.FakeSurfaceWorldLayer.fullBlock;
+import static dev.traveler.core.world.surface.FakeSurfaceWorldLayer.northFacingBottomStair;
+import static dev.traveler.core.world.surface.FakeSurfaceWorldLayer.topSlab;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import dev.traveler.core.graph.Connection;
+import dev.traveler.core.layer.SurfaceBlock;
+import dev.traveler.core.layer.SurfaceWorldLayer;
+import dev.traveler.core.world.behavior.special.AirBlockBehavior;
+import dev.traveler.core.world.block.BlockPosition;
+import dev.traveler.core.world.geometry.BlockShape;
+import dev.traveler.core.world.movement.MovementCapabilities;
+import dev.traveler.core.world.navigation.SurfaceTraversalGraph;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import org.junit.jupiter.api.Test;
+
+class SurfaceTraversalGraphTest {
+    private static final MovementCapabilities PLAYER =
+            new MovementCapabilities(true, false, false, false, 0.6, 1.25, 3.0);
+    private static final MovementCapabilities LOW_JUMP_PLAYER =
+            new MovementCapabilities(true, false, false, false, 0.6, 0.4, 3.0);
+
+    @Test
+    void refusesToWalkIntoAirWithoutSupport() {
+        BlockPosition startBlock = new BlockPosition(0, 63, 0);
+        SurfaceNode start = new SurfaceNode(startBlock, 1, 1, 64.0);
+        SurfaceNode airNeighbor = new SurfaceNode(new BlockPosition(1, 63, 0), 0, 1, 64.0);
+        FakeSurfaceWorldLayer world = new FakeSurfaceWorldLayer(Map.of(startBlock, fullBlock()));
+        SurfaceTraversalGraph graph = new SurfaceTraversalGraph(world, start, airNeighbor, PLAYER, 8, 4);
+
+        List<Connection<SurfaceNode>> connections = connectionsFrom(graph, start);
+
+        assertTrue(connections.stream().noneMatch(connection -> connection.to().sameSubcell(airNeighbor)));
+    }
+
+    @Test
+    void refusesSurfaceWhenBehaviorDoesNotSupportWalkingAction() {
+        BlockPosition startBlock = new BlockPosition(0, 63, 0);
+        BlockPosition passThroughBlock = new BlockPosition(1, 63, 0);
+        SurfaceNode start = new SurfaceNode(startBlock, 1, 1, 64.0);
+        SurfaceNode destination = new SurfaceNode(passThroughBlock, 0, 1, 64.0);
+        SurfaceBlock passThroughSurface = new SurfaceBlock(
+                fullBlock().classification(),
+                BlockShape.fullCube(),
+                new AirBlockBehavior());
+        FakeSurfaceWorldLayer world =
+                new FakeSurfaceWorldLayer(Map.of(startBlock, fullBlock(), passThroughBlock, passThroughSurface));
+        SurfaceTraversalGraph graph = new SurfaceTraversalGraph(world, start, destination, PLAYER, 8, 4);
+
+        List<Connection<SurfaceNode>> connections = connectionsFrom(graph, start);
+
+        assertTrue(connections.stream().noneMatch(connection -> connection.to().sameSubcell(destination)));
+    }
+
+    @Test
+    void bottomSlabsProvideHalfHeightWalkableSurfaces() {
+        BlockPosition firstSlab = new BlockPosition(0, 63, 0);
+        BlockPosition secondSlab = new BlockPosition(1, 63, 0);
+        SurfaceNode start = new SurfaceNode(firstSlab, 1, 1, 63.5);
+        SurfaceNode goal = new SurfaceNode(secondSlab, 0, 1, 63.5);
+        FakeSurfaceWorldLayer world =
+                new FakeSurfaceWorldLayer(Map.of(firstSlab, bottomSlab(), secondSlab, bottomSlab()));
+        SurfaceTraversalGraph graph = new SurfaceTraversalGraph(world, start, goal, PLAYER, 8, 4);
+
+        Connection<SurfaceNode> connection = connectionTo(graph, start, goal);
+
+        assertNotNull(connection);
+        assertEquals(63.5, connection.to().floorY());
+    }
+
+    @Test
+    void neighborExpansionDoesNotRereadTheSameSurfaceBlock() {
+        BlockPosition startBlock = new BlockPosition(0, 63, 0);
+        BlockPosition destinationBlock = new BlockPosition(1, 63, 0);
+        SurfaceNode start = new SurfaceNode(startBlock, 1, 1, 64.0);
+        SurfaceNode destination = new SurfaceNode(destinationBlock, 0, 1, 64.0);
+        CountingSurfaceWorldLayer world =
+                new CountingSurfaceWorldLayer(Map.of(startBlock, fullBlock(), destinationBlock, fullBlock()));
+        SurfaceTraversalGraph graph = new SurfaceTraversalGraph(world, start, destination, PLAYER, 8, 4);
+
+        connectionsFrom(graph, start);
+
+        assertEquals(1, world.readCount(destinationBlock));
+    }
+
+    @Test
+    void headroomMustBeClearAboveTopSlabSurface() {
+        BlockPosition slab = new BlockPosition(0, 63, 0);
+        BlockPosition headBlock = new BlockPosition(1, 64, 0);
+        SurfaceNode start = new SurfaceNode(slab, 1, 1, 64.0);
+        SurfaceNode blockedTop = new SurfaceNode(new BlockPosition(1, 63, 0), 0, 1, 64.0);
+        FakeSurfaceWorldLayer world = new FakeSurfaceWorldLayer(Map.of(
+                slab, fullBlock(),
+                blockedTop.blockPosition(), topSlab(),
+                headBlock, fullBlock()));
+        SurfaceTraversalGraph graph = new SurfaceTraversalGraph(world, start, blockedTop, PLAYER, 8, 4);
+
+        List<Connection<SurfaceNode>> connections = connectionsFrom(graph, start);
+
+        assertTrue(connections.stream().noneMatch(connection -> connection.to().sameSubcell(blockedTop)));
+    }
+
+    @Test
+    void stairShapesExposeLowAndHighSubcellSurfaces() {
+        BlockPosition stair = new BlockPosition(0, 63, 0);
+        SurfaceNode lowFront = new SurfaceNode(stair, 1, 0, 63.5);
+        SurfaceNode highBack = new SurfaceNode(stair, 1, 1, 64.0);
+        FakeSurfaceWorldLayer world = new FakeSurfaceWorldLayer(Map.of(stair, northFacingBottomStair()));
+        SurfaceTraversalGraph graph = new SurfaceTraversalGraph(world, lowFront, highBack, PLAYER, 8, 4);
+
+        Connection<SurfaceNode> connection = connectionTo(graph, lowFront, highBack);
+
+        assertNotNull(connection);
+        assertEquals(64.0, connection.to().floorY());
+        assertTrue(connection.cost() < 1.5);
+    }
+
+    @Test
+    void frontStairStepDoesNotRequireJumpCapability() {
+        BlockPosition stair = new BlockPosition(0, 63, 0);
+        SurfaceNode lowFront = new SurfaceNode(stair, 1, 0, 63.5);
+        SurfaceNode highBack = new SurfaceNode(stair, 1, 1, 64.0);
+        FakeSurfaceWorldLayer world = new FakeSurfaceWorldLayer(Map.of(stair, northFacingBottomStair()));
+        SurfaceTraversalGraph graph = new SurfaceTraversalGraph(world, lowFront, highBack, LOW_JUMP_PLAYER, 8, 4);
+
+        Connection<SurfaceNode> connection = connectionTo(graph, lowFront, highBack);
+
+        assertNotNull(connection);
+        assertEquals(64.0, connection.to().floorY());
+    }
+
+    @Test
+    void jumpingOntoFullBlocksCostsMoreThanSteppingOntoStairs() {
+        BlockPosition lowSlab = new BlockPosition(0, 63, 0);
+        BlockPosition stair = new BlockPosition(0, 63, 1);
+        BlockPosition fullBlock = new BlockPosition(1, 63, 0);
+        SurfaceNode start = new SurfaceNode(lowSlab, 1, 1, 63.5);
+        FakeSurfaceWorldLayer world = new FakeSurfaceWorldLayer(Map.of(
+                lowSlab, bottomSlab(),
+                stair, northFacingBottomStair(),
+                fullBlock, fullBlock()));
+        SurfaceTraversalGraph graph = new SurfaceTraversalGraph(world, start, start, PLAYER, 8, 4);
+
+        double stairCost = connectionTo(graph, start, new SurfaceNode(stair, 1, 0, 63.5)).cost();
+        double fullBlockCost = connectionTo(graph, start, new SurfaceNode(fullBlock, 0, 1, 64.0)).cost();
+
+        assertTrue(stairCost < fullBlockCost);
+    }
+
+    private static Connection<SurfaceNode> connectionTo(
+            SurfaceTraversalGraph graph, SurfaceNode start, SurfaceNode destination) {
+        return connectionsFrom(graph, start).stream()
+                .filter(connection -> connection.to().sameSubcell(destination))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private static List<Connection<SurfaceNode>> connectionsFrom(SurfaceTraversalGraph graph, SurfaceNode start) {
+        List<Connection<SurfaceNode>> connections = new ArrayList<>();
+        graph.outgoingConnections(start).forEach(connections::add);
+        return List.copyOf(connections);
+    }
+
+    private static final class CountingSurfaceWorldLayer implements SurfaceWorldLayer {
+        private final Map<BlockPosition, SurfaceBlock> blocks;
+        private final Map<BlockPosition, Integer> reads = new HashMap<>();
+
+        private CountingSurfaceWorldLayer(Map<BlockPosition, SurfaceBlock> blocks) {
+            this.blocks = Map.copyOf(blocks);
+        }
+
+        @Override
+        public SurfaceBlock surfaceBlock(BlockPosition position) {
+            reads.merge(position, 1, Integer::sum);
+            return blocks.getOrDefault(position, SurfaceBlock.empty());
+        }
+
+        private int readCount(BlockPosition position) {
+            return reads.getOrDefault(position, 0);
+        }
+    }
+}

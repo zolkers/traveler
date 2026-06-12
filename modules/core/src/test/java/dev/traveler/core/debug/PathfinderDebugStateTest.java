@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import dev.traveler.core.graph.MutableGraphPath;
 import dev.traveler.core.path.PathfinderResult;
 import dev.traveler.core.path.PathfinderStatus;
-import dev.traveler.core.world.BlockPosition;
+import dev.traveler.core.world.block.BlockPosition;
 import org.junit.jupiter.api.Test;
 
 class PathfinderDebugStateTest {
@@ -18,10 +18,7 @@ class PathfinderDebugStateTest {
         PathfinderResult<BlockPosition> result =
                 new PathfinderResult<>(PathfinderStatus.FOUND, new MutableGraphPath<>());
 
-        assertFalse(state.latestResult().isPresent());
-        assertFalse(state.latestMessage().isPresent());
-        assertFalse(state.latestSnapshot().isPresent());
-        assertFalse(state.updatedAt().isPresent());
+        assertEmpty(state);
 
         state.update(result, "path checked");
 
@@ -42,10 +39,7 @@ class PathfinderDebugStateTest {
         state.update(result);
         state.clear();
 
-        assertFalse(state.latestResult().isPresent());
-        assertFalse(state.latestMessage().isPresent());
-        assertFalse(state.latestSnapshot().isPresent());
-        assertFalse(state.updatedAt().isPresent());
+        assertEmpty(state);
     }
 
     @Test
@@ -67,5 +61,12 @@ class PathfinderDebugStateTest {
         assertEquals(origin, stored.path().nodeAt(0));
         assertEquals(7.0, stored.path().cost());
         assertThrows(UnsupportedOperationException.class, () -> stored.path().nodes().add(origin));
+    }
+
+    private static void assertEmpty(PathfinderDebugState state) {
+        assertFalse(state.latestResult().isPresent());
+        assertFalse(state.latestMessage().isPresent());
+        assertFalse(state.latestSnapshot().isPresent());
+        assertFalse(state.updatedAt().isPresent());
     }
 }

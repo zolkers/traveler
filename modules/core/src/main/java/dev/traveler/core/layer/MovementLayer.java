@@ -1,6 +1,6 @@
 package dev.traveler.core.layer;
 
-import dev.traveler.core.world.MovementProfile;
+import dev.traveler.core.world.movement.MovementProfile;
 
 @FunctionalInterface
 public interface MovementLayer {
