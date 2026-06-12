@@ -192,6 +192,7 @@ Initial tooling:
 - JaCoCo for coverage reports on testable modules.
 - Checkstyle or Spotless for style/format enforcement.
 - Sonar-friendly code shape: small classes, low cyclomatic complexity, clear interfaces, limited mutable state, no dependency leakage.
+- Control-flow nesting depth must stay at 2 levels or less. Code should not contain `if` inside `if` inside `if`, nor equivalent deep nesting with `for`, `while`, or mixed control flow. Prefer guard clauses, early returns, small private methods, strategy objects, or explicit state machines when logic starts nesting deeper.
 
 Initial test mirrors:
 
@@ -232,6 +233,7 @@ These are important follow-up milestones, but adding them to the first foundatio
 - Build conventions and quality tooling are centralized.
 - Architectural boundaries are visible in package names and Gradle dependencies.
 - No code in `core` imports Minecraft, Fabric, NeoForge, Brigadier, Mixin, or BuildMyCommand.
+- Production code respects the maximum control-flow nesting depth of 2.
 
 ## Risks And Mitigations
 
