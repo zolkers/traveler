@@ -9,6 +9,11 @@
   ],
   "license": "MIT",
   "environment": "client",
+  "entrypoints": {
+    "client": [
+      "dev.traveler.mc.v1_21_11.fabric.TravelerFabricClientMod"
+    ]
+  },
   "depends": {
     "fabricloader": ">=0.19.3",
     "minecraft": "1.21.11",
