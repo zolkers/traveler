@@ -24,6 +24,19 @@ class PathSmootherTest {
     }
 
     @Test
+    void preservesRequiredMiddleNodesEvenWhenDirectMovementIsClear() {
+        PathSmoother<GridPoint> smoother =
+                new PathSmoother<>((from, to) -> true, (previous, current, next) -> current.x() == 1);
+        List<GridPoint> path = List.of(
+                new GridPoint(0, 0),
+                new GridPoint(1, 0),
+                new GridPoint(2, 0),
+                new GridPoint(3, 0));
+
+        assertEquals(List.of(new GridPoint(0, 0), new GridPoint(1, 0), new GridPoint(3, 0)), smoother.smooth(path));
+    }
+
+    @Test
     void handlesEmptyAndSingleNodePaths() {
         PathSmoother<GridPoint> smoother = new PathSmoother<>((from, to) -> true);
         GridPoint spawn = new GridPoint(4, 7);

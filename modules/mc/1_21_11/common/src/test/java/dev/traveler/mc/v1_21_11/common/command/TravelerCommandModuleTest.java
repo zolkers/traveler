@@ -153,6 +153,24 @@ class TravelerCommandModuleTest {
         assertEquals(4.75, snapshot.surfaceNodes().getLast().centerX());
     }
 
+    @Test
+    void smoothedSurfacePathPreservesVerticalMovementLandmarks() {
+        BlockPosition startFeet = new BlockPosition(0, 64, 0);
+        TravelerCommandModule module = new TravelerCommandModule(new TestSurfaceWorldLayer(Map.of(
+                new BlockPosition(0, 63, 0), surfaceBlock(BlockShape.fullCube()),
+                new BlockPosition(1, 63, 0), surfaceBlock(BlockShape.fullCube()),
+                new BlockPosition(2, 64, 0), surfaceBlock(BlockShape.fullCube()),
+                new BlockPosition(3, 64, 0), surfaceBlock(BlockShape.fullCube()))));
+
+        module.framework().dispatch(new TestSource(startFeet), "traveler path block 3 64 0");
+
+        PathfinderDebugSnapshot snapshot = module.debugState().latestSnapshot().orElseThrow();
+        assertTrue(snapshot.hasSurfaceNodes());
+        assertTrue(snapshot.surfaceNodes().size() > 2);
+        assertTrue(snapshot.surfaceNodes().stream()
+                .anyMatch(node -> node.blockPosition().x() == 2 && node.blockPosition().y() == 64));
+    }
+
     private static void assertPathAvoids(GraphPath<BlockPosition> path, BlockPosition blocked) {
         for (BlockPosition node : path) {
             assertTrue(!node.equals(blocked));
