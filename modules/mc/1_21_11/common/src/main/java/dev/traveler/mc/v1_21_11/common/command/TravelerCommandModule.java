@@ -1,6 +1,7 @@
 package dev.traveler.mc.v1_21_11.common.command;
 
 import dev.riege.buildmycommand.core.CommandFramework;
+import dev.traveler.core.command.AnnotatedTravelerCommandFeature;
 import dev.traveler.core.command.TravelerCommandCatalog;
 import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.layer.WorldLayer;
@@ -33,7 +34,7 @@ public final class TravelerCommandModule {
     private TravelerCommandModule(PathfinderDebugState debugState, WorldLayerSupplier worldLayerSupplier) {
         this.debugState = Objects.requireNonNull(debugState, "debugState");
         PathTravelerCommandFeature pathFeature = new PathTravelerCommandFeature(this.debugState, worldLayerSupplier);
-        catalog = TravelerCommandCatalog.fromFeatures(pathFeature);
+        catalog = TravelerCommandCatalog.fromFeatures(AnnotatedTravelerCommandFeature.from(pathFeature));
         framework = CommandFramework.builder().build();
         new BuildMyCommandCatalogAdapter(framework.registry()).register(catalog);
     }

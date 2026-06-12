@@ -5,7 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.riege.buildmycommand.api.CommandResult;
 import dev.riege.buildmycommand.api.CommandSource;
+import dev.traveler.core.command.AnnotatedTravelerCommandFeature;
+import dev.traveler.core.command.TravelerCommandCatalog;
 import dev.traveler.core.debug.PathfinderDebugSnapshot;
+import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.graph.GraphPath;
 import dev.traveler.core.layer.BlockClassification;
 import dev.traveler.core.layer.SurfaceBlock;
@@ -32,6 +35,20 @@ class TravelerCommandModuleTest {
         assertEquals(2, module.catalog().routes().size());
         assertTrue(module.catalog().route("traveler path test").isPresent());
         assertTrue(module.catalog().route("traveler path block <x:int> <y:int> <z:int>").isPresent());
+    }
+
+    @Test
+    void pathCommandFeatureCanBeRegisteredFromAnnotations() {
+        PathTravelerCommandFeature feature = new PathTravelerCommandFeature(
+                new PathfinderDebugState(),
+                () -> null);
+
+        TravelerCommandCatalog catalog =
+                TravelerCommandCatalog.fromFeatures(AnnotatedTravelerCommandFeature.from(feature));
+
+        assertEquals(2, catalog.routes().size());
+        assertTrue(catalog.route("traveler path test").isPresent());
+        assertTrue(catalog.route("traveler path block <x:int> <y:int> <z:int>").isPresent());
     }
 
     @Test

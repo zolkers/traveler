@@ -1,10 +1,9 @@
 package dev.traveler.mc.v1_21_11.common.command;
 
-import dev.traveler.core.command.TravelerCommandCatalog;
+import dev.traveler.core.command.TravelerCommand;
 import dev.traveler.core.command.TravelerCommandContext;
-import dev.traveler.core.command.TravelerCommandFeature;
 import dev.traveler.core.command.TravelerCommandResult;
-import dev.traveler.core.command.TravelerCommandRoute;
+import dev.traveler.core.command.TravelerSubcommand;
 import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.graph.Connection;
 import dev.traveler.core.graph.Graph;
@@ -17,20 +16,21 @@ import dev.traveler.core.path.PathfinderRequest;
 import dev.traveler.core.path.PathfinderResult;
 import dev.traveler.core.path.PathfinderStatus;
 import dev.traveler.core.smooth.PathSmoother;
-import dev.traveler.core.world.navigation.BlockLineOfWalk;
 import dev.traveler.core.world.block.BlockPosition;
-import dev.traveler.core.world.navigation.BlockTraversalGraph;
 import dev.traveler.core.world.movement.FluidHandling;
 import dev.traveler.core.world.movement.MovementCapabilities;
+import dev.traveler.core.world.navigation.BlockLineOfWalk;
+import dev.traveler.core.world.navigation.BlockTraversalGraph;
+import dev.traveler.core.world.navigation.SurfaceTraversalGraph;
 import dev.traveler.core.world.surface.SurfaceNode;
 import dev.traveler.core.world.surface.SurfaceNodeResolver;
-import dev.traveler.core.world.navigation.SurfaceTraversalGraph;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-public final class PathTravelerCommandFeature implements TravelerCommandFeature {
+@TravelerCommand(root = "traveler path")
+public final class PathTravelerCommandFeature {
     private static final BlockPosition TEST_START = new BlockPosition(0, 64, 0);
     private static final BlockPosition TEST_GOAL = new BlockPosition(3, 64, 0);
     private static final int SEARCH_HORIZONTAL_MARGIN = 24;
@@ -48,18 +48,7 @@ public final class PathTravelerCommandFeature implements TravelerCommandFeature 
         this.worldLayerSupplier = Objects.requireNonNull(worldLayerSupplier, "worldLayerSupplier");
     }
 
-    @Override
-    public void register(TravelerCommandCatalog.Builder registry) {
-        registry.add(new TravelerCommandRoute(
-                "traveler path test",
-                "Runs a Traveler path debug search",
-                this::pathTest));
-        registry.add(new TravelerCommandRoute(
-                "traveler path block <x:int> <y:int> <z:int>",
-                "Runs a Traveler path debug search for a block",
-                this::pathBlock));
-    }
-
+    @TravelerSubcommand(route = "test", description = "Runs a Traveler path debug search")
     private TravelerCommandResult pathTest(TravelerCommandContext context) {
         PathfinderResult<BlockPosition> result = findPath(TEST_START, TEST_GOAL);
         String message = "path test status=" + result.status() + " nodes=" + result.path().nodeCount();
@@ -67,6 +56,9 @@ public final class PathTravelerCommandFeature implements TravelerCommandFeature 
         return TravelerCommandResult.success(message);
     }
 
+    @TravelerSubcommand(
+            route = "block <x:int> <y:int> <z:int>",
+            description = "Runs a Traveler path debug search for a block")
     private TravelerCommandResult pathBlock(TravelerCommandContext context) {
         BlockPosition target = new BlockPosition(
                 context.arg("x", int.class),
