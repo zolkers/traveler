@@ -10,21 +10,19 @@ import dev.riege.buildmycommand.api.Results;
 import dev.riege.buildmycommand.core.CommandFramework;
 import dev.traveler.core.graph.Connection;
 import dev.traveler.core.graph.Graph;
+import dev.traveler.core.layer.BlockClassification;
+import dev.traveler.core.layer.WorldLayer;
 import dev.traveler.core.path.AStarPathfinder;
 import dev.traveler.core.path.PathfinderRequest;
 import dev.traveler.core.path.PathfinderResult;
-import dev.traveler.core.world.BlockPassability;
+import dev.traveler.core.world.FluidHandling;
 import dev.traveler.core.world.BlockPosition;
-import dev.traveler.mc.v1_21_11.common.adapter.MinecraftBlockClassifier;
 import dev.traveler.mc.v1_21_11.common.adapter.MinecraftWorldSnapshot;
 import dev.traveler.mc.v1_21_11.common.debug.PathfinderDebugState;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Supplier;
-import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.BlockGetter;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.material.FluidState;
 
 public final class TravelerCommandModule {
     private static final BlockPosition TEST_START = new BlockPosition(0, 64, 0);
@@ -33,7 +31,6 @@ public final class TravelerCommandModule {
     private final CommandFramework framework;
     private final PathfinderDebugState debugState;
     private final Supplier<? extends BlockGetter> blockGetterSupplier;
-    private final MinecraftBlockClassifier classifier = new MinecraftBlockClassifier();
 
     public TravelerCommandModule() {
         this(new PathfinderDebugState(), () -> null);
@@ -78,18 +75,16 @@ public final class TravelerCommandModule {
             return "path block " + format(target) + " status=" + result.status() + " world=unavailable";
         }
         MinecraftWorldSnapshot snapshot = new MinecraftWorldSnapshot(blockGetter);
-        BlockPos position = MinecraftWorldSnapshot.toMinecraft(target);
-        BlockState blockState = snapshot.blockState(position);
-        FluidState fluidState = snapshot.fluidState(position);
-        BlockPassability passability = classifier.classify(blockState, blockGetter, position);
+        WorldLayer layer = snapshot;
+        BlockClassification classification = layer.classify(target);
         return "path block "
                 + format(target)
                 + " status="
                 + result.status()
                 + " passability="
-                + passability
+                + classification.passability()
                 + " fluid="
-                + classifier.hasFluid(fluidState);
+                + (classification.fluidHandling() == FluidHandling.ALLOW);
     }
 
     private PathfinderResult<BlockPosition> findPath(BlockPosition start, BlockPosition goal) {

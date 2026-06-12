@@ -1,9 +1,9 @@
 package dev.traveler.mc.v1_21_11.fabric;
 
 import dev.traveler.mc.v1_21_11.common.command.TravelerCommandModule;
-import dev.traveler.mc.v1_21_11.common.event.ClientTickEvent;
-import dev.traveler.mc.v1_21_11.common.event.TravelerClientEvents;
-import dev.traveler.mc.v1_21_11.common.event.WorldRenderEvent;
+import dev.traveler.core.event.ClientTickEvent;
+import dev.traveler.core.event.TravelerClientEvents;
+import dev.traveler.core.event.WorldRenderEvent;
 import dev.traveler.mc.v1_21_11.common.render.PathDebugRenderModel;
 import java.util.Objects;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;

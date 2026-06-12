@@ -1,4 +1,4 @@
-package dev.traveler.mc.v1_21_11.common.event;
+package dev.traveler.core.event;
 
 public final class TravelerClientEvents {
     public static final TravelerEvent<ClientTickEvent> CLIENT_TICK = TravelerEvent.create();

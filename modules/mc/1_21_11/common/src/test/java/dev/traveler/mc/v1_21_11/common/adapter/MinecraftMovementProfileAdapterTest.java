@@ -1,7 +1,9 @@
 package dev.traveler.mc.v1_21_11.common.adapter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
+import dev.traveler.core.layer.MovementLayer;
 import dev.traveler.core.world.BlockPassability;
 import dev.traveler.core.world.FluidHandling;
 import dev.traveler.core.world.MovementProfile;
@@ -26,5 +28,13 @@ class MinecraftMovementProfileAdapterTest {
         assertEquals(
                 Set.of(BlockPassability.WALKABLE, BlockPassability.PASSABLE),
                 profile.rules().allowedPassability());
+    }
+
+    @Test
+    void implementsCoreMovementLayerContract() {
+        MinecraftMovementProfileAdapter adapter = new MinecraftMovementProfileAdapter();
+
+        assertInstanceOf(MovementLayer.class, adapter);
+        assertEquals(MinecraftMovementProfileAdapter.defaultPlayerProfile(), adapter.movementProfile());
     }
 }

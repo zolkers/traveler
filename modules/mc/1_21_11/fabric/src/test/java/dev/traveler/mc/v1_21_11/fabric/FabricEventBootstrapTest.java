@@ -2,9 +2,9 @@ package dev.traveler.mc.v1_21_11.fabric;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import dev.traveler.mc.v1_21_11.common.event.TravelerClientEvents;
-import dev.traveler.mc.v1_21_11.common.event.TravelerEventSubscription;
-import dev.traveler.mc.v1_21_11.common.event.WorldRenderEvent;
+import dev.traveler.core.event.TravelerClientEvents;
+import dev.traveler.core.event.TravelerEventSubscription;
+import dev.traveler.core.event.WorldRenderEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;

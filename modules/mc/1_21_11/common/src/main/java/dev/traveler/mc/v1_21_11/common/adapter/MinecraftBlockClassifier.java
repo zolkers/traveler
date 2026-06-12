@@ -1,5 +1,7 @@
 package dev.traveler.mc.v1_21_11.common.adapter;
 
+import dev.traveler.core.layer.BlockClassification;
+import dev.traveler.core.layer.BlockClassifier;
 import dev.traveler.core.world.BlockPassability;
 import dev.traveler.core.world.FluidHandling;
 import java.util.Objects;
@@ -8,7 +10,15 @@ import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
 
-public final class MinecraftBlockClassifier {
+public final class MinecraftBlockClassifier implements BlockClassifier<MinecraftBlockContext> {
+    @Override
+    public BlockClassification classifyContext(MinecraftBlockContext context) {
+        Objects.requireNonNull(context, "context");
+        return new BlockClassification(
+                classify(context.state(), context.blockGetter(), context.position()),
+                fluidHandlingOf(context.state().getFluidState()));
+    }
+
     public BlockPassability classify(BlockState state) {
         Objects.requireNonNull(state, "state");
         if (state.isAir()) {
@@ -47,6 +57,10 @@ public final class MinecraftBlockClassifier {
     public boolean hasFluid(FluidState state) {
         Objects.requireNonNull(state, "state");
         return !state.isEmpty();
+    }
+
+    public FluidHandling fluidHandlingOf(FluidState state) {
+        return hasFluid(state) ? FluidHandling.ALLOW : FluidHandling.AVOID;
     }
 
     public boolean allowsFluid(FluidState state, FluidHandling handling) {

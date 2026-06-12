@@ -1,8 +1,11 @@
 package dev.traveler.mc.v1_21_11.common.adapter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
+import dev.traveler.core.layer.WorldLayer;
+import dev.traveler.core.world.BlockPassability;
 import dev.traveler.core.world.BlockPosition;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.BlockPos;
@@ -46,6 +49,16 @@ class MinecraftWorldSnapshotTest {
         assertSame(Fluids.WATER.defaultFluidState(), snapshot.fluidState(position));
         assertEquals(new BlockPos(1, 2, 3), blockGetter.lastBlockPosition);
         assertEquals(new BlockPos(1, 2, 3), blockGetter.lastFluidPosition);
+    }
+
+    @Test
+    void implementsCoreWorldLayerContract() {
+        MinecraftWorldSnapshot snapshot = new MinecraftWorldSnapshot(new StubBlockGetter());
+
+        assertInstanceOf(WorldLayer.class, snapshot);
+        assertEquals(
+                BlockPassability.SOLID,
+                snapshot.classify(new BlockPosition(0, 0, 0)).passability());
     }
 
     private static final class StubBlockGetter implements BlockGetter {

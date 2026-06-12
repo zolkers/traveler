@@ -1,5 +1,6 @@
 package dev.traveler.mc.v1_21_11.common.adapter;
 
+import dev.traveler.core.layer.MovementLayer;
 import dev.traveler.core.world.BlockPassability;
 import dev.traveler.core.world.EntityDimensions;
 import dev.traveler.core.world.FluidHandling;
@@ -9,8 +10,12 @@ import dev.traveler.core.world.TraversalCost;
 import dev.traveler.core.world.TraversalRules;
 import java.util.Set;
 
-public final class MinecraftMovementProfileAdapter {
-    private MinecraftMovementProfileAdapter() {
+public final class MinecraftMovementProfileAdapter implements MovementLayer {
+    public MinecraftMovementProfileAdapter() {}
+
+    @Override
+    public MovementProfile movementProfile() {
+        return defaultPlayerProfile();
     }
 
     public static MovementProfile defaultPlayerProfile() {

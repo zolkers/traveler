@@ -4,7 +4,7 @@
 
 **Goal:** Add the next client-side foundation: a loader-neutral Traveler event bus plus a Fabric world-render debug path renderer that visualizes the latest path without moving the player.
 
-**Architecture:** `common` owns Minecraft-version client concepts that are shared by loaders: event dispatch contracts, debug render snapshots, and render command preparation. `fabric` owns only Fabric callbacks and the concrete world-render bridge. `core` stays untouched and pure.
+**Architecture:** `core` owns loader-neutral event dispatch contracts and layer contracts. `common` owns Minecraft-version implementations/adapters plus debug render snapshots and render command preparation. `fabric` owns only Fabric callbacks and the concrete world-render bridge.
 
 **Tech Stack:** Java 21, Gradle Kotlin DSL, Minecraft 1.21.11 Mojmap through Loom, Fabric API world-render callbacks, JUnit 6.1.0, Checkstyle nesting max 2.
 
@@ -12,17 +12,17 @@
 
 ## File Structure
 
-- Create `modules/mc/1_21_11/common/src/main/java/dev/traveler/mc/v1_21_11/common/event/TravelerEvent.java`
+- Create `modules/core/src/main/java/dev/traveler/core/event/TravelerEvent.java`
   - Small synchronous event list with deterministic listener order.
-- Create `modules/mc/1_21_11/common/src/main/java/dev/traveler/mc/v1_21_11/common/event/TravelerEventListener.java`
+- Create `modules/core/src/main/java/dev/traveler/core/event/TravelerEventListener.java`
   - Functional listener contract.
-- Create `modules/mc/1_21_11/common/src/main/java/dev/traveler/mc/v1_21_11/common/event/TravelerEventSubscription.java`
+- Create `modules/core/src/main/java/dev/traveler/core/event/TravelerEventSubscription.java`
   - Closeable registration handle.
-- Create `modules/mc/1_21_11/common/src/main/java/dev/traveler/mc/v1_21_11/common/event/TravelerClientEvents.java`
+- Create `modules/core/src/main/java/dev/traveler/core/event/TravelerClientEvents.java`
   - Shared client event registry.
-- Create `modules/mc/1_21_11/common/src/main/java/dev/traveler/mc/v1_21_11/common/event/ClientTickEvent.java`
+- Create `modules/core/src/main/java/dev/traveler/core/event/ClientTickEvent.java`
   - Client tick payload.
-- Create `modules/mc/1_21_11/common/src/main/java/dev/traveler/mc/v1_21_11/common/event/WorldRenderEvent.java`
+- Create `modules/core/src/main/java/dev/traveler/core/event/WorldRenderEvent.java`
   - World-render payload with partial tick and camera position.
 - Create `modules/mc/1_21_11/common/src/main/java/dev/traveler/mc/v1_21_11/common/render/ColorRgba.java`
   - Immutable color value with channel validation.
@@ -46,13 +46,13 @@
 ## Task 1: Common Event Bus
 
 **Files:**
-- Create: `modules/mc/1_21_11/common/src/main/java/dev/traveler/mc/v1_21_11/common/event/TravelerEvent.java`
-- Create: `modules/mc/1_21_11/common/src/main/java/dev/traveler/mc/v1_21_11/common/event/TravelerEventListener.java`
-- Create: `modules/mc/1_21_11/common/src/main/java/dev/traveler/mc/v1_21_11/common/event/TravelerEventSubscription.java`
-- Create: `modules/mc/1_21_11/common/src/main/java/dev/traveler/mc/v1_21_11/common/event/TravelerClientEvents.java`
-- Create: `modules/mc/1_21_11/common/src/main/java/dev/traveler/mc/v1_21_11/common/event/ClientTickEvent.java`
-- Create: `modules/mc/1_21_11/common/src/main/java/dev/traveler/mc/v1_21_11/common/event/WorldRenderEvent.java`
-- Test: `modules/mc/1_21_11/common/src/test/java/dev/traveler/mc/v1_21_11/common/event/TravelerEventTest.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/event/TravelerEvent.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/event/TravelerEventListener.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/event/TravelerEventSubscription.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/event/TravelerClientEvents.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/event/ClientTickEvent.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/event/WorldRenderEvent.java`
+- Test: `modules/core/src/test/java/dev/traveler/core/event/TravelerEventTest.java`
 
 - [ ] **Step 1: Write failing tests**
 
@@ -60,7 +60,7 @@ Test listener order, unsubscribe behavior, snapshot-safe dispatch, and null reje
 
 - [ ] **Step 2: Run RED**
 
-Run: `.\gradlew.bat :mc_1_21_11_common:test --tests dev.traveler.mc.v1_21_11.common.event.TravelerEventTest`
+Run: `.\gradlew.bat :core:test --tests dev.traveler.core.event.TravelerEventTest`
 
 Expected: fail because event classes do not exist.
 

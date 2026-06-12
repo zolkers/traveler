@@ -1,4 +1,4 @@
-package dev.traveler.mc.v1_21_11.common.event;
+package dev.traveler.core.event;
 
 import java.util.Comparator;
 import java.util.Objects;

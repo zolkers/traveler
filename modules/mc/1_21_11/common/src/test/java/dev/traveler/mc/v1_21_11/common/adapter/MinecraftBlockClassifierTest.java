@@ -2,8 +2,11 @@ package dev.traveler.mc.v1_21_11.common.adapter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.traveler.core.layer.BlockClassification;
+import dev.traveler.core.layer.BlockClassifier;
 import dev.traveler.core.world.BlockPassability;
 import dev.traveler.core.world.FluidHandling;
 import net.minecraft.SharedConstants;
@@ -32,6 +35,19 @@ class MinecraftBlockClassifierTest {
 
         assertEquals(BlockPassability.PASSABLE, classifier.classify(Blocks.AIR.defaultBlockState()));
         assertEquals(BlockPassability.SOLID, classifier.classify(Blocks.STONE.defaultBlockState()));
+    }
+
+    @Test
+    void implementsCoreBlockClassifierContract() {
+        MinecraftBlockClassifier classifier = new MinecraftBlockClassifier();
+        BlockState air = Blocks.AIR.defaultBlockState();
+        MinecraftBlockContext context = new MinecraftBlockContext(air, new SingleStateBlockGetter(air), BlockPos.ZERO);
+
+        BlockClassification classification = classifier.classify(context);
+
+        assertInstanceOf(BlockClassifier.class, classifier);
+        assertEquals(BlockPassability.PASSABLE, classification.passability());
+        assertEquals(FluidHandling.AVOID, classification.fluidHandling());
     }
 
     @Test
