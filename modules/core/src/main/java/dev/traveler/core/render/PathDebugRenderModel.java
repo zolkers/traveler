@@ -27,11 +27,6 @@ public final class PathDebugRenderModel {
         this(pathColor, yOffset, transparentNodeColor(pathColor));
     }
 
-    public PathDebugRenderModel(ColorRgba pathColor, double yOffset, double nodeHalfSize) {
-        this(pathColor, yOffset, transparentNodeColor(pathColor));
-        requirePositive(nodeHalfSize, "nodeHalfSize");
-    }
-
     public PathDebugRenderModel(ColorRgba pathColor, double yOffset, ColorRgba nodeColor) {
         this.pathColor = Objects.requireNonNull(pathColor, "pathColor");
         this.nodeColor = Objects.requireNonNull(nodeColor, "nodeColor");
@@ -157,13 +152,6 @@ public final class PathDebugRenderModel {
 
     private RenderVertex surfaceVertexFor(SurfaceNode node) {
         return new RenderVertex(node.centerX(), node.floorY() + SURFACE_Y_OFFSET, node.centerZ());
-    }
-
-    private static double requirePositive(double value, String name) {
-        if (value <= 0.0) {
-            throw new IllegalArgumentException(name + " must be positive");
-        }
-        return value;
     }
 
     private static ColorRgba transparentNodeColor(ColorRgba color) {

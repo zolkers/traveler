@@ -62,7 +62,7 @@ class PathDebugRenderModelTest {
     @Test
     void stepDownSegmentsMoveHorizontallyBeforeDropping() {
         ColorRgba color = new ColorRgba(0.1f, 0.6f, 1.0f, 0.85f);
-        PathDebugRenderModel model = new PathDebugRenderModel(color, 0.35, 0.25);
+        PathDebugRenderModel model = new PathDebugRenderModel(color, 0.35);
         PathfinderDebugState state = new PathfinderDebugState();
         state.update(foundPath(
                 new BlockPosition(2, 65, 1),

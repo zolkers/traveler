@@ -10,11 +10,6 @@ public final class MutableGraphPath<N> extends AbstractGraphPath<N> {
         nodes.add(node);
     }
 
-    public void clear() {
-        nodes.clear();
-        setPathCost(0.0);
-    }
-
     public void setCost(double cost) {
         setPathCost(cost);
     }
