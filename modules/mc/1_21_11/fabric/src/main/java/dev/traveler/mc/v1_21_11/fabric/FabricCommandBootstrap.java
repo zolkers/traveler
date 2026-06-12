@@ -1,5 +1,6 @@
 package dev.traveler.mc.v1_21_11.fabric;
 
+import com.mojang.brigadier.CommandDispatcher;
 import dev.riege.buildmycommand.adapters.minecraft.common.MinecraftSourceMapper;
 import dev.riege.buildmycommand.adapters.minecraft.fabric.FabricMinecraftIntegration;
 import dev.traveler.mc.v1_21_11.common.command.TravelerCommandModule;
@@ -13,8 +14,16 @@ public final class FabricCommandBootstrap {
 
     public static void register(TravelerCommandModule module) {
         Objects.requireNonNull(module, "module");
-        MinecraftSourceMapper<FabricClientCommandSource> sourceMapper = FabricCommandSourceAdapter::new;
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
-                FabricMinecraftIntegration.registration(module.framework(), sourceMapper).registerInto(dispatcher));
+                registerInto(dispatcher, module));
+    }
+
+    static void registerInto(
+            CommandDispatcher<FabricClientCommandSource> dispatcher,
+            TravelerCommandModule module) {
+        Objects.requireNonNull(dispatcher, "dispatcher");
+        Objects.requireNonNull(module, "module");
+        MinecraftSourceMapper<FabricClientCommandSource> sourceMapper = FabricCommandSourceAdapter::new;
+        FabricMinecraftIntegration.registration(module.framework(), sourceMapper).registerInto(dispatcher);
     }
 }

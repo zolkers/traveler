@@ -4,9 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
+import dev.traveler.mc.v1_21_11.common.command.TravelerCommandModule;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -52,6 +54,17 @@ class FabricCommandSourceAdapterTest {
         FabricCommandSourceAdapter adapter = new FabricCommandSourceAdapter(new TestFabricSource());
 
         assertTrue(adapter.name().isEmpty());
+    }
+
+    @Test
+    void registeredCommandRepliesThroughFabricFeedback() throws Exception {
+        CommandDispatcher<FabricClientCommandSource> dispatcher = new CommandDispatcher<>();
+        TestFabricSource source = new TestFabricSource();
+
+        FabricCommandBootstrap.registerInto(dispatcher, new TravelerCommandModule());
+        dispatcher.execute("traveler path test", source);
+
+        assertEquals(List.of("path test status=FOUND nodes=2"), source.feedbackMessages());
     }
 
     private static final class TestFabricSource implements FabricClientCommandSource {

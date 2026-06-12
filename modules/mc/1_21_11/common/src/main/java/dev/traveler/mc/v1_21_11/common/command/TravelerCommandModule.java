@@ -4,6 +4,7 @@ import dev.riege.buildmycommand.annotation.AnnotationCommandScanner;
 import dev.riege.buildmycommand.annotation.Route;
 import dev.riege.buildmycommand.annotation.RouteCtx;
 import dev.riege.buildmycommand.api.CommandContext;
+import dev.riege.buildmycommand.api.CommandNode;
 import dev.riege.buildmycommand.api.CommandResult;
 import dev.riege.buildmycommand.api.Results;
 import dev.riege.buildmycommand.core.CommandFramework;
@@ -41,7 +42,7 @@ public final class TravelerCommandModule {
     public TravelerCommandModule(PathfinderDebugState debugState, Supplier<? extends BlockGetter> blockGetterSupplier) {
         this.debugState = Objects.requireNonNull(debugState, "debugState");
         this.blockGetterSupplier = Objects.requireNonNull(blockGetterSupplier, "blockGetterSupplier");
-        framework = CommandFramework.create();
+        framework = CommandFramework.builder().middleware(TravelerCommandModule::replyWithResultMessage).build();
         AnnotationCommandScanner.register(framework.registry(), this);
     }
 
@@ -103,6 +104,16 @@ public final class TravelerCommandModule {
 
     private static String format(BlockPosition position) {
         return position.x() + "," + position.y() + "," + position.z();
+    }
+
+    private static CommandResult replyWithResultMessage(
+            CommandContext context,
+            CommandNode command,
+            List<String> commandPath,
+            dev.riege.buildmycommand.api.CommandMiddleware.Chain next) {
+        CommandResult result = next.proceed(context);
+        result.message().ifPresent(context.source()::reply);
+        return result;
     }
 
     private static final class DirectBlockGraph implements Graph<BlockPosition> {
