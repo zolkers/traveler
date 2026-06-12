@@ -1,7 +1,7 @@
 package dev.traveler.mc.v1_21_11.fabric;
 
 import dev.traveler.mc.v1_21_11.common.command.TravelerCommandModule;
-import dev.traveler.mc.v1_21_11.common.debug.PathfinderDebugState;
+import dev.traveler.core.debug.PathfinderDebugState;
 import net.fabricmc.api.ClientModInitializer;
 import net.minecraft.client.Minecraft;
 

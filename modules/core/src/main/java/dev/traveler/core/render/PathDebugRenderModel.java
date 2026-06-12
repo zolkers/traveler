@@ -1,10 +1,10 @@
-package dev.traveler.mc.v1_21_11.common.render;
+package dev.traveler.core.render;
 
+import dev.traveler.core.debug.PathfinderDebugSnapshot;
 import dev.traveler.core.graph.GraphPath;
 import dev.traveler.core.path.PathfinderResult;
 import dev.traveler.core.path.PathfinderStatus;
 import dev.traveler.core.world.BlockPosition;
-import dev.traveler.mc.v1_21_11.common.debug.PathfinderDebugSnapshot;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;

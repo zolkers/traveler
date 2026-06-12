@@ -10,7 +10,13 @@ import org.junit.jupiter.api.Test;
 
 class ArchitectureBoundaryTest {
     private static final List<String> FORBIDDEN_IMPORTS = List.of("net.fabricmc", "net.neoforged");
-    private static final List<String> FORBIDDEN_PACKAGES = List.of("/common/event/", "\\common\\event\\");
+    private static final List<String> FORBIDDEN_PACKAGES = List.of(
+            "/common/event/",
+            "\\common\\event\\",
+            "/common/render/",
+            "\\common\\render\\",
+            "/common/debug/",
+            "\\common\\debug\\");
 
     @Test
     void commonDoesNotImportLoaderSpecificApis() throws IOException {

@@ -2,12 +2,12 @@ package dev.traveler.mc.v1_21_11.fabric;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import dev.traveler.mc.v1_21_11.common.debug.PathfinderDebugState;
-import dev.traveler.mc.v1_21_11.common.render.ColorRgba;
-import dev.traveler.mc.v1_21_11.common.render.DebugLine;
-import dev.traveler.mc.v1_21_11.common.render.DebugRenderFrame;
-import dev.traveler.mc.v1_21_11.common.render.PathDebugRenderModel;
-import dev.traveler.mc.v1_21_11.common.render.RenderVertex;
+import dev.traveler.core.debug.PathfinderDebugState;
+import dev.traveler.core.render.ColorRgba;
+import dev.traveler.core.render.DebugLine;
+import dev.traveler.core.render.DebugRenderFrame;
+import dev.traveler.core.render.PathDebugRenderModel;
+import dev.traveler.core.render.RenderVertex;
 import java.util.Objects;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;

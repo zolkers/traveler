@@ -1,4 +1,4 @@
-package dev.traveler.mc.v1_21_11.common.render;
+package dev.traveler.core.render;
 
 public record ColorRgba(float red, float green, float blue, float alpha) {
     public ColorRgba {

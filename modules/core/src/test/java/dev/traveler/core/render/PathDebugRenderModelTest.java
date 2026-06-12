@@ -1,14 +1,14 @@
-package dev.traveler.mc.v1_21_11.common.render;
+package dev.traveler.core.render;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.graph.MutableGraphPath;
 import dev.traveler.core.path.PathfinderResult;
 import dev.traveler.core.path.PathfinderStatus;
 import dev.traveler.core.world.BlockPosition;
-import dev.traveler.mc.v1_21_11.common.debug.PathfinderDebugState;
 import org.junit.jupiter.api.Test;
 
 class PathDebugRenderModelTest {

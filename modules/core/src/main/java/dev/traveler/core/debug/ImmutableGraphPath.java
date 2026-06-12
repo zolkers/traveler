@@ -1,4 +1,4 @@
-package dev.traveler.mc.v1_21_11.common.debug;
+package dev.traveler.core.debug;
 
 import dev.traveler.core.graph.GraphPath;
 import java.util.ArrayList;

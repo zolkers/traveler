@@ -4,7 +4,7 @@ import dev.traveler.mc.v1_21_11.common.command.TravelerCommandModule;
 import dev.traveler.core.event.ClientTickEvent;
 import dev.traveler.core.event.TravelerClientEvents;
 import dev.traveler.core.event.WorldRenderEvent;
-import dev.traveler.mc.v1_21_11.common.render.PathDebugRenderModel;
+import dev.traveler.core.render.PathDebugRenderModel;
 import java.util.Objects;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;

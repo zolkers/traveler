@@ -4,7 +4,7 @@
 
 **Goal:** Add the next client-side foundation: a loader-neutral Traveler event bus plus a Fabric world-render debug path renderer that visualizes the latest path without moving the player.
 
-**Architecture:** `core` owns loader-neutral event dispatch contracts and layer contracts. `common` owns Minecraft-version implementations/adapters plus debug render snapshots and render command preparation. `fabric` owns only Fabric callbacks and the concrete world-render bridge.
+**Architecture:** `core` owns loader-neutral event dispatch contracts, layer contracts, debug state, and render command primitives. `common` owns Minecraft-version implementations/adapters and command preparation. `fabric` owns only Fabric callbacks and the concrete world-render bridge.
 
 **Tech Stack:** Java 21, Gradle Kotlin DSL, Minecraft 1.21.11 Mojmap through Loom, Fabric API world-render callbacks, JUnit 6.1.0, Checkstyle nesting max 2.
 
@@ -24,17 +24,17 @@
   - Client tick payload.
 - Create `modules/core/src/main/java/dev/traveler/core/event/WorldRenderEvent.java`
   - World-render payload with partial tick and camera position.
-- Create `modules/mc/1_21_11/common/src/main/java/dev/traveler/mc/v1_21_11/common/render/ColorRgba.java`
+- Create `modules/core/src/main/java/dev/traveler/core/render/ColorRgba.java`
   - Immutable color value with channel validation.
-- Create `modules/mc/1_21_11/common/src/main/java/dev/traveler/mc/v1_21_11/common/render/RenderVertex.java`
+- Create `modules/core/src/main/java/dev/traveler/core/render/RenderVertex.java`
   - World-space vertex.
-- Create `modules/mc/1_21_11/common/src/main/java/dev/traveler/mc/v1_21_11/common/render/DebugLine.java`
+- Create `modules/core/src/main/java/dev/traveler/core/render/DebugLine.java`
   - One colored 3D line segment.
-- Create `modules/mc/1_21_11/common/src/main/java/dev/traveler/mc/v1_21_11/common/render/DebugRenderFrame.java`
+- Create `modules/core/src/main/java/dev/traveler/core/render/DebugRenderFrame.java`
   - Immutable list of lines for a frame.
-- Create `modules/mc/1_21_11/common/src/main/java/dev/traveler/mc/v1_21_11/common/render/PathDebugRenderModel.java`
+- Create `modules/core/src/main/java/dev/traveler/core/render/PathDebugRenderModel.java`
   - Converts `PathfinderDebugSnapshot` into centered block-to-block line commands.
-- Modify `modules/mc/1_21_11/common/src/main/java/dev/traveler/mc/v1_21_11/common/debug/PathfinderDebugState.java`
+- Create `modules/core/src/main/java/dev/traveler/core/debug/PathfinderDebugState.java`
   - Add `snapshot()` read helper for render code.
 - Modify `modules/mc/1_21_11/fabric/src/main/java/dev/traveler/mc/v1_21_11/fabric/FabricEventBootstrap.java`
   - Register Fabric client tick and world-render callbacks.
@@ -79,13 +79,13 @@ Commit message: `feat(mc-common): add traveler client event bus`
 ## Task 2: Common Debug Render Model
 
 **Files:**
-- Create: `modules/mc/1_21_11/common/src/main/java/dev/traveler/mc/v1_21_11/common/render/ColorRgba.java`
-- Create: `modules/mc/1_21_11/common/src/main/java/dev/traveler/mc/v1_21_11/common/render/RenderVertex.java`
-- Create: `modules/mc/1_21_11/common/src/main/java/dev/traveler/mc/v1_21_11/common/render/DebugLine.java`
-- Create: `modules/mc/1_21_11/common/src/main/java/dev/traveler/mc/v1_21_11/common/render/DebugRenderFrame.java`
-- Create: `modules/mc/1_21_11/common/src/main/java/dev/traveler/mc/v1_21_11/common/render/PathDebugRenderModel.java`
-- Modify: `modules/mc/1_21_11/common/src/main/java/dev/traveler/mc/v1_21_11/common/debug/PathfinderDebugState.java`
-- Test: `modules/mc/1_21_11/common/src/test/java/dev/traveler/mc/v1_21_11/common/render/PathDebugRenderModelTest.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/render/ColorRgba.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/render/RenderVertex.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/render/DebugLine.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/render/DebugRenderFrame.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/render/PathDebugRenderModel.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/debug/PathfinderDebugState.java`
+- Test: `modules/core/src/test/java/dev/traveler/core/render/PathDebugRenderModelTest.java`
 
 - [ ] **Step 1: Write failing tests**
 
@@ -93,7 +93,7 @@ Test that empty/no-result snapshots produce no lines, a 3-node path produces 2 c
 
 - [ ] **Step 2: Run RED**
 
-Run: `.\gradlew.bat :mc_1_21_11_common:test --tests dev.traveler.mc.v1_21_11.common.render.PathDebugRenderModelTest`
+Run: `.\gradlew.bat :core:test --tests dev.traveler.core.render.PathDebugRenderModelTest`
 
 Expected: fail because render classes do not exist.
 

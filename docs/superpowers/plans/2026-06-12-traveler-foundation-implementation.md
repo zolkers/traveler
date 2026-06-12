@@ -41,6 +41,7 @@
 
 - [ ] Write failing tests for movement value objects and path smoothing.
 - [ ] Add `BlockPosition`, `EntityDimensions`, `MovementCapabilities`, `MovementProfile`, `TraversalCost`, and `TraversalRules`.
+- [ ] Add framework-level debug state such as `PathfinderDebugState`.
 - [ ] Add `PathSmoother` using an injected line-of-walk predicate.
 - [ ] Add test-only fake grid world helpers.
 - [ ] Run `./gradlew :core:test` and commit.
@@ -48,7 +49,6 @@
 ## Task 4: Minecraft Common Module
 
 - [ ] Configure Loom with Mojang official mappings.
-- [ ] Add `PathfinderDebugState`.
 - [ ] Add `MinecraftWorldSnapshot`, `MinecraftBlockClassifier`, and `MinecraftMovementProfileAdapter`.
 - [ ] Add `TravelerCommandModule` command handlers outside Fabric bootstrap.
 - [ ] Run `./gradlew :mc_1_21_11_common:build` and commit.
