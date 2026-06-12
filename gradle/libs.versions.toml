@@ -1,0 +1,28 @@
+[versions]
+buildmycommand = "0.3.6"
+checkstyle = "13.5.0"
+fabricApi = "0.141.4+1.21.11"
+fabricLoader = "0.19.3"
+fabricLoom = "1.17.11"
+gradle = "9.5.1"
+jacoco = "0.8.15"
+java = "21"
+junit = "6.1.0"
+minecraft = "1.21.11"
+spotless = "8.6.0"
+
+[libraries]
+buildmycommand-adapters-minecraft-fabric = { module = "io.github.zolkers:buildmycommand-adapters-minecraft-fabric", version.ref = "buildmycommand" }
+buildmycommand-annotations = { module = "io.github.zolkers:buildmycommand-annotations", version.ref = "buildmycommand" }
+buildmycommand-api = { module = "io.github.zolkers:buildmycommand-api", version.ref = "buildmycommand" }
+buildmycommand-core = { module = "io.github.zolkers:buildmycommand-core", version.ref = "buildmycommand" }
+fabric-api = { module = "net.fabricmc.fabric-api:fabric-api", version.ref = "fabricApi" }
+fabric-loader = { module = "net.fabricmc:fabric-loader", version.ref = "fabricLoader" }
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+minecraft = { module = "com.mojang:minecraft", version.ref = "minecraft" }
+
+[plugins]
+fabric-loom = { id = "fabric-loom", version.ref = "fabricLoom" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
