@@ -134,6 +134,25 @@ class TravelerCommandModuleTest {
         assertEquals(63.5, snapshot.surfaceNodes().getLast().floorY());
     }
 
+    @Test
+    void pathBlockStoresSmoothedSurfacePathWhenSurfaceLineIsClear() {
+        BlockPosition startFeet = new BlockPosition(0, 64, 0);
+        TravelerCommandModule module = new TravelerCommandModule(new TestSurfaceWorldLayer(Map.of(
+                new BlockPosition(0, 63, 0), surfaceBlock(BlockShape.fullCube()),
+                new BlockPosition(1, 63, 0), surfaceBlock(BlockShape.fullCube()),
+                new BlockPosition(2, 63, 0), surfaceBlock(BlockShape.fullCube()),
+                new BlockPosition(3, 63, 0), surfaceBlock(BlockShape.fullCube()),
+                new BlockPosition(4, 63, 0), surfaceBlock(BlockShape.fullCube()))));
+
+        module.framework().dispatch(new TestSource(startFeet), "traveler path block 4 63 0");
+
+        PathfinderDebugSnapshot snapshot = module.debugState().latestSnapshot().orElseThrow();
+        assertTrue(snapshot.hasSurfaceNodes());
+        assertEquals(2, snapshot.surfaceNodes().size());
+        assertEquals(0.75, snapshot.surfaceNodes().getFirst().centerX());
+        assertEquals(4.75, snapshot.surfaceNodes().getLast().centerX());
+    }
+
     private static void assertPathAvoids(GraphPath<BlockPosition> path, BlockPosition blocked) {
         for (BlockPosition node : path) {
             assertTrue(!node.equals(blocked));

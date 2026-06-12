@@ -21,6 +21,7 @@ import dev.traveler.core.world.movement.FluidHandling;
 import dev.traveler.core.world.movement.MovementCapabilities;
 import dev.traveler.core.world.navigation.BlockLineOfWalk;
 import dev.traveler.core.world.navigation.BlockTraversalGraph;
+import dev.traveler.core.world.navigation.SurfaceLineOfWalk;
 import dev.traveler.core.world.navigation.SurfaceTraversalGraph;
 import dev.traveler.core.world.surface.SurfaceNode;
 import dev.traveler.core.world.surface.SurfaceNodeResolver;
@@ -139,7 +140,8 @@ public final class PathTravelerCommandFeature {
                 SEARCH_VERTICAL_MARGIN);
         PathfinderRequest<SurfaceNode> request = new PathfinderRequest<>(
                 graph, resolvedStart, resolvedGoal, PathTravelerCommandFeature::surfaceDistance);
-        return new AStarPathfinder<SurfaceNode>().search(request);
+        PathfinderResult<SurfaceNode> result = new AStarPathfinder<SurfaceNode>().search(request);
+        return smoothedSurfaceResult(worldLayer, result);
     }
 
     private static Graph<BlockPosition> graphFor(WorldLayer worldLayer, BlockPosition start, BlockPosition goal) {
@@ -185,8 +187,28 @@ public final class PathTravelerCommandFeature {
         return new PathfinderResult<>(result.status(), graphPath(smoothed, result.path().cost()));
     }
 
-    private static MutableGraphPath<BlockPosition> graphPath(List<BlockPosition> nodes, double cost) {
-        MutableGraphPath<BlockPosition> path = new MutableGraphPath<>();
+    private static PathfinderResult<SurfaceNode> smoothedSurfaceResult(
+            SurfaceWorldLayer worldLayer, PathfinderResult<SurfaceNode> result) {
+        if (result.status() != PathfinderStatus.FOUND) {
+            return result;
+        }
+        if (result.path().nodeCount() < 3) {
+            return result;
+        }
+        List<SurfaceNode> nodes = result.path().nodes();
+        List<SurfaceNode> smoothed = new PathSmoother<SurfaceNode>(new SurfaceLineOfWalk(
+                        worldLayer,
+                        nodes.getFirst(),
+                        nodes.getLast(),
+                        CLIENT_CAPABILITIES,
+                        SEARCH_HORIZONTAL_MARGIN,
+                        SEARCH_VERTICAL_MARGIN))
+                .smooth(nodes);
+        return new PathfinderResult<>(result.status(), graphPath(smoothed, result.path().cost()));
+    }
+
+    private static <N> MutableGraphPath<N> graphPath(List<N> nodes, double cost) {
+        MutableGraphPath<N> path = new MutableGraphPath<>();
         nodes.forEach(path::addNode);
         path.setCost(cost);
         return path;

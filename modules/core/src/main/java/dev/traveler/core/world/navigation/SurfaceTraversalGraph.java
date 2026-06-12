@@ -155,6 +155,10 @@ public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
         return new SurfaceNode(position, cellX, cellZ, blockY + floorHeight);
     }
 
+    SurfaceNode surfaceNodeAt(int globalX, int blockY, int globalZ) {
+        return surfaceNode(globalX, blockY, globalZ);
+    }
+
     private boolean canStandOn(SurfaceNode node) {
         SurfaceNode surface = surfaceNode(globalX(node), node.blockPosition().y(), globalZ(node));
         return surface != null && sameFloor(surface, node) && hasBodyClearance(node);
@@ -250,11 +254,11 @@ public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
         return surfaceBlocks.get(x, y, z);
     }
 
-    private static int globalX(SurfaceNode node) {
+    static int globalX(SurfaceNode node) {
         return node.blockPosition().x() * 2 + node.cellX();
     }
 
-    private static int globalZ(SurfaceNode node) {
+    static int globalZ(SurfaceNode node) {
         return node.blockPosition().z() * 2 + node.cellZ();
     }
 
