@@ -8,4 +8,7 @@ description = "Traveler shared Minecraft 1.21.11 common code."
 
 dependencies {
     implementation(project(":core"))
+    implementation(libs.buildmycommand.api)
+    implementation(libs.buildmycommand.core)
+    implementation(libs.buildmycommand.annotations)
 }
