@@ -78,7 +78,7 @@ class PathDebugRenderModelTest {
     }
 
     @Test
-    void surfacePathsRenderLinesJustAboveFloorAndBoxesAroundSupportBlocks() {
+    void surfacePathsRenderLinesJustAboveFloorAndBoxesAroundVisualBlocks() {
         ColorRgba color = new ColorRgba(0.1f, 0.6f, 1.0f, 0.85f);
         PathDebugRenderModel model = new PathDebugRenderModel(color, 0.35);
         PathfinderDebugState state = new PathfinderDebugState();
@@ -93,17 +93,19 @@ class PathDebugRenderModelTest {
         assertEquals(new RenderVertex(2.25, 64.08, 1.75), frame.lines().getFirst().to());
         assertEquals(new RenderVertex(1.0, 63.0, 1.0), frame.boxes().getFirst().min());
         assertEquals(new RenderVertex(2.0, 64.0, 2.0), frame.boxes().getFirst().max());
+        assertEquals(new RenderVertex(2.0, 64.0, 1.0), frame.boxes().get(1).min());
+        assertEquals(new RenderVertex(3.0, 65.0, 2.0), frame.boxes().get(1).max());
     }
 
     @Test
-    void surfacePathBoxesAreDeduplicatedPerSupportBlock() {
+    void surfacePathBoxesAreDeduplicatedPerVisualBlock() {
         ColorRgba color = new ColorRgba(0.1f, 0.6f, 1.0f, 0.85f);
         PathDebugRenderModel model = new PathDebugRenderModel(color, 0.35);
         BlockPosition support = new BlockPosition(1, 63, 1);
         PathfinderDebugState state = new PathfinderDebugState();
         state.updateSurface(foundSurfacePath(
                 new SurfaceNode(support, 0, 0, 63.5),
-                new SurfaceNode(support, 1, 1, 64.0)));
+                new SurfaceNode(support, 1, 1, 63.5)));
 
         DebugRenderFrame frame = model.frameFor(state.snapshot());
 

@@ -101,16 +101,16 @@ public final class PathDebugRenderModel {
 
     private List<DebugBox> surfaceBoxesFor(List<SurfaceNode> nodes) {
         List<DebugBox> boxes = new ArrayList<>();
-        for (BlockPosition position : supportBlocks(nodes)) {
+        for (BlockPosition position : visualBlocks(nodes)) {
             boxes.add(boxFor(position));
         }
         return boxes;
     }
 
-    private static Set<BlockPosition> supportBlocks(List<SurfaceNode> nodes) {
+    private static Set<BlockPosition> visualBlocks(List<SurfaceNode> nodes) {
         Set<BlockPosition> positions = new LinkedHashSet<>();
         for (SurfaceNode node : nodes) {
-            positions.add(node.blockPosition());
+            positions.add(node.renderBlockPosition());
         }
         return positions;
     }
