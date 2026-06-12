@@ -129,7 +129,7 @@ Expected: fail because bootstrap is still a placeholder.
 
 - [ ] **Step 3: Implement Fabric bridge**
 
-Register `ClientTickEvents.END_CLIENT_TICK` and `WorldRenderEvents.AFTER_TRANSLUCENT`. The concrete renderer should use Minecraft's line rendering path with the `RenderType.LINES` shader pipeline exposed by Mojmap.
+Register `ClientTickEvents.END_CLIENT_TICK` and `WorldRenderEvents.END_MAIN`. The concrete renderer should use Minecraft's line rendering path with the `RenderTypes.lines()` shader pipeline exposed by Mojmap.
 
 - [ ] **Step 4: Run GREEN**
 
@@ -163,4 +163,3 @@ Ensure `core` remains unchanged or pure, `common` has no Fabric/NeoForge imports
 - [ ] **Step 4: Commit verification fixes if needed**
 
 Commit only concrete fixes found by verification.
-
