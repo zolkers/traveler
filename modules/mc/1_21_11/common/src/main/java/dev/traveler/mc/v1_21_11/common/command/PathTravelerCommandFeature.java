@@ -13,26 +13,27 @@ import dev.traveler.core.layer.WorldLayer;
 import dev.traveler.core.path.AStarPathfinder;
 import dev.traveler.core.path.PathfinderRequest;
 import dev.traveler.core.path.PathfinderResult;
+import dev.traveler.core.world.BlockTraversalGraph;
 import dev.traveler.core.world.BlockPosition;
 import dev.traveler.core.world.FluidHandling;
-import dev.traveler.mc.v1_21_11.common.adapter.MinecraftWorldSnapshot;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Supplier;
-import net.minecraft.world.level.BlockGetter;
 
 public final class PathTravelerCommandFeature implements TravelerCommandFeature {
     private static final BlockPosition TEST_START = new BlockPosition(0, 64, 0);
     private static final BlockPosition TEST_GOAL = new BlockPosition(3, 64, 0);
+    private static final int SEARCH_HORIZONTAL_MARGIN = 24;
+    private static final int SEARCH_VERTICAL_MARGIN = 8;
 
     private final PathfinderDebugState debugState;
-    private final Supplier<? extends BlockGetter> blockGetterSupplier;
+    private final Supplier<? extends WorldLayer> worldLayerSupplier;
 
     public PathTravelerCommandFeature(
             PathfinderDebugState debugState,
-            Supplier<? extends BlockGetter> blockGetterSupplier) {
+            Supplier<? extends WorldLayer> worldLayerSupplier) {
         this.debugState = Objects.requireNonNull(debugState, "debugState");
-        this.blockGetterSupplier = Objects.requireNonNull(blockGetterSupplier, "blockGetterSupplier");
+        this.worldLayerSupplier = Objects.requireNonNull(worldLayerSupplier, "worldLayerSupplier");
     }
 
     @Override
@@ -59,9 +60,11 @@ public final class PathTravelerCommandFeature implements TravelerCommandFeature 
                 context.arg("x", int.class),
                 context.arg("y", int.class),
                 context.arg("z", int.class));
-        BlockPosition start = startPosition(context, target);
-        PathfinderResult<BlockPosition> result = findPath(start, target);
-        String message = blockMessage(target, result);
+        WorldLayer worldLayer = worldLayerSupplier.get();
+        BlockPosition goal = goalPosition(worldLayer, target);
+        BlockPosition start = startPosition(context, goal);
+        PathfinderResult<BlockPosition> result = findPath(worldLayer, start, goal);
+        String message = blockMessage(worldLayer, target, result);
         debugState.update(result, message);
         return TravelerCommandResult.success(message);
     }
@@ -74,14 +77,11 @@ public final class PathTravelerCommandFeature implements TravelerCommandFeature 
                 .orElse(target.above());
     }
 
-    private String blockMessage(BlockPosition target, PathfinderResult<BlockPosition> result) {
-        BlockGetter blockGetter = blockGetterSupplier.get();
-        if (blockGetter == null) {
+    private String blockMessage(WorldLayer worldLayer, BlockPosition target, PathfinderResult<BlockPosition> result) {
+        if (worldLayer == null) {
             return "path block " + format(target) + " status=" + result.status() + " world=unavailable";
         }
-        MinecraftWorldSnapshot snapshot = new MinecraftWorldSnapshot(blockGetter);
-        WorldLayer layer = snapshot;
-        BlockClassification classification = layer.classify(target);
+        BlockClassification classification = worldLayer.classify(target);
         return "path block "
                 + format(target)
                 + " status="
@@ -93,9 +93,32 @@ public final class PathTravelerCommandFeature implements TravelerCommandFeature 
     }
 
     private PathfinderResult<BlockPosition> findPath(BlockPosition start, BlockPosition goal) {
+        return findPath(null, start, goal);
+    }
+
+    private PathfinderResult<BlockPosition> findPath(WorldLayer worldLayer, BlockPosition start, BlockPosition goal) {
+        Graph<BlockPosition> graph = graphFor(worldLayer, start, goal);
         PathfinderRequest<BlockPosition> request =
-                new PathfinderRequest<>(new DirectBlockGraph(goal), start, goal, PathTravelerCommandFeature::distance);
+                new PathfinderRequest<>(graph, start, goal, PathTravelerCommandFeature::distance);
         return new AStarPathfinder<BlockPosition>().search(request);
+    }
+
+    private static Graph<BlockPosition> graphFor(WorldLayer worldLayer, BlockPosition start, BlockPosition goal) {
+        if (worldLayer == null) {
+            return new DirectBlockGraph(goal);
+        }
+        return new BlockTraversalGraph(
+                worldLayer, start, goal, SEARCH_HORIZONTAL_MARGIN, SEARCH_VERTICAL_MARGIN);
+    }
+
+    private static BlockPosition goalPosition(WorldLayer worldLayer, BlockPosition target) {
+        if (worldLayer == null) {
+            return target;
+        }
+        if (worldLayer.classify(target).passability() == dev.traveler.core.world.BlockPassability.SOLID) {
+            return target.above();
+        }
+        return target;
     }
 
     private static double distance(BlockPosition from, BlockPosition to) {

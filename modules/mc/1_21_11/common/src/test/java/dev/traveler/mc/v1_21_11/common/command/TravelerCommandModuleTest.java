@@ -6,11 +6,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.riege.buildmycommand.api.CommandResult;
 import dev.riege.buildmycommand.api.CommandSource;
 import dev.traveler.core.graph.GraphPath;
+import dev.traveler.core.layer.BlockClassification;
+import dev.traveler.core.layer.WorldLayer;
 import dev.traveler.core.path.PathfinderResult;
 import dev.traveler.core.world.BlockPosition;
+import dev.traveler.core.world.BlockPassability;
+import dev.traveler.core.world.FluidHandling;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 class TravelerCommandModuleTest {
@@ -61,6 +67,27 @@ class TravelerCommandModuleTest {
         assertEquals(new BlockPosition(1, 2, 3), path.nodeAt(path.nodeCount() - 1));
     }
 
+    @Test
+    void pathBlockUsesWorldTraversalWhenLayerIsAvailable() {
+        BlockPosition start = new BlockPosition(0, 64, 0);
+        BlockPosition goal = new BlockPosition(2, 64, 0);
+        BlockPosition wall = new BlockPosition(1, 64, 0);
+        TravelerCommandModule module = new TravelerCommandModule(new TestWorldLayer(Set.of(wall, wall.above())));
+
+        module.framework().dispatch(new TestSource(start), "traveler path block 2 64 0");
+
+        GraphPath<BlockPosition> path = module.debugState().latestResult().orElseThrow().path();
+        assertTrue(path.nodeCount() > 3);
+        assertPathAvoids(path, wall);
+        assertEquals(goal, path.nodeAt(path.nodeCount() - 1));
+    }
+
+    private static void assertPathAvoids(GraphPath<BlockPosition> path, BlockPosition blocked) {
+        for (BlockPosition node : path) {
+            assertTrue(!node.equals(blocked));
+        }
+    }
+
     private static final class TestSource implements CommandSource, TravelerCommandPosition {
         private final List<String> replies = new ArrayList<>();
         private final BlockPosition position;
@@ -94,6 +121,23 @@ class TravelerCommandModuleTest {
         @Override
         public void reply(String message) {
             replies.add(message);
+        }
+    }
+
+    private record TestWorldLayer(Set<BlockPosition> blockedFeet) implements WorldLayer {
+        private TestWorldLayer {
+            blockedFeet = new HashSet<>(blockedFeet);
+        }
+
+        @Override
+        public BlockClassification classify(BlockPosition position) {
+            if (blockedFeet.contains(position)) {
+                return new BlockClassification(BlockPassability.SOLID, FluidHandling.AVOID);
+            }
+            if (position.y() == 63) {
+                return new BlockClassification(BlockPassability.SOLID, FluidHandling.AVOID);
+            }
+            return new BlockClassification(BlockPassability.PASSABLE, FluidHandling.AVOID);
         }
     }
 }
