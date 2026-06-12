@@ -26,6 +26,10 @@ public final class PathfinderDebugState {
         return Optional.ofNullable(latestSnapshot);
     }
 
+    public synchronized Optional<PathfinderDebugSnapshot> snapshot() {
+        return latestSnapshot();
+    }
+
     public synchronized Optional<PathfinderResult<BlockPosition>> latestResult() {
         return latestSnapshot().map(PathfinderDebugSnapshot::result);
     }
