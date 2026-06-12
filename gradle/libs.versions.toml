@@ -13,9 +13,13 @@ spotless = "8.6.0"
 
 [libraries]
 buildmycommand-adapters-minecraft-fabric = { module = "io.github.zolkers:buildmycommand-adapters-minecraft-fabric", version.ref = "buildmycommand" }
+buildmycommand-adapters-minecraft-common = { module = "io.github.zolkers:buildmycommand-adapters-minecraft-common", version.ref = "buildmycommand" }
+buildmycommand-adapters-brigadier = { module = "io.github.zolkers:buildmycommand-adapters-brigadier", version.ref = "buildmycommand" }
+buildmycommand-adapters-core = { module = "io.github.zolkers:buildmycommand-adapters-core", version.ref = "buildmycommand" }
 buildmycommand-annotations = { module = "io.github.zolkers:buildmycommand-annotations", version.ref = "buildmycommand" }
 buildmycommand-api = { module = "io.github.zolkers:buildmycommand-api", version.ref = "buildmycommand" }
 buildmycommand-core = { module = "io.github.zolkers:buildmycommand-core", version.ref = "buildmycommand" }
+buildmycommand-dsl = { module = "io.github.zolkers:buildmycommand-dsl", version.ref = "buildmycommand" }
 fabric-api = { module = "net.fabricmc.fabric-api:fabric-api", version.ref = "fabricApi" }
 fabric-loader = { module = "net.fabricmc:fabric-loader", version.ref = "fabricLoader" }
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }

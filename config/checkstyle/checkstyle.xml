@@ -13,6 +13,15 @@
 
     <module name="TreeWalker">
         <module name="AvoidStarImport"/>
+        <module name="NestedForDepth">
+            <property name="max" value="2"/>
+        </module>
+        <module name="NestedIfDepth">
+            <property name="max" value="2"/>
+        </module>
+        <module name="NestedTryDepth">
+            <property name="max" value="2"/>
+        </module>
         <module name="UnusedImports"/>
     </module>
 </module>

@@ -5,14 +5,25 @@ plugins {
 }
 
 val libs = extensions.getByType<VersionCatalogsExtension>().named("libs")
+val embeddedBuildMyCommand = listOf(
+    "buildmycommand-api",
+    "buildmycommand-core",
+    "buildmycommand-annotations",
+    "buildmycommand-dsl",
+    "buildmycommand-adapters-core",
+    "buildmycommand-adapters-brigadier",
+    "buildmycommand-adapters-minecraft-common",
+    "buildmycommand-adapters-minecraft-fabric",
+)
 
 dependencies {
     "modImplementation"(libs.findLibrary("fabric-loader").get())
     "modImplementation"(libs.findLibrary("fabric-api").get())
-    "implementation"(libs.findLibrary("buildmycommand-api").get())
-    "implementation"(libs.findLibrary("buildmycommand-core").get())
-    "implementation"(libs.findLibrary("buildmycommand-annotations").get())
-    "implementation"(libs.findLibrary("buildmycommand-adapters-minecraft-fabric").get())
+    embeddedBuildMyCommand.forEach { alias ->
+        val dependency = libs.findLibrary(alias).get()
+        "implementation"(dependency)
+        "include"(dependency)
+    }
 }
 
 loom {
@@ -22,12 +33,6 @@ loom {
             configName = "Traveler Fabric Client"
             ideConfigGenerated(true)
             runDir("run")
-        }
-        named("server") {
-            server()
-            configName = "Traveler Fabric Server"
-            ideConfigGenerated(false)
-            runDir("run-server")
         }
     }
 }

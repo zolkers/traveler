@@ -1,4 +1,5 @@
 import org.gradle.api.artifacts.VersionCatalogsExtension
+import com.diffplug.spotless.LineEnding
 
 plugins {
     checkstyle
@@ -18,6 +19,8 @@ jacoco {
 }
 
 spotless {
+    lineEndings = LineEnding.UNIX
+
     java {
         target("src/**/*.java")
         removeUnusedImports()
