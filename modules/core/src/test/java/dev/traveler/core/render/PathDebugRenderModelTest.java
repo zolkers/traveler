@@ -33,22 +33,45 @@ class PathDebugRenderModelTest {
     }
 
     @Test
-    void pathNodesBecomeCenteredLineSegments() {
+    void pathNodesBecomeCenteredLineSegmentsAndSquares() {
         ColorRgba color = new ColorRgba(0.1f, 0.6f, 1.0f, 0.85f);
-        PathDebugRenderModel model = new PathDebugRenderModel(color, 0.15);
+        PathDebugRenderModel model = new PathDebugRenderModel(color, 0.35, 0.25);
         PathfinderDebugState state = new PathfinderDebugState();
         state.update(foundPath(
                 new BlockPosition(1, 64, 1),
                 new BlockPosition(2, 64, 1),
-                new BlockPosition(2, 65, 1)));
+                new BlockPosition(3, 65, 1)));
 
         DebugRenderFrame frame = model.frameFor(state.snapshot());
 
-        assertEquals(2, frame.lines().size());
-        assertEquals(new RenderVertex(1.5, 64.15, 1.5), frame.lines().getFirst().from());
-        assertEquals(new RenderVertex(2.5, 64.15, 1.5), frame.lines().getFirst().to());
-        assertEquals(new RenderVertex(2.5, 65.15, 1.5), frame.lines().get(1).to());
+        assertEquals(15, frame.lines().size());
+        assertEquals(new RenderVertex(1.5, 64.35, 1.5), frame.lines().getFirst().from());
+        assertEquals(new RenderVertex(2.5, 64.35, 1.5), frame.lines().getFirst().to());
+        assertEquals(new RenderVertex(2.5, 64.35, 1.5), frame.lines().get(1).from());
+        assertEquals(new RenderVertex(2.5, 65.35, 1.5), frame.lines().get(1).to());
+        assertEquals(new RenderVertex(2.5, 65.35, 1.5), frame.lines().get(2).from());
+        assertEquals(new RenderVertex(3.5, 65.35, 1.5), frame.lines().get(2).to());
+        assertEquals(new RenderVertex(1.25, 64.35, 1.25), frame.lines().get(3).from());
+        assertEquals(new RenderVertex(1.75, 64.35, 1.25), frame.lines().get(3).to());
         assertEquals(color, frame.lines().getFirst().color());
+    }
+
+    @Test
+    void stepDownSegmentsMoveHorizontallyBeforeDropping() {
+        ColorRgba color = new ColorRgba(0.1f, 0.6f, 1.0f, 0.85f);
+        PathDebugRenderModel model = new PathDebugRenderModel(color, 0.35, 0.25);
+        PathfinderDebugState state = new PathfinderDebugState();
+        state.update(foundPath(
+                new BlockPosition(2, 65, 1),
+                new BlockPosition(3, 64, 1),
+                new BlockPosition(4, 64, 1)));
+
+        DebugRenderFrame frame = model.frameFor(state.snapshot());
+
+        assertEquals(new RenderVertex(2.5, 65.35, 1.5), frame.lines().getFirst().from());
+        assertEquals(new RenderVertex(3.5, 65.35, 1.5), frame.lines().getFirst().to());
+        assertEquals(new RenderVertex(3.5, 65.35, 1.5), frame.lines().get(1).from());
+        assertEquals(new RenderVertex(3.5, 64.35, 1.5), frame.lines().get(1).to());
     }
 
     @Test
