@@ -59,10 +59,19 @@ public final class PathTravelerCommandFeature implements TravelerCommandFeature 
                 context.arg("x", int.class),
                 context.arg("y", int.class),
                 context.arg("z", int.class));
-        PathfinderResult<BlockPosition> result = findPath(target.above(), target);
+        BlockPosition start = startPosition(context, target);
+        PathfinderResult<BlockPosition> result = findPath(start, target);
         String message = blockMessage(target, result);
         debugState.update(result, message);
         return TravelerCommandResult.success(message);
+    }
+
+    private static BlockPosition startPosition(TravelerCommandContext context, BlockPosition target) {
+        return context.source()
+                .unwrap(TravelerCommandPosition.class)
+                .flatMap(TravelerCommandPosition::blockPosition)
+                .map(TravelerCommandBlockPosition::toCorePosition)
+                .orElse(target.above());
     }
 
     private String blockMessage(BlockPosition target, PathfinderResult<BlockPosition> result) {

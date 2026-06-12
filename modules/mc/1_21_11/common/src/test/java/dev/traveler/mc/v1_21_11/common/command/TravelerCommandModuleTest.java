@@ -5,8 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.riege.buildmycommand.api.CommandResult;
 import dev.riege.buildmycommand.api.CommandSource;
+import dev.traveler.core.graph.GraphPath;
+import dev.traveler.core.path.PathfinderResult;
+import dev.traveler.core.world.BlockPosition;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class TravelerCommandModuleTest {
@@ -43,11 +47,48 @@ class TravelerCommandModuleTest {
         assertTrue(module.debugState().latestMessage().orElseThrow().contains("1,2,3"));
     }
 
-    private static final class TestSource implements CommandSource {
+    @Test
+    void pathBlockStartsAtCommandSourcePositionWhenAvailable() {
+        TravelerCommandModule module = new TravelerCommandModule();
+        BlockPosition start = new BlockPosition(8, 70, -4);
+
+        CommandResult result = module.framework().dispatch(new TestSource(start), "traveler path block 1 2 3");
+
+        assertEquals(CommandResult.Status.SUCCESS, result.status());
+        PathfinderResult<BlockPosition> pathResult = module.debugState().latestResult().orElseThrow();
+        GraphPath<BlockPosition> path = pathResult.path();
+        assertEquals(start, path.nodeAt(0));
+        assertEquals(new BlockPosition(1, 2, 3), path.nodeAt(path.nodeCount() - 1));
+    }
+
+    private static final class TestSource implements CommandSource, TravelerCommandPosition {
         private final List<String> replies = new ArrayList<>();
+        private final BlockPosition position;
+
+        private TestSource() {
+            this(null);
+        }
+
+        private TestSource(BlockPosition position) {
+            this.position = position;
+        }
 
         private List<String> replies() {
             return List.copyOf(replies);
+        }
+
+        @Override
+        public Optional<TravelerCommandBlockPosition> blockPosition() {
+            return Optional.ofNullable(position)
+                    .map(pos -> new TravelerCommandBlockPosition(pos.x(), pos.y(), pos.z()));
+        }
+
+        @Override
+        public <T> Optional<T> unwrap(Class<T> type) {
+            if (!type.isInstance(this)) {
+                return Optional.empty();
+            }
+            return Optional.of(type.cast(this));
         }
 
         @Override

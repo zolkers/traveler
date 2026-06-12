@@ -1,13 +1,15 @@
 package dev.traveler.mc.v1_21_11.fabric;
 
 import dev.riege.buildmycommand.api.CommandSource;
+import dev.traveler.mc.v1_21_11.common.command.TravelerCommandBlockPosition;
+import dev.traveler.mc.v1_21_11.common.command.TravelerCommandPosition;
 import java.util.Objects;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 
-final class FabricCommandSourceAdapter implements CommandSource {
+final class FabricCommandSourceAdapter implements CommandSource, TravelerCommandPosition {
     private final FabricClientCommandSource source;
 
     FabricCommandSourceAdapter(FabricClientCommandSource source) {
@@ -26,14 +28,34 @@ final class FabricCommandSourceAdapter implements CommandSource {
     @Override
     public <T> Optional<T> unwrap(Class<T> type) {
         Objects.requireNonNull(type, "type");
-        if (!type.isInstance(source)) {
+        Optional<T> adapter = unwrapValue(this, type);
+        if (adapter.isPresent()) {
+            return adapter;
+        }
+        return unwrapValue(source, type);
+    }
+
+    @Override
+    public Optional<TravelerCommandBlockPosition> blockPosition() {
+        LocalPlayer player = source.getPlayer();
+        if (player == null) {
             return Optional.empty();
         }
-        return Optional.of(type.cast(source));
+        return Optional.of(new TravelerCommandBlockPosition(
+                player.blockPosition().getX(),
+                player.blockPosition().getY(),
+                player.blockPosition().getZ()));
     }
 
     @Override
     public void reply(String message) {
         source.sendFeedback(Component.literal(message));
+    }
+
+    private static <T> Optional<T> unwrapValue(Object value, Class<T> type) {
+        if (!type.isInstance(value)) {
+            return Optional.empty();
+        }
+        return Optional.of(type.cast(value));
     }
 }

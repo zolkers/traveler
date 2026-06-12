@@ -3,10 +3,18 @@ package dev.traveler.core.command;
 import java.util.Map;
 import java.util.Objects;
 
-public record TravelerCommandContext(Map<String, Object> arguments, TravelerCommandFeedback feedback) {
+public record TravelerCommandContext(
+        Map<String, Object> arguments,
+        TravelerCommandFeedback feedback,
+        TravelerCommandSource source) {
+    public TravelerCommandContext(Map<String, Object> arguments, TravelerCommandFeedback feedback) {
+        this(arguments, feedback, TravelerCommandSource.empty());
+    }
+
     public TravelerCommandContext {
         arguments = Map.copyOf(Objects.requireNonNull(arguments, "arguments"));
         feedback = Objects.requireNonNull(feedback, "feedback");
+        source = Objects.requireNonNull(source, "source");
     }
 
     public <T> T arg(String name, Class<T> type) {
