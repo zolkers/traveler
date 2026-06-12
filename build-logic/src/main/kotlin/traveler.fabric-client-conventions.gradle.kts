@@ -36,3 +36,7 @@ loom {
         }
     }
 }
+
+tasks.matching { it.name.startsWith("runServer") }.configureEach {
+    enabled = false
+}

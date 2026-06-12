@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "traveler",
+  "version": "0.1.0-SNAPSHOT",
+  "name": "Traveler",
+  "description": "Client-side Minecraft pathfinding foundation.",
+  "authors": [
+    "Traveler contributors"
+  ],
+  "license": "MIT",
+  "environment": "client",
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "1.21.11",
+    "fabric-api": "*"
+  }
+}
