@@ -39,12 +39,14 @@ import dev.traveler.core.world.block.BlockPassability;
 import dev.traveler.core.world.movement.FluidHandling;
 import dev.traveler.mc.v1_21_11.common.adapter.testing.AbstractTestBlockGetter;
 import dev.traveler.mc.v1_21_11.common.adapter.testing.MinecraftTestBootstrap;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -102,7 +104,7 @@ class TravelerCommandModuleTest {
     void registersPathBlockCommandAndIncludesTargetInDebugMessage() {
         TravelerCommandModule module = new TravelerCommandModule();
 
-        CommandResult result = module.framework().dispatch(new TestSource(), "traveler path block 1 2 3");
+        CommandResult result = dispatchAndDrain(module, new TestSource(), "traveler path block 1 2 3");
 
         assertEquals(CommandResult.Status.SUCCESS, result.status());
         assertTrue(module.debugState().latestResult().isPresent());
@@ -110,23 +112,60 @@ class TravelerCommandModuleTest {
     }
 
     @Test
+    void pathBlockQueuesThenUpdatesDebugWhenDrained() {
+        TravelerCommandModule module = new TravelerCommandModule();
+        TestSource source = new TestSource();
+
+        CommandResult result = module.framework().dispatch(source, "traveler path block 1 2 3");
+
+        assertEquals(CommandResult.Status.SUCCESS, result.status());
+        assertTrue(result.reply().orElseThrow().contains("path queued id="));
+        assertTrue(module.debugState().latestResult().isEmpty());
+
+        waitForJobs(module, () -> module.debugState().latestResult().isPresent());
+
+        assertTrue(module.debugState().latestMessage().orElseThrow().contains("1,2,3"));
+        assertTrue(source.replies().getLast().contains("path block 1,2,3 status=FOUND"));
+    }
+
+    @Test
     void navigateBlockStartsNavigationAndStoresDebugPath() {
         TravelerCommandModule module = new TravelerCommandModule();
+        TestSource source = new TestSource();
 
-        CommandResult result = module.framework().dispatch(new TestSource(), "traveler navigate block 1 2 3");
+        CommandResult result = dispatchAndDrain(module, source, "traveler navigate block 1 2 3");
 
         assertEquals(CommandResult.Status.SUCCESS, result.status());
         NavigationSession session = module.navigationState().activeSession().orElseThrow();
         assertEquals(new NavigationPoint(1.5, 2.0, 3.5), session.path().lastNode());
         assertTrue(module.debugState().latestResult().isPresent());
-        assertTrue(result.reply().orElseThrow().contains("navigate block"));
-        assertTrue(result.reply().orElseThrow().contains("path status=FOUND"));
+        assertTrue(result.reply().orElseThrow().contains("navigate queued id="));
+        assertTrue(source.replies().getLast().contains("path status=FOUND"));
+    }
+
+    @Test
+    void navigateBlockStartsNavigationAfterAsyncPathDrains() {
+        TravelerCommandModule module = new TravelerCommandModule();
+        TestSource source = new TestSource();
+
+        CommandResult result = module.framework().dispatch(source, "traveler navigate block 1 2 3");
+
+        assertEquals(CommandResult.Status.SUCCESS, result.status());
+        assertTrue(result.reply().orElseThrow().contains("navigate queued id="));
+        assertTrue(module.navigationState().activeSession().isEmpty());
+
+        waitForJobs(module, () -> module.navigationState().activeSession().isPresent());
+
+        assertEquals(
+                new NavigationPoint(1.5, 2.0, 3.5),
+                module.navigationState().activeSession().orElseThrow().path().lastNode());
+        assertTrue(source.replies().getLast().contains("navigate block"));
     }
 
     @Test
     void navigateStopClearsActiveNavigation() {
         TravelerCommandModule module = new TravelerCommandModule();
-        module.framework().dispatch(new TestSource(), "traveler navigate block 1 2 3");
+        dispatchAndDrain(module, new TestSource(), "traveler navigate block 1 2 3");
 
         CommandResult result = module.framework().dispatch(new TestSource(), "traveler navigate stop");
 
@@ -141,7 +180,7 @@ class TravelerCommandModuleTest {
         TravelerCommandModule module = new TravelerCommandModule();
         BlockPosition start = new BlockPosition(8, 70, -4);
 
-        CommandResult result = module.framework().dispatch(new TestSource(start), "traveler path block 1 2 3");
+        CommandResult result = dispatchAndDrain(module, new TestSource(start), "traveler path block 1 2 3");
 
         assertEquals(CommandResult.Status.SUCCESS, result.status());
         PathfinderResult<BlockPosition> pathResult = module.debugState().latestResult().orElseThrow();
@@ -157,7 +196,7 @@ class TravelerCommandModuleTest {
         BlockPosition wall = new BlockPosition(1, 64, 0);
         TravelerCommandModule module = new TravelerCommandModule(new TestWorldLayer(Set.of(wall, wall.above())));
 
-        module.framework().dispatch(new TestSource(start), "traveler path block 2 64 0");
+        dispatchAndDrain(module, new TestSource(start), "traveler path block 2 64 0");
 
         GraphPath<BlockPosition> path = module.debugState().latestResult().orElseThrow().path();
         assertTrue(path.nodeCount() > 3);
@@ -171,7 +210,7 @@ class TravelerCommandModuleTest {
         BlockPosition goal = new BlockPosition(4, 64, 4);
         TravelerCommandModule module = new TravelerCommandModule(new TestWorldLayer(Set.of()));
 
-        module.framework().dispatch(new TestSource(start), "traveler path block 4 64 4");
+        dispatchAndDrain(module, new TestSource(start), "traveler path block 4 64 4");
 
         GraphPath<BlockPosition> path = module.debugState().latestResult().orElseThrow().path();
         assertEquals(2, path.nodeCount());
@@ -188,7 +227,7 @@ class TravelerCommandModuleTest {
                 startSupport, surfaceBlock(BlockShape.fullCube()),
                 goalSlab, surfaceBlock(BlockShape.bottomSlab()))));
 
-        module.framework().dispatch(new TestSource(startFeet), "traveler path block 1 63 0");
+        dispatchAndDrain(module, new TestSource(startFeet), "traveler path block 1 63 0");
 
         PathfinderDebugSnapshot snapshot = module.debugState().latestSnapshot().orElseThrow();
         assertTrue(snapshot.hasSurfaceNodes());
@@ -200,7 +239,8 @@ class TravelerCommandModuleTest {
         SnapshotOnlyBlockGetter blockGetter = new SnapshotOnlyBlockGetter();
         TravelerCommandModule module = new TravelerCommandModule(new PathfinderDebugState(), () -> blockGetter);
 
-        CommandResult result = module.framework().dispatch(
+        CommandResult result = dispatchAndDrain(
+                module,
                 new TestSource(new BlockPosition(0, 64, 0)), "traveler path block 2 63 0");
 
         assertEquals(CommandResult.Status.SUCCESS, result.status());
@@ -213,7 +253,7 @@ class TravelerCommandModuleTest {
         BlockPosition startFeet = new BlockPosition(0, 64, 0);
         TravelerCommandModule module = new TravelerCommandModule(new TestSurfaceWorldLayer(flatSurface(0, 4, -1, 1)));
 
-        module.framework().dispatch(new TestSource(startFeet), "traveler path block 4 63 0");
+        dispatchAndDrain(module, new TestSource(startFeet), "traveler path block 4 63 0");
 
         PathfinderDebugSnapshot snapshot = module.debugState().latestSnapshot().orElseThrow();
         assertTrue(snapshot.hasSurfaceNodes());
@@ -231,7 +271,7 @@ class TravelerCommandModuleTest {
                 new BlockPosition(2, 64, 0), surfaceBlock(BlockShape.fullCube()),
                 new BlockPosition(3, 64, 0), surfaceBlock(BlockShape.fullCube()))));
 
-        module.framework().dispatch(new TestSource(startFeet), "traveler path block 3 64 0");
+        dispatchAndDrain(module, new TestSource(startFeet), "traveler path block 3 64 0");
 
         PathfinderDebugSnapshot snapshot = module.debugState().latestSnapshot().orElseThrow();
         assertTrue(snapshot.hasSurfaceNodes());
@@ -245,7 +285,7 @@ class TravelerCommandModuleTest {
         BlockPosition startFeet = new BlockPosition(0, 64, 0);
         TravelerCommandModule module = new TravelerCommandModule(new TestSurfaceWorldLayer(walledSurface()));
 
-        module.framework().dispatch(new TestSource(startFeet), "traveler path block 4 63 0");
+        dispatchAndDrain(module, new TestSource(startFeet), "traveler path block 4 63 0");
 
         PathfinderDebugSnapshot snapshot = module.debugState().latestSnapshot().orElseThrow();
         assertTrue(snapshot.hasSurfaceNodes());
@@ -293,6 +333,21 @@ class TravelerCommandModuleTest {
         for (BlockPosition node : path) {
             assertTrue(!node.equals(blocked));
         }
+    }
+
+    private static CommandResult dispatchAndDrain(TravelerCommandModule module, TestSource source, String command) {
+        CommandResult result = module.framework().dispatch(source, command);
+        waitForJobs(module, () -> module.debugState().latestResult().isPresent());
+        return result;
+    }
+
+    private static void waitForJobs(TravelerCommandModule module, BooleanSupplier condition) {
+        long deadline = System.nanoTime() + Duration.ofSeconds(2L).toNanos();
+        while (!condition.getAsBoolean() && System.nanoTime() < deadline) {
+            module.drainPathJobs();
+            Thread.onSpinWait();
+        }
+        assertTrue(condition.getAsBoolean());
     }
 
     private static NavigationFrameInput navigationInput() {

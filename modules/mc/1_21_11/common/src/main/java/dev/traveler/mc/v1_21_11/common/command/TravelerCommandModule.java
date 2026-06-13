@@ -16,6 +16,7 @@ public final class TravelerCommandModule {
     private final CommandFramework framework;
     private final PathfinderDebugState debugState;
     private final TravelerNavigationState navigationState;
+    private final TravelerPathJobService pathJobService;
 
     public TravelerCommandModule() {
         this(new PathfinderDebugState(), new TravelerNavigationState(), (WorldLayerSupplier) () -> null);
@@ -53,9 +54,11 @@ public final class TravelerCommandModule {
         this.debugState = Objects.requireNonNull(debugState, "debugState");
         this.navigationState = Objects.requireNonNull(navigationState, "navigationState");
         TravelerPathSearchService searchService = new TravelerPathSearchService(worldLayerSupplier);
-        PathTravelerCommandFeature pathFeature = new PathTravelerCommandFeature(this.debugState, searchService);
+        pathJobService = new TravelerPathJobService(this.debugState, this.navigationState, searchService);
+        PathTravelerCommandFeature pathFeature =
+                new PathTravelerCommandFeature(this.debugState, searchService, pathJobService);
         NavigateTravelerCommandFeature navigateFeature =
-                new NavigateTravelerCommandFeature(this.debugState, this.navigationState, searchService);
+                new NavigateTravelerCommandFeature(this.debugState, this.navigationState, pathJobService);
         DebugTravelerCommandFeature debugFeature = new DebugTravelerCommandFeature(this.debugState);
         catalog = TravelerCommandCatalog.fromFeatures(
                 AnnotatedTravelerCommandFeature.from(pathFeature),
@@ -79,6 +82,10 @@ public final class TravelerCommandModule {
 
     public TravelerNavigationState navigationState() {
         return navigationState;
+    }
+
+    public void drainPathJobs() {
+        pathJobService.drainCompleted();
     }
 
     private static WorldLayerSupplier worldLayerSupplier(Supplier<? extends BlockGetter> blockGetterSupplier) {

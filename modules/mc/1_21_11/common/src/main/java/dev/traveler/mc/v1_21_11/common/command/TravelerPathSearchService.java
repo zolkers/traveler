@@ -7,6 +7,8 @@ import dev.traveler.core.graph.MutableGraphPath;
 import dev.traveler.core.layer.BlockClassification;
 import dev.traveler.core.layer.SurfaceWorldLayer;
 import dev.traveler.core.layer.WorldLayer;
+import dev.traveler.core.job.PathJob;
+import dev.traveler.core.job.PathJobState;
 import dev.traveler.core.path.AStarPathfinder;
 import dev.traveler.core.path.PathfinderRequest;
 import dev.traveler.core.path.PathfinderResult;
@@ -55,31 +57,46 @@ final class TravelerPathSearchService {
     }
 
     TravelerPathSearchResult blockPath(TravelerCommandContext context, BlockPosition target) {
-        WorldLayer worldLayer = worldLayerSupplier.get();
+        PreparedBlockSearch search = prepareBlockSearch(context, target);
+        return searchBlockPath(search.worldLayer(), search.start(), search.target());
+    }
+
+    PathJob<TravelerPathSearchResult> blockPathJob(
+            TravelerCommandContext context, BlockPosition target, String purpose) {
+        PreparedBlockSearch search = prepareBlockSearch(context, target);
+        return new PathJob<>(
+                purpose,
+                () -> searchBlockPath(search.worldLayer(), search.start(), search.target()),
+                TravelerPathSearchService::jobState);
+    }
+
+    private PreparedBlockSearch prepareBlockSearch(TravelerCommandContext context, BlockPosition target) {
+        BlockPosition start = startPosition(context, target);
+        WorldLayer worldLayer = preparedWorldLayer(worldLayerSupplier.get(), start, target);
+        return new PreparedBlockSearch(worldLayer, start, target);
+    }
+
+    private static WorldLayer preparedWorldLayer(WorldLayer worldLayer, BlockPosition start, BlockPosition target) {
         if (worldLayer instanceof MinecraftWorldSnapshot minecraftWorldLayer) {
-            return minecraftBlockPath(context, minecraftWorldLayer, target);
+            return ImmutableMinecraftWorldSnapshot.capture(
+                    minecraftWorldLayer, start, target, SEARCH_HORIZONTAL_MARGIN, SEARCH_VERTICAL_MARGIN);
         }
+        return worldLayer;
+    }
+
+    private static TravelerPathSearchResult searchBlockPath(
+            WorldLayer worldLayer, BlockPosition start, BlockPosition target) {
         if (worldLayer instanceof SurfaceWorldLayer surfaceWorldLayer) {
-            return surfaceBlockPath(context, surfaceWorldLayer, target);
+            return surfaceBlockPath(start, surfaceWorldLayer, target);
         }
         BlockPosition goal = goalPosition(worldLayer, target);
-        BlockPosition start = startPosition(context, goal);
         PathfinderResult<BlockPosition> result = findPath(worldLayer, start, goal);
         String message = blockMessage(worldLayer, target, result.status());
         return new TravelerPathSearchResult(result, Optional.empty(), message);
     }
 
-    private TravelerPathSearchResult minecraftBlockPath(
-            TravelerCommandContext context, MinecraftWorldSnapshot worldLayer, BlockPosition target) {
-        BlockPosition start = startPosition(context, target);
-        SurfaceWorldLayer snapshot = ImmutableMinecraftWorldSnapshot.capture(
-                worldLayer, start, target, SEARCH_HORIZONTAL_MARGIN, SEARCH_VERTICAL_MARGIN);
-        return surfaceBlockPath(context, snapshot, target);
-    }
-
-    private TravelerPathSearchResult surfaceBlockPath(
-            TravelerCommandContext context, SurfaceWorldLayer worldLayer, BlockPosition target) {
-        BlockPosition start = startPosition(context, target);
+    private static TravelerPathSearchResult surfaceBlockPath(
+            BlockPosition start, SurfaceWorldLayer worldLayer, BlockPosition target) {
         PathfinderResult<SurfaceNode> surfaceResult = findSurfacePath(worldLayer, start, target);
         PathfinderResult<BlockPosition> blockResult = surfaceResultToBlockResult(surfaceResult);
         String message = blockMessage(worldLayer, target, surfaceResult.status());
@@ -238,6 +255,15 @@ final class TravelerPathSearchService {
     private static String format(BlockPosition position) {
         return position.x() + "," + position.y() + "," + position.z();
     }
+
+    private static PathJobState jobState(TravelerPathSearchResult result) {
+        if (result.status() == PathfinderStatus.FOUND) {
+            return PathJobState.FOUND;
+        }
+        return PathJobState.NOT_FOUND;
+    }
+
+    private record PreparedBlockSearch(WorldLayer worldLayer, BlockPosition start, BlockPosition target) {}
 
     private static final class DirectBlockGraph implements Graph<BlockPosition> {
         private final BlockPosition goal;

@@ -48,12 +48,12 @@
 - Modify: `modules/mc/1_21_11/fabric/src/main/java/dev/traveler/mc/v1_21_11/fabric/event/FabricEventBootstrap.java`
 - Test: `modules/mc/1_21_11/common/src/test/java/dev/traveler/mc/v1_21_11/common/command/TravelerCommandModuleTest.java`
 
-- [ ] Write failing tests that `/traveler path block ...` returns a queued message immediately and later updates `PathfinderDebugState`.
-- [ ] Add a job service that cancels previous jobs by purpose, enqueues worker search, and drains completed results on the client tick/render callback.
-- [ ] Make `/traveler navigate block ...` start navigation only after a successful async result is drained.
-- [ ] Ensure failed/cancelled jobs produce chat/debug messages without starting navigation.
-- [ ] Run `./gradlew.bat :mc_1_21_11_common:test --tests dev.traveler.mc.v1_21_11.common.command.TravelerCommandModuleTest`.
-- [ ] Commit `feat(mc): run path commands asynchronously`.
+- [x] Write failing tests that `/traveler path block ...` returns a queued message immediately and later updates `PathfinderDebugState`.
+- [x] Add a job service that cancels previous jobs by purpose, enqueues worker search, and drains completed results on the client tick/render callback.
+- [x] Make `/traveler navigate block ...` start navigation only after a successful async result is drained.
+- [x] Ensure failed/cancelled jobs produce chat/debug messages without starting navigation.
+- [x] Run `./gradlew.bat :mc_1_21_11_common:test --tests dev.traveler.mc.v1_21_11.common.command.TravelerCommandModuleTest`.
+- [x] Commit `feat(mc): run path commands asynchronously`.
 
 ### Task 4: Strategic Movement Modes
 

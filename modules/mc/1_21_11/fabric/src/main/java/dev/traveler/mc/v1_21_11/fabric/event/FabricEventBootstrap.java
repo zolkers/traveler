@@ -37,7 +37,7 @@ public final class FabricEventBootstrap {
                 commandModule.navigationState(),
                 MinecraftClientNavigationAdapter.currentClient(),
                 commandModule.debugState());
-        new FabricEventBootstrap(renderer, () -> navigationRuntime.update(System.nanoTime())).register();
+        new FabricEventBootstrap(renderer, () -> updateClientWork(commandModule, navigationRuntime)).register();
     }
 
     void emitClientTick() {
@@ -54,6 +54,11 @@ public final class FabricEventBootstrap {
     private void register() {
         ClientTickEvents.END_CLIENT_TICK.register(client -> emitClientTick());
         WorldRenderEvents.END_MAIN.register(this::renderWorld);
+    }
+
+    private static void updateClientWork(TravelerCommandModule commandModule, NavigationRuntime navigationRuntime) {
+        commandModule.drainPathJobs();
+        navigationRuntime.update(System.nanoTime());
     }
 
     private void renderWorld(WorldRenderContext context) {

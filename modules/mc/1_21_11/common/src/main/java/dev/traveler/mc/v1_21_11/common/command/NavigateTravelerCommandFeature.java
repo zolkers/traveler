@@ -4,42 +4,30 @@ import dev.traveler.core.command.TravelerCommand;
 import dev.traveler.core.command.TravelerCommandContext;
 import dev.traveler.core.command.TravelerCommandResult;
 import dev.traveler.core.command.TravelerSubcommand;
-import dev.traveler.core.debug.DebugTextFormatter;
 import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.navigation.TravelerNavigationState;
-import dev.traveler.core.navigation.follow.NavigationPath;
 import java.util.Objects;
-import java.util.Optional;
 
 @TravelerCommand(root = "traveler navigate")
 public final class NavigateTravelerCommandFeature {
     private final PathfinderDebugState debugState;
     private final TravelerNavigationState navigationState;
-    private final TravelerPathSearchService searchService;
+    private final TravelerPathJobService jobService;
 
     NavigateTravelerCommandFeature(
             PathfinderDebugState debugState,
             TravelerNavigationState navigationState,
-            TravelerPathSearchService searchService) {
+            TravelerPathJobService jobService) {
         this.debugState = Objects.requireNonNull(debugState, "debugState");
         this.navigationState = Objects.requireNonNull(navigationState, "navigationState");
-        this.searchService = Objects.requireNonNull(searchService, "searchService");
+        this.jobService = Objects.requireNonNull(jobService, "jobService");
     }
 
     @TravelerSubcommand(
             route = "block <x:int> <y:int> <z:int>",
             description = "Starts Traveler client navigation toward a block")
     private TravelerCommandResult navigateBlock(TravelerCommandContext context) {
-        TravelerPathSearchResult result =
-                searchService.blockPath(context, TravelerCommandTargets.blockPosition(context));
-        result.updateDebug(debugState);
-        Optional<NavigationPath> path = result.navigationPath();
-        if (path.isEmpty()) {
-            return navigationFailure(result);
-        }
-        String message = result.message().replaceFirst("^path", "navigate") + " | " + pathSummary();
-        navigationState.start(path.orElseThrow(), message);
-        return TravelerCommandResult.success(message);
+        return jobService.queueNavigateBlock(context, TravelerCommandTargets.blockPosition(context));
     }
 
     @TravelerSubcommand(route = "stop", description = "Stops active Traveler client navigation")
@@ -48,17 +36,5 @@ public final class NavigateTravelerCommandFeature {
         navigationState.stop(message);
         debugState.clearNavigation();
         return TravelerCommandResult.success(message + " | debug nav cleared");
-    }
-
-    private TravelerCommandResult navigationFailure(TravelerPathSearchResult result) {
-        String message = "navigation not started status=" + result.status();
-        navigationState.stop(message);
-        return TravelerCommandResult.failure(message);
-    }
-
-    private String pathSummary() {
-        return debugState.latestSnapshot()
-                .map(DebugTextFormatter::pathSummary)
-                .orElse("path=none");
     }
 }
