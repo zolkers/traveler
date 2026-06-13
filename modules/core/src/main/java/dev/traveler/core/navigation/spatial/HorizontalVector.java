@@ -27,6 +27,11 @@ public record HorizontalVector(double x, double z) {
         return x * vector.x + z * vector.z;
     }
 
+    public HorizontalVector plus(HorizontalVector other) {
+        HorizontalVector vector = java.util.Objects.requireNonNull(other, "other");
+        return new HorizontalVector(x + vector.x, z + vector.z);
+    }
+
     public HorizontalVector scaled(double scale) {
         requireFinite(scale, "scale");
         return new HorizontalVector(x * scale, z * scale);

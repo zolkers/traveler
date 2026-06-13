@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import dev.traveler.core.navigation.locomotion.AgentMotionState;
 import dev.traveler.core.navigation.locomotion.LocomotionPlan;
+import dev.traveler.core.navigation.steering.SteeringPlan;
+import dev.traveler.core.navigation.spatial.HorizontalVector;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import org.junit.jupiter.api.Test;
 
@@ -98,7 +100,7 @@ class MovementInputPlannerTest {
                 0.0,
                 new MovementIntent(true, false, false, false, false, true),
                 LocomotionPlan.recover(),
-                new AgentMotionState(true, true, 0.01, 0.0));
+                new AgentMotionState(true, true, new HorizontalVector(0.0, 0.01), 0.0));
 
         assertEquals(new MovementIntent(false, true, true, false, false, false), intent);
     }
@@ -128,8 +130,54 @@ class MovementInputPlannerTest {
                 0.0,
                 MovementIntent.idle(),
                 LocomotionPlan.jump(),
-                new AgentMotionState(false, false, 0.0, -0.1));
+                new AgentMotionState(false, false, new HorizontalVector(0.0, 0.0), -0.1));
 
         assertEquals(MovementIntent.idle(), intent);
+    }
+
+    @Test
+    void combinesPathTangentAndLateralCorrectionForLineHoldingStrafe() {
+        SteeringPlan steering = SteeringPlan.corridor(
+                new NavigationPoint(-0.65, 64.0, 4.0),
+                new NavigationPoint(0.0, 64.0, 4.0),
+                new NavigationPoint(0.0, 64.0, 2.0),
+                new HorizontalVector(0.0, 1.0),
+                new HorizontalVector(-0.65, 0.0),
+                1.0,
+                2.0,
+                true);
+
+        MovementIntent intent = planner.plan(
+                new NavigationPoint(1.0, 64.0, 2.0),
+                steering,
+                0.0,
+                MovementIntent.idle(),
+                LocomotionPlan.walk(),
+                AgentMotionState.groundedStill());
+
+        assertEquals(new MovementIntent(true, false, false, true, false, true), intent);
+    }
+
+    @Test
+    void backpedalsWhenSteeringTargetIsBehindEndOfPath() {
+        SteeringPlan steering = SteeringPlan.corridor(
+                new NavigationPoint(0.0, 64.0, 4.0),
+                new NavigationPoint(0.0, 64.0, 4.0),
+                new NavigationPoint(0.0, 64.0, 4.0),
+                new HorizontalVector(0.0, 1.0),
+                new HorizontalVector(0.0, 0.0),
+                0.0,
+                4.0,
+                false);
+
+        MovementIntent intent = planner.plan(
+                new NavigationPoint(0.0, 64.0, 6.0),
+                steering,
+                0.0,
+                MovementIntent.idle(),
+                LocomotionPlan.walk(),
+                AgentMotionState.groundedStill());
+
+        assertEquals(new MovementIntent(false, true, false, false, false, false), intent);
     }
 }

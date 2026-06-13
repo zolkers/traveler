@@ -45,7 +45,10 @@ public final class NavigationController {
         NavigationFrameInput frameInput = Objects.requireNonNull(input, "input");
         NavigationControllerState currentState = Objects.requireNonNull(state, "state");
         PathFollowFrame follow = pathFollowController.update(
-                navigationPath, frameInput.position(), currentState.progress());
+                navigationPath,
+                frameInput.position(),
+                currentState.progress(),
+                frameInput.motionState());
         if (follow.completed()) {
             return completedFrame(frameInput, follow);
         }
@@ -70,7 +73,7 @@ public final class NavigationController {
             PathFollowFrame follow) {
         MovementIntent intent = inputPlanner.plan(
                 input.position(),
-                follow.steeringTarget(),
+                follow.steeringPlan(),
                 input.cameraAngles().yawDegrees(),
                 state.previousIntent(),
                 follow.locomotionPlan(),

@@ -6,6 +6,7 @@ import dev.traveler.core.navigation.NavigationFrameInput;
 import dev.traveler.core.navigation.camera.CameraAngles;
 import dev.traveler.core.navigation.input.MovementIntent;
 import dev.traveler.core.navigation.locomotion.AgentMotionState;
+import dev.traveler.core.navigation.spatial.HorizontalVector;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import java.util.Objects;
 import java.util.Optional;
@@ -72,7 +73,7 @@ public final class MinecraftClientNavigationAdapter implements NavigationAgentPo
 
     private static AgentMotionState motionState(LocalPlayer player) {
         Vec3 velocity = player.getDeltaMovement();
-        double horizontalSpeed = Math.hypot(velocity.x, velocity.z);
-        return new AgentMotionState(player.onGround(), player.horizontalCollision, horizontalSpeed, velocity.y);
+        HorizontalVector horizontalVelocity = new HorizontalVector(velocity.x, velocity.z);
+        return new AgentMotionState(player.onGround(), player.horizontalCollision, horizontalVelocity, velocity.y);
     }
 }

@@ -3,6 +3,7 @@ package dev.traveler.core.navigation.input;
 import dev.traveler.core.navigation.locomotion.AgentMotionState;
 import dev.traveler.core.navigation.locomotion.LocomotionAction;
 import dev.traveler.core.navigation.locomotion.LocomotionPlan;
+import dev.traveler.core.navigation.steering.SteeringPlan;
 import dev.traveler.core.navigation.spatial.HorizontalVector;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import java.util.Objects;
@@ -39,13 +40,32 @@ public final class MovementInputPlanner {
             AgentMotionState motionState) {
         NavigationPoint position = Objects.requireNonNull(current, "current");
         NavigationPoint destination = Objects.requireNonNull(target, "target");
+        return plan(
+                position,
+                SteeringPlan.seek(destination),
+                cameraYawDegrees,
+                previousIntent,
+                locomotionPlan,
+                motionState);
+    }
+
+    public MovementIntent plan(
+            NavigationPoint current,
+            SteeringPlan steeringPlan,
+            double cameraYawDegrees,
+            MovementIntent previousIntent,
+            LocomotionPlan locomotionPlan,
+            AgentMotionState motionState) {
+        NavigationPoint position = Objects.requireNonNull(current, "current");
+        SteeringPlan steering = Objects.requireNonNull(steeringPlan, "steeringPlan");
         MovementIntent previous = Objects.requireNonNull(previousIntent, "previousIntent");
         LocomotionPlan plan = Objects.requireNonNull(locomotionPlan, "locomotionPlan");
         AgentMotionState motion = Objects.requireNonNull(motionState, "motionState");
         if (plan.action() == LocomotionAction.RECOVER || motion.blockedOnGround()) {
             return recoveryIntent(previous);
         }
-        HorizontalVector desired = position.horizontalVectorTo(destination);
+        NavigationPoint destination = steering.steeringTarget();
+        HorizontalVector desired = steering.desiredVectorFrom(position);
         if (desired.isZero()) {
             return verticalIntent(position, destination, plan, motion);
         }

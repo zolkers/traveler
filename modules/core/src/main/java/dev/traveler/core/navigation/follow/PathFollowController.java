@@ -1,7 +1,11 @@
 package dev.traveler.core.navigation.follow;
 
+import dev.traveler.core.navigation.locomotion.AgentMotionState;
 import dev.traveler.core.navigation.locomotion.LocomotionAction;
 import dev.traveler.core.navigation.locomotion.LocomotionPlan;
+import dev.traveler.core.navigation.steering.PathSteeringController;
+import dev.traveler.core.navigation.steering.PathSteeringSettings;
+import dev.traveler.core.navigation.steering.SteeringPlan;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import java.util.Objects;
 
@@ -11,29 +15,46 @@ public final class PathFollowController {
     private static final double DROP_HEIGHT = -0.75;
 
     private final PathFollowSettings settings;
+    private final PathSteeringController steeringController;
 
     public PathFollowController(PathFollowSettings settings) {
+        this(settings, steeringControllerFor(settings));
+    }
+
+    public PathFollowController(
+            PathFollowSettings settings,
+            PathSteeringController steeringController) {
         this.settings = Objects.requireNonNull(settings, "settings");
+        this.steeringController = Objects.requireNonNull(steeringController, "steeringController");
     }
 
     public PathFollowFrame update(NavigationPath path, NavigationPoint position, PathProgress progress) {
+        return update(path, position, progress, AgentMotionState.groundedStill());
+    }
+
+    public PathFollowFrame update(
+            NavigationPath path,
+            NavigationPoint position,
+            PathProgress progress,
+            AgentMotionState motionState) {
         NavigationPath navigationPath = Objects.requireNonNull(path, "path");
         NavigationPoint currentPosition = Objects.requireNonNull(position, "position");
         PathProgress currentProgress = Objects.requireNonNull(progress, "progress");
+        AgentMotionState motion = Objects.requireNonNull(motionState, "motionState");
         if (isCompleted(navigationPath, currentPosition)) {
             return completedFrame(navigationPath);
         }
         int nextIndex = advanceReachedNode(navigationPath, currentPosition, currentProgress.nextNodeIndex());
         NavigationPoint actionTarget = navigationPath.nodeAt(nextIndex);
         LocomotionPlan plan = locomotionPlan(currentPosition, actionTarget);
-        NavigationPoint steeringTarget = steeringTarget(navigationPath, currentPosition, nextIndex, plan);
-        MovementTarget movementTarget = movementTarget(plan, actionTarget, steeringTarget);
+        SteeringPlan steering = steeringPlan(navigationPath, currentPosition, nextIndex, plan, motion);
+        MovementTarget movementTarget = movementTarget(plan, actionTarget, steering.steeringTarget());
         double speed = speedScale(currentPosition.horizontalDistanceTo(navigationPath.lastNode()));
         return new PathFollowFrame(
                 movementTarget,
                 new PathProgress(nextIndex),
                 speed,
-                steeringTarget,
+                steering,
                 plan,
                 false);
     }
@@ -60,24 +81,6 @@ public final class PathFollowController {
                 && position.distanceTo(path.nodeAt(nextIndex)) <= settings.reachedDistance();
     }
 
-    private NavigationPoint lookAheadTarget(NavigationPath path, NavigationPoint position, int nextIndex) {
-        double remainingDistance = settings.lookAheadDistance();
-        NavigationPoint cursor = position;
-        for (int index = nextIndex; index < path.nodeCount(); index++) {
-            NavigationPoint node = path.nodeAt(index);
-            if (isVerticalStep(cursor, node)) {
-                return node;
-            }
-            double segmentDistance = cursor.horizontalDistanceTo(node);
-            if (segmentDistance >= remainingDistance) {
-                return cursor.interpolate(node, remainingDistance / segmentDistance);
-            }
-            remainingDistance -= segmentDistance;
-            cursor = node;
-        }
-        return path.lastNode();
-    }
-
     private NavigationPoint actionLookAheadTarget(NavigationPath path, int nextIndex) {
         double remainingDistance = settings.lookAheadDistance();
         NavigationPoint cursor = path.nodeAt(nextIndex);
@@ -91,10 +94,6 @@ public final class PathFollowController {
             cursor = node;
         }
         return path.lastNode();
-    }
-
-    private static boolean isVerticalStep(NavigationPoint from, NavigationPoint to) {
-        return from.horizontalDistanceTo(to) <= 1.0E-6 && from.distanceTo(to) > 1.0E-6;
     }
 
     private static LocomotionPlan locomotionPlan(NavigationPoint position, NavigationPoint target) {
@@ -111,15 +110,16 @@ public final class PathFollowController {
         return LocomotionPlan.walk();
     }
 
-    private NavigationPoint steeringTarget(
+    private SteeringPlan steeringPlan(
             NavigationPath path,
             NavigationPoint position,
             int nextIndex,
-            LocomotionPlan plan) {
+            LocomotionPlan plan,
+            AgentMotionState motionState) {
         if (plan.action() == LocomotionAction.WALK) {
-            return lookAheadTarget(path, position, nextIndex);
+            return steeringController.plan(path, position, motionState, nextIndex);
         }
-        return actionLookAheadTarget(path, nextIndex);
+        return SteeringPlan.seek(actionLookAheadTarget(path, nextIndex));
     }
 
     private static MovementTarget movementTarget(
@@ -137,5 +137,11 @@ public final class PathFollowController {
             return 1.0;
         }
         return Math.max(settings.minimumSpeedScale(), distanceToGoal / settings.arrivalDistance());
+    }
+
+    private static PathSteeringController steeringControllerFor(PathFollowSettings settings) {
+        PathFollowSettings followSettings = Objects.requireNonNull(settings, "settings");
+        PathSteeringSettings steeringSettings = PathSteeringSettings.standard(followSettings.lookAheadDistance());
+        return new PathSteeringController(steeringSettings);
     }
 }
