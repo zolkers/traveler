@@ -24,6 +24,9 @@ final class SearchBudget {
     }
 
     boolean isSpent() {
+        if (Thread.currentThread().isInterrupted()) {
+            return true;
+        }
         if (unlimited) {
             return false;
         }

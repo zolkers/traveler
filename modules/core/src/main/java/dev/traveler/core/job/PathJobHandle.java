@@ -45,12 +45,16 @@ public final class PathJobHandle<T> {
     }
 
     public boolean cancel() {
-        if (!state.compareAndSet(PathJobState.QUEUED, PathJobState.CANCELLED)) {
-            return false;
+        PathJobState current = state.get();
+        while (!isTerminal(current)) {
+            if (state.compareAndSet(current, PathJobState.CANCELLED)) {
+                cancelFuture();
+                completion.complete(PathJobResult.cancelled(id, purpose()));
+                return true;
+            }
+            current = state.get();
         }
-        cancelFuture();
-        completion.complete(PathJobResult.cancelled(id, purpose()));
-        return true;
+        return false;
     }
 
     void attach(Future<?> future) {
@@ -64,15 +68,19 @@ public final class PathJobHandle<T> {
     void complete(T value) {
         PathJobState completedState = job.completedState(value);
         PathJobResult<T> completed = resultFor(completedState, value);
+        if (!state.compareAndSet(PathJobState.RUNNING, completedState)) {
+            return;
+        }
         result.set(completed);
-        state.set(completedState);
         completion.complete(completed);
     }
 
     void fail(Throwable failure) {
         PathJobResult<T> failed = PathJobResult.failed(id, purpose(), failure);
+        if (!state.compareAndSet(PathJobState.RUNNING, PathJobState.FAILED)) {
+            return;
+        }
         result.set(failed);
-        state.set(PathJobState.FAILED);
         completion.complete(failed);
     }
 
@@ -86,7 +94,7 @@ public final class PathJobHandle<T> {
     private void cancelFuture() {
         Future<?> attached = future;
         if (attached != null) {
-            attached.cancel(false);
+            attached.cancel(true);
         }
     }
 

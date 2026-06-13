@@ -249,6 +249,20 @@ class TravelerCommandModuleTest {
     }
 
     @Test
+    void pathBlockRejectsOversizedMinecraftSnapshotBeforeReadingWorld() {
+        CountingBlockGetter blockGetter = new CountingBlockGetter();
+        TravelerCommandModule module = new TravelerCommandModule(new PathfinderDebugState(), () -> blockGetter);
+        TestSource source = new TestSource(new BlockPosition(0, 64, 0));
+
+        CommandResult result = module.framework().dispatch(source, "traveler path block 96 63 96");
+
+        assertEquals(CommandResult.Status.SUCCESS, result.status());
+        assertTrue(result.reply().orElseThrow().contains("search-too-large"));
+        assertEquals(0, blockGetter.blockReads);
+        assertTrue(module.debugState().latestMessage().orElseThrow().contains("search-too-large"));
+    }
+
+    @Test
     void pathBlockStoresSmoothedSurfacePathWhenSurfaceLineIsClear() {
         BlockPosition startFeet = new BlockPosition(0, 64, 0);
         TravelerCommandModule module = new TravelerCommandModule(new TestSurfaceWorldLayer(flatSurface(0, 4, -1, 1)));
@@ -508,6 +522,24 @@ class TravelerCommandModuleTest {
             if (!captureStack) {
                 throw new AssertionError("live minecraft world read outside immutable path snapshot capture");
             }
+        }
+    }
+
+    private static final class CountingBlockGetter extends AbstractTestBlockGetter {
+        private int blockReads;
+
+        @Override
+        public BlockState getBlockState(BlockPos position) {
+            blockReads++;
+            if (position.getY() == 63) {
+                return Blocks.STONE.defaultBlockState();
+            }
+            return Blocks.AIR.defaultBlockState();
+        }
+
+        @Override
+        public FluidState getFluidState(BlockPos position) {
+            return getBlockState(position).getFluidState();
         }
     }
 }

@@ -41,6 +41,7 @@ final class TravelerPathSearchService {
     private static final BlockPosition TEST_GOAL = new BlockPosition(3, 64, 0);
     private static final int SEARCH_HORIZONTAL_MARGIN = 24;
     private static final int SEARCH_VERTICAL_MARGIN = 8;
+    private static final long MAX_MINECRAFT_SNAPSHOT_BLOCKS = 262_144L;
     private static final MovementCapabilities CLIENT_CAPABILITIES =
             new MovementCapabilities(true, false, false, false, 0.6, 1.25, 3.0);
     private static final MovementProfile CLIENT_PROFILE = MovementProfiles.defaultPlayerWith(CLIENT_CAPABILITIES);
@@ -57,24 +58,52 @@ final class TravelerPathSearchService {
         return new TravelerPathSearchResult(result, Optional.empty(), message);
     }
 
-    TravelerPathSearchResult blockPath(TravelerCommandContext context, BlockPosition target) {
-        PreparedBlockSearch search = prepareBlockSearch(context, target);
-        return searchBlockPath(search.worldLayer(), search.start(), search.target());
-    }
-
-    PathJob<TravelerPathSearchResult> blockPathJob(
+    TravelerPathSearchSubmission blockPathSubmission(
             TravelerCommandContext context, BlockPosition target, String purpose) {
-        PreparedBlockSearch search = prepareBlockSearch(context, target);
-        return new PathJob<>(
+        BlockPosition start = startPosition(context, target);
+        WorldLayer worldLayer = worldLayerSupplier.get();
+        Optional<TravelerPathSearchResult> rejection = oversizedMinecraftSnapshot(worldLayer, start, target);
+        if (rejection.isPresent()) {
+            return TravelerPathSearchSubmission.immediate(rejection.orElseThrow());
+        }
+        PreparedBlockSearch search = prepareBlockSearch(worldLayer, start, target);
+        PathJob<TravelerPathSearchResult> job = new PathJob<>(
                 purpose,
                 () -> searchBlockPath(search.worldLayer(), search.start(), search.target()),
                 TravelerPathSearchService::jobState);
+        return TravelerPathSearchSubmission.queued(job);
     }
 
-    private PreparedBlockSearch prepareBlockSearch(TravelerCommandContext context, BlockPosition target) {
-        BlockPosition start = startPosition(context, target);
-        WorldLayer worldLayer = preparedWorldLayer(worldLayerSupplier.get(), start, target);
+    private PreparedBlockSearch prepareBlockSearch(
+            WorldLayer sourceWorldLayer,
+            BlockPosition start,
+            BlockPosition target) {
+        WorldLayer worldLayer = preparedWorldLayer(sourceWorldLayer, start, target);
         return new PreparedBlockSearch(worldLayer, start, target);
+    }
+
+    private static Optional<TravelerPathSearchResult> oversizedMinecraftSnapshot(
+            WorldLayer worldLayer, BlockPosition start, BlockPosition target) {
+        if (!(worldLayer instanceof MinecraftWorldSnapshot)) {
+            return Optional.empty();
+        }
+        SearchVolume volume = SearchVolume.around(start, target);
+        if (volume.blockCount() <= MAX_MINECRAFT_SNAPSHOT_BLOCKS) {
+            return Optional.empty();
+        }
+        return Optional.of(rejectedSearch(target, volume));
+    }
+
+    private static TravelerPathSearchResult rejectedSearch(BlockPosition target, SearchVolume volume) {
+        PathfinderResult<BlockPosition> result =
+                new PathfinderResult<>(PathfinderStatus.NOT_FOUND, new MutableGraphPath<>());
+        String message = "path block "
+                + format(target)
+                + " status=NOT_FOUND reason=search-too-large estimatedBlocks="
+                + volume.blockCount()
+                + " limit="
+                + MAX_MINECRAFT_SNAPSHOT_BLOCKS;
+        return new TravelerPathSearchResult(result, Optional.empty(), message);
     }
 
     private static WorldLayer preparedWorldLayer(WorldLayer worldLayer, BlockPosition start, BlockPosition target) {
@@ -301,6 +330,23 @@ final class TravelerPathSearchService {
     }
 
     private record PreparedBlockSearch(WorldLayer worldLayer, BlockPosition start, BlockPosition target) {}
+
+    private record SearchVolume(long width, long height, long depth) {
+        private static SearchVolume around(BlockPosition start, BlockPosition target) {
+            long width = span(start.x(), target.x(), SEARCH_HORIZONTAL_MARGIN);
+            long height = span(start.y(), target.y(), SEARCH_VERTICAL_MARGIN);
+            long depth = span(start.z(), target.z(), SEARCH_HORIZONTAL_MARGIN);
+            return new SearchVolume(width, height, depth);
+        }
+
+        private long blockCount() {
+            return Math.multiplyExact(Math.multiplyExact(width, height), depth);
+        }
+
+        private static long span(int first, int second, int margin) {
+            return Math.abs((long) first - second) + margin * 2L + 1L;
+        }
+    }
 
     private static final class DirectBlockGraph implements Graph<BlockPosition> {
         private final BlockPosition goal;

@@ -48,6 +48,25 @@ class PathJobExecutorTest {
         }
     }
 
+    @Test
+    void cancelsRunningJobAndInterruptsWorker() throws InterruptedException {
+        CountDownLatch started = new CountDownLatch(1);
+        CountDownLatch interrupted = new CountDownLatch(1);
+
+        try (PathJobExecutor executor = new PathJobExecutor()) {
+            PathJobHandle<String> handle = executor.submit(new PathJob<>(
+                    "running", () -> waitForInterrupt(started, interrupted)));
+
+            assertTrue(started.await(1, TimeUnit.SECONDS));
+            assertEquals(PathJobState.RUNNING, handle.state());
+            assertTrue(handle.cancel());
+
+            assertTrue(interrupted.await(1, TimeUnit.SECONDS));
+            assertEquals(PathJobState.CANCELLED, handle.state());
+            assertFalse(handle.result().isPresent());
+        }
+    }
+
     private static String waitForRelease(CountDownLatch started, CountDownLatch release) {
         started.countDown();
         try {
@@ -57,6 +76,15 @@ class PathJobExecutorTest {
             return "interrupted";
         }
         return "released";
+    }
+
+    private static String waitForInterrupt(CountDownLatch started, CountDownLatch interrupted) {
+        started.countDown();
+        while (!Thread.currentThread().isInterrupted()) {
+            Thread.onSpinWait();
+        }
+        interrupted.countDown();
+        return "interrupted";
     }
 
     private static void waitUntil(BooleanSupplier condition) {

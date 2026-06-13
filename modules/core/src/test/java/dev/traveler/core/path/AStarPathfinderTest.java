@@ -96,6 +96,20 @@ class AStarPathfinderTest {
         assertEquals(19, second.path().nodeCount());
     }
 
+    @Test
+    void returnsRunningWhenThreadIsInterrupted() {
+        AStarPathfinder<Point> pathfinder = new AStarPathfinder<>();
+        PathfinderRequest<Point> request = new PathfinderRequest<>(
+                GridGraph.open(10, 10), new Point(0, 0), new Point(9, 9), MANHATTAN);
+
+        Thread.currentThread().interrupt();
+        PathfinderResult<Point> result = pathfinder.search(request);
+        Thread.interrupted();
+
+        assertEquals(PathfinderStatus.RUNNING, result.status());
+        assertTrue(result.path().isEmpty());
+    }
+
     private static boolean contains(GraphPath<Point> path, Point node) {
         for (Point current : path) {
             if (current.equals(node)) {
