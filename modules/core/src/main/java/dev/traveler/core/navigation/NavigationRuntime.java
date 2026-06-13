@@ -1,5 +1,6 @@
 package dev.traveler.core.navigation;
 
+import dev.traveler.core.debug.PathfinderDebugState;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -10,22 +11,39 @@ public final class NavigationRuntime {
     private final TravelerNavigationState navigationState;
     private final NavigationAgentPort agentPort;
     private final NavigationController controller;
+    private final PathfinderDebugState debugState;
     private NavigationControllerState controllerState = NavigationControllerState.start();
     private NavigationSession activeSession;
     private long previousNanos = -1L;
     private boolean released = true;
 
     public NavigationRuntime(TravelerNavigationState navigationState, NavigationAgentPort agentPort) {
-        this(navigationState, agentPort, NavigationController.standard());
+        this(navigationState, agentPort, new PathfinderDebugState());
+    }
+
+    public NavigationRuntime(
+            TravelerNavigationState navigationState,
+            NavigationAgentPort agentPort,
+            PathfinderDebugState debugState) {
+        this(navigationState, agentPort, NavigationController.standard(), debugState);
     }
 
     NavigationRuntime(
             TravelerNavigationState navigationState,
             NavigationAgentPort agentPort,
             NavigationController controller) {
+        this(navigationState, agentPort, controller, new PathfinderDebugState());
+    }
+
+    NavigationRuntime(
+            TravelerNavigationState navigationState,
+            NavigationAgentPort agentPort,
+            NavigationController controller,
+            PathfinderDebugState debugState) {
         this.navigationState = Objects.requireNonNull(navigationState, "navigationState");
         this.agentPort = Objects.requireNonNull(agentPort, "agentPort");
         this.controller = Objects.requireNonNull(controller, "controller");
+        this.debugState = Objects.requireNonNull(debugState, "debugState");
     }
 
     public void update(long nowNanos) {
@@ -47,6 +65,7 @@ public final class NavigationRuntime {
             return;
         }
         NavigationControlFrame frame = controller.update(session.path(), input.orElseThrow(), controllerState);
+        debugState.updateNavigation(input.orElseThrow(), frame);
         controllerState = frame.state();
         applyFrame(frame);
     }
@@ -74,6 +93,7 @@ public final class NavigationRuntime {
             return;
         }
         agentPort.release();
+        debugState.clearNavigation();
         controllerState = NavigationControllerState.start();
         released = true;
     }

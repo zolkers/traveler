@@ -34,7 +34,9 @@ public final class FabricEventBootstrap {
         FabricPathDebugRenderer renderer =
                 new FabricPathDebugRenderer(PathDebugRenderModel.defaultModel(), commandModule.debugState());
         NavigationRuntime navigationRuntime = new NavigationRuntime(
-                commandModule.navigationState(), MinecraftClientNavigationAdapter.currentClient());
+                commandModule.navigationState(),
+                MinecraftClientNavigationAdapter.currentClient(),
+                commandModule.debugState());
         new FabricEventBootstrap(renderer, () -> navigationRuntime.update(System.nanoTime())).register();
     }
 

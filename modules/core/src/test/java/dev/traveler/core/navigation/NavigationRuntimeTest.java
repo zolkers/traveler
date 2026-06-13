@@ -1,8 +1,10 @@
 package dev.traveler.core.navigation;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.navigation.camera.CameraAngles;
 import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.follow.PathProgress;
@@ -65,6 +67,39 @@ class NavigationRuntimeTest {
         runtime.update(1_016_000_000L);
 
         assertEquals(new PathProgress(1), agent.controlFrames.getLast().state().progress());
+    }
+
+    @Test
+    void storesLatestNavigationDebugFrameWhileActive() {
+        TravelerNavigationState navigationState = new TravelerNavigationState();
+        PathfinderDebugState debugState = new PathfinderDebugState();
+        TestAgentPort agent = new TestAgentPort(new NavigationPoint(0.0, 64.0, 0.0), new CameraAngles(0.0, 0.0));
+        NavigationRuntime runtime = new NavigationRuntime(navigationState, agent, debugState);
+        navigationState.start(NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(0.0, 64.0, 4.0))), "test");
+
+        runtime.update(1_000_000_000L);
+
+        assertTrue(debugState.latestNavigation().isPresent());
+        assertTrue(debugState.navigationSummary().orElseThrow().contains("phase=APPROACH"));
+    }
+
+    @Test
+    void clearsNavigationDebugWhenRuntimeReleasesControls() {
+        TravelerNavigationState navigationState = new TravelerNavigationState();
+        PathfinderDebugState debugState = new PathfinderDebugState();
+        TestAgentPort agent = new TestAgentPort(new NavigationPoint(0.0, 64.0, 0.0), new CameraAngles(0.0, 0.0));
+        NavigationRuntime runtime = new NavigationRuntime(navigationState, agent, debugState);
+        navigationState.start(NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(0.0, 64.0, 4.0))), "test");
+
+        runtime.update(1_000_000_000L);
+        navigationState.stop("manual");
+        runtime.update(1_016_000_000L);
+
+        assertFalse(debugState.latestNavigation().isPresent());
     }
 
     private static final class TestAgentPort implements NavigationAgentPort {
