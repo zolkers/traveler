@@ -13,12 +13,9 @@ public record CameraAngles(double yawDegrees, double pitchDegrees) {
     }
 
     public static double normalizeYaw(double yawDegrees) {
-        double normalized = yawDegrees;
-        while (normalized <= -180.0) {
-            normalized += 360.0;
-        }
-        while (normalized > 180.0) {
-            normalized -= 360.0;
+        double normalized = Math.IEEEremainder(yawDegrees, 360.0);
+        if (normalized <= -180.0) {
+            return 180.0;
         }
         return normalized;
     }

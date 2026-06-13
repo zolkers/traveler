@@ -59,6 +59,36 @@ class PathFollowControllerTest {
         assertEquals(MovementTarget.stopAt(point(4.0, 0.0)), frame.movementTarget());
     }
 
+    @Test
+    void sameHorizontalPositionDifferentHeightIsNotCompleted() {
+        NavigationPath path = NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(0.0, 65.0, 0.0)));
+
+        PathFollowFrame frame = controller.update(
+                path,
+                new NavigationPoint(0.0, 64.0, 0.0),
+                PathProgress.start());
+
+        assertFalse(frame.completed());
+        assertEquals(new NavigationPoint(0.0, 65.0, 0.0), frame.target());
+    }
+
+    @Test
+    void verticalIntermediateNodeIsNotSkippedByHorizontalDistanceOnly() {
+        NavigationPath path = NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(0.0, 65.0, 0.0),
+                new NavigationPoint(2.0, 65.0, 0.0)));
+
+        PathFollowFrame frame = controller.update(
+                path,
+                new NavigationPoint(0.0, 64.0, 0.0),
+                PathProgress.start());
+
+        assertEquals(new PathProgress(1), frame.progress());
+    }
+
     private static NavigationPoint point(double x, double z) {
         return new NavigationPoint(x, 64.0, z);
     }

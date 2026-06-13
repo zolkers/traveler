@@ -24,7 +24,7 @@ public final class PathFollowController {
     }
 
     private boolean isCompleted(NavigationPath path, NavigationPoint position) {
-        return position.horizontalDistanceTo(path.lastNode()) <= settings.reachedDistance();
+        return position.distanceTo(path.lastNode()) <= settings.reachedDistance();
     }
 
     private PathFollowFrame completedFrame(NavigationPath path) {
@@ -42,7 +42,7 @@ public final class PathFollowController {
 
     private boolean canAdvance(NavigationPath path, NavigationPoint position, int nextIndex) {
         return nextIndex < path.nodeCount() - 1
-                && position.horizontalDistanceTo(path.nodeAt(nextIndex)) <= settings.reachedDistance();
+                && position.distanceTo(path.nodeAt(nextIndex)) <= settings.reachedDistance();
     }
 
     private NavigationPoint lookAheadTarget(NavigationPath path, NavigationPoint position, int nextIndex) {
