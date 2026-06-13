@@ -8,6 +8,7 @@ import dev.traveler.core.navigation.NavigationControllerState;
 import dev.traveler.core.navigation.NavigationFrameInput;
 import dev.traveler.core.navigation.camera.CameraAngles;
 import dev.traveler.core.navigation.follow.NavigationPath;
+import dev.traveler.core.navigation.follow.NavigationSegmentAction;
 import dev.traveler.core.navigation.control.MovementIntent;
 import dev.traveler.core.navigation.locomotion.AgentMotionState;
 import dev.traveler.core.navigation.locomotion.LocomotionAction;
@@ -34,6 +35,21 @@ class NavigationFramePlannerTest {
         assertEquals(point(0.0, 65.0, 0.0), plan.movementTarget().point());
         assertEquals(0.0, plan.cameraTarget().pitchDegrees());
         assertEquals(PlannedMovementMode.DIRECT, plan.movementVector().mode());
+    }
+
+    @Test
+    void explicitRouteActionDrivesLocomotionWithoutHeightGuessing() {
+        NavigationPath path = NavigationPath.of(
+                List.of(point(0.0, 64.0, 0.0), point(0.0, 64.0, 1.0)),
+                List.of(NavigationSegmentAction.JUMP));
+
+        NavigationFramePlan plan = planner.plan(
+                path,
+                frameInput(point(0.0, 64.0, 0.0), neutralCamera()),
+                NavigationControllerState.start());
+
+        assertEquals(NavigationPhase.EXECUTE_ACTION, plan.phase());
+        assertEquals(LocomotionAction.JUMP, plan.actionIntent().action());
     }
 
     @Test

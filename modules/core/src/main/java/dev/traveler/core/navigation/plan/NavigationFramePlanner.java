@@ -73,7 +73,11 @@ public final class NavigationFramePlanner {
             NavigationControllerState state) {
         PathProgress progress = routeProgressPolicy.progress(path, input.position(), state.progress());
         NavigationPoint actionTarget = path.nodeAt(progress.nextNodeIndex());
-        LocomotionPlan requestedAction = actionPolicy.plan(input.position(), actionTarget, input.motionState());
+        LocomotionPlan requestedAction = actionPolicy.plan(
+                input.position(),
+                actionTarget,
+                input.motionState(),
+                path.actionBeforeNode(progress.nextNodeIndex()));
         SteeringPlan steering = steeringController.plan(
                 path,
                 input.position(),

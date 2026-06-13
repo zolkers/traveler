@@ -2,10 +2,12 @@ package dev.traveler.mc.v1_21_11.common.command;
 
 import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.navigation.follow.NavigationPath;
+import dev.traveler.core.navigation.follow.NavigationSegmentAction;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import dev.traveler.core.path.PathfinderStatus;
 import dev.traveler.core.route.RoutePath;
 import dev.traveler.core.route.RouteSearchResult;
+import dev.traveler.core.world.behavior.decision.MovementAction;
 import dev.traveler.core.world.surface.SurfaceNode;
 import java.util.List;
 import java.util.Objects;
@@ -32,10 +34,11 @@ record TravelerPathSearchResult(
         if (status() != PathfinderStatus.FOUND) {
             return Optional.empty();
         }
-        List<NavigationPoint> points = searchResult.route()
-                .map(RoutePath::points)
-                .orElseGet(this::fallbackNavigationPoints);
-        return navigationPath(points);
+        Optional<NavigationPath> routePath = searchResult.route().map(TravelerPathSearchResult::navigationPathFromRoute);
+        if (routePath.isPresent()) {
+            return routePath;
+        }
+        return navigationPath(fallbackNavigationPoints());
     }
 
     boolean alreadyAtTarget() {
@@ -68,6 +71,25 @@ record TravelerPathSearchResult(
             return Optional.empty();
         }
         return Optional.of(NavigationPath.of(points));
+    }
+
+    private static NavigationPath navigationPathFromRoute(RoutePath route) {
+        return NavigationPath.of(
+                route.points(),
+                route.actions().stream()
+                        .map(TravelerPathSearchResult::segmentAction)
+                        .toList());
+    }
+
+    private static NavigationSegmentAction segmentAction(MovementAction action) {
+        return switch (action) {
+            case WALK -> NavigationSegmentAction.WALK;
+            case STEP_UP -> NavigationSegmentAction.STEP_UP;
+            case JUMP -> NavigationSegmentAction.JUMP;
+            case DROP -> NavigationSegmentAction.DROP;
+            case SWIM -> NavigationSegmentAction.WALK;
+            case BLOCKED -> NavigationSegmentAction.INFER;
+        };
     }
 
     private static NavigationPoint surfacePoint(SurfaceNode node) {
