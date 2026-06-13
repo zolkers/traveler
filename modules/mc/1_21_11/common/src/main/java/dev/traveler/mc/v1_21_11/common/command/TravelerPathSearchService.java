@@ -1,12 +1,10 @@
 package dev.traveler.mc.v1_21_11.common.command;
 
 import dev.traveler.core.command.TravelerCommandContext;
-import dev.traveler.core.graph.MutableGraphPath;
 import dev.traveler.core.job.PathJob;
 import dev.traveler.core.job.PathJobState;
 import dev.traveler.core.layer.BlockClassification;
 import dev.traveler.core.layer.WorldLayer;
-import dev.traveler.core.path.PathfinderResult;
 import dev.traveler.core.path.PathfinderStatus;
 import dev.traveler.core.route.RouteSearchDiagnostics;
 import dev.traveler.core.route.RouteSearchResult;
@@ -71,13 +69,7 @@ final class TravelerPathSearchService {
     }
 
     private static TravelerPathSearchResult rejectedSearch(BlockPosition target, SearchVolume volume) {
-        PathfinderResult<BlockPosition> result =
-                new PathfinderResult<>(PathfinderStatus.NOT_FOUND, new MutableGraphPath<>());
-        RouteSearchResult searchResult = new RouteSearchResult(
-                result,
-                Optional.empty(),
-                Optional.empty(),
-                RouteSearchDiagnostics.blockNotFound());
+        RouteSearchResult searchResult = RouteSearchResult.notFound(RouteSearchDiagnostics.blockNotFound());
         String message = "path block "
                 + format(target)
                 + " status=NOT_FOUND reason=search-too-large estimatedBlocks="

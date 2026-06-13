@@ -1,5 +1,6 @@
 package dev.traveler.core.route;
 
+import dev.traveler.core.graph.MutableGraphPath;
 import dev.traveler.core.path.PathfinderResult;
 import dev.traveler.core.path.PathfinderStatus;
 import dev.traveler.core.world.block.BlockPosition;
@@ -21,5 +22,15 @@ public record RouteSearchResult(
 
     public PathfinderStatus status() {
         return blockResult.status();
+    }
+
+    public static RouteSearchResult notFound(RouteSearchDiagnostics diagnostics) {
+        PathfinderResult<BlockPosition> result =
+                new PathfinderResult<>(PathfinderStatus.NOT_FOUND, new MutableGraphPath<>());
+        return new RouteSearchResult(
+                result,
+                Optional.empty(),
+                Optional.empty(),
+                Objects.requireNonNull(diagnostics, "diagnostics"));
     }
 }

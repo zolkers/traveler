@@ -10,6 +10,16 @@ import org.junit.jupiter.api.Test;
 
 class ArchitectureBoundaryTest {
     private static final List<String> FORBIDDEN_IMPORTS = List.of("net.fabricmc", "net.neoforged");
+    private static final List<String> FORBIDDEN_COMMAND_SEARCH_IMPORTS = List.of(
+            "dev.traveler.core.graph.",
+            "dev.traveler.core.path.AStarPathfinder",
+            "dev.traveler.core.path.PathfinderRequest",
+            "dev.traveler.core.smooth.",
+            "dev.traveler.core.world.navigation.BlockLineOfWalk",
+            "dev.traveler.core.world.navigation.BlockTraversalGraph",
+            "dev.traveler.core.world.navigation.SurfaceLineOfWalk",
+            "dev.traveler.core.world.navigation.SurfaceSmoothingPolicy",
+            "dev.traveler.core.world.navigation.SurfaceTraversalGraph");
     private static final List<String> FORBIDDEN_PACKAGES = List.of(
             "/common/event/",
             "\\common\\event\\",
@@ -30,6 +40,15 @@ class ArchitectureBoundaryTest {
         List<String> violations = JavaSourceRules.forbiddenPackages(Path.of("src/main/java"), FORBIDDEN_PACKAGES);
 
         assertTrue(violations.isEmpty(), () -> "Reusable framework packages in common: " + violations);
+    }
+
+    @Test
+    void commandCodeDoesNotOwnSearchInternals() throws IOException {
+        List<String> violations = JavaSourceRules.forbiddenImports(
+                Path.of("src/main/java/dev/traveler/mc/v1_21_11/common/command"),
+                FORBIDDEN_COMMAND_SEARCH_IMPORTS);
+
+        assertTrue(violations.isEmpty(), () -> "Search internals in command code: " + violations);
     }
 
     @Test
