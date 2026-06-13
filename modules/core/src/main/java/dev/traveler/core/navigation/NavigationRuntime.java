@@ -1,36 +1,30 @@
-package dev.traveler.mc.v1_21_11.fabric.navigation;
+package dev.traveler.core.navigation;
 
-import dev.traveler.core.navigation.NavigationControlFrame;
-import dev.traveler.core.navigation.NavigationController;
-import dev.traveler.core.navigation.NavigationControllerState;
-import dev.traveler.core.navigation.NavigationFrameInput;
-import dev.traveler.core.navigation.NavigationSession;
-import dev.traveler.core.navigation.TravelerNavigationState;
 import java.util.Objects;
 import java.util.Optional;
 
-public final class FabricNavigationRuntime {
+public final class NavigationRuntime {
     private static final double NANOS_TO_SECONDS = 1.0E-9;
     private static final double MAX_DELTA_SECONDS = 0.1;
 
     private final TravelerNavigationState navigationState;
-    private final ClientNavigationAdapter adapter;
+    private final NavigationAgentPort agentPort;
     private final NavigationController controller;
     private NavigationControllerState controllerState = NavigationControllerState.start();
     private NavigationSession activeSession;
     private long previousNanos = -1L;
     private boolean released = true;
 
-    public FabricNavigationRuntime(TravelerNavigationState navigationState, ClientNavigationAdapter adapter) {
-        this(navigationState, adapter, NavigationController.standard());
+    public NavigationRuntime(TravelerNavigationState navigationState, NavigationAgentPort agentPort) {
+        this(navigationState, agentPort, NavigationController.standard());
     }
 
-    FabricNavigationRuntime(
+    NavigationRuntime(
             TravelerNavigationState navigationState,
-            ClientNavigationAdapter adapter,
+            NavigationAgentPort agentPort,
             NavigationController controller) {
         this.navigationState = Objects.requireNonNull(navigationState, "navigationState");
-        this.adapter = Objects.requireNonNull(adapter, "adapter");
+        this.agentPort = Objects.requireNonNull(agentPort, "agentPort");
         this.controller = Objects.requireNonNull(controller, "controller");
     }
 
@@ -47,15 +41,12 @@ public final class FabricNavigationRuntime {
 
     private void updateActiveSession(NavigationSession session, double deltaSeconds) {
         resetProgressWhenSessionChanges(session);
-        Optional<NavigationFrameInput> input = adapter.frameInput(deltaSeconds);
+        Optional<NavigationFrameInput> input = agentPort.frameInput(deltaSeconds);
         if (input.isEmpty()) {
             releaseIfNeeded();
             return;
         }
-        NavigationControlFrame frame = controller.update(
-                session.path(),
-                input.orElseThrow(),
-                controllerState);
+        NavigationControlFrame frame = controller.update(session.path(), input.orElseThrow(), controllerState);
         controllerState = frame.state();
         applyFrame(frame);
     }
@@ -66,7 +57,7 @@ public final class FabricNavigationRuntime {
             releaseIfNeeded();
             return;
         }
-        adapter.apply(frame);
+        agentPort.apply(frame);
         released = false;
     }
 
@@ -82,7 +73,7 @@ public final class FabricNavigationRuntime {
         if (released) {
             return;
         }
-        adapter.release();
+        agentPort.release();
         controllerState = NavigationControllerState.start();
         released = true;
     }

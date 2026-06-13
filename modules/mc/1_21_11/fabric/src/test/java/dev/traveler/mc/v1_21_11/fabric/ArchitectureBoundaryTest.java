@@ -32,4 +32,16 @@ class ArchitectureBoundaryTest {
 
         assertTrue(unexpectedSources.isEmpty(), () -> "Flat Fabric root sources: " + unexpectedSources);
     }
+
+    @Test
+    void fabricNavigationPackageOnlyContainsMinecraftAdapter() throws IOException {
+        List<String> unexpectedSources = JavaSourceRules.directJavaSources(
+                        Path.of("src/main/java/dev/traveler/mc/v1_21_11/fabric/navigation"))
+                .stream()
+                .filter(path -> !path.endsWith("MinecraftClientNavigationAdapter.java"))
+                .toList();
+
+        assertTrue(unexpectedSources.isEmpty(), () -> "Core navigation framework leaked into Fabric: "
+                + unexpectedSources);
+    }
 }

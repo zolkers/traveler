@@ -1,6 +1,7 @@
 package dev.traveler.mc.v1_21_11.fabric.navigation;
 
 import dev.traveler.core.navigation.NavigationControlFrame;
+import dev.traveler.core.navigation.NavigationAgentPort;
 import dev.traveler.core.navigation.NavigationFrameInput;
 import dev.traveler.core.navigation.camera.CameraAngles;
 import dev.traveler.core.navigation.input.MovementIntent;
@@ -11,7 +12,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.Options;
 import net.minecraft.client.player.LocalPlayer;
 
-public final class MinecraftClientNavigationAdapter implements ClientNavigationAdapter {
+public final class MinecraftClientNavigationAdapter implements NavigationAgentPort {
     private final Minecraft client;
 
     public MinecraftClientNavigationAdapter(Minecraft client) {

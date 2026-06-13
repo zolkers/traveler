@@ -2,7 +2,7 @@ package dev.traveler.mc.v1_21_11.fabric.event;
 
 import dev.traveler.mc.v1_21_11.fabric.render.FabricPathDebugRenderer;
 import dev.traveler.mc.v1_21_11.fabric.render.FabricWorldRenderer;
-import dev.traveler.mc.v1_21_11.fabric.navigation.FabricNavigationRuntime;
+import dev.traveler.core.navigation.NavigationRuntime;
 import dev.traveler.mc.v1_21_11.fabric.navigation.MinecraftClientNavigationAdapter;
 import dev.traveler.mc.v1_21_11.common.command.TravelerCommandModule;
 import dev.traveler.core.event.ClientTickEvent;
@@ -33,7 +33,7 @@ public final class FabricEventBootstrap {
         TravelerCommandModule commandModule = Objects.requireNonNull(module, "module");
         FabricPathDebugRenderer renderer =
                 new FabricPathDebugRenderer(PathDebugRenderModel.defaultModel(), commandModule.debugState());
-        FabricNavigationRuntime navigationRuntime = new FabricNavigationRuntime(
+        NavigationRuntime navigationRuntime = new NavigationRuntime(
                 commandModule.navigationState(), MinecraftClientNavigationAdapter.currentClient());
         new FabricEventBootstrap(renderer, () -> navigationRuntime.update(System.nanoTime())).register();
     }
