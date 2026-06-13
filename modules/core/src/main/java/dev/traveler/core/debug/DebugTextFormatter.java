@@ -16,7 +16,8 @@ public final class DebugTextFormatter {
         NavigationDebugSnapshot debug = Objects.requireNonNull(snapshot, "snapshot");
         return String.format(
                 Locale.ROOT,
-                "nav phase=%s action=%s mode=%s progress=%d target=%s vector=%s keys=%s yaw=%.1f->%.1f outYaw=%.1f speed=%.2f completed=%s",
+                "nav phase=%s action=%s mode=%s progress=%d target=%s vector=%s "
+                        + "keys=%s yaw=%.1f->%.1f outYaw=%.1f speed=%.2f completed=%s",
                 debug.phase(),
                 debug.actionIntent().action(),
                 debug.movementMode(),
