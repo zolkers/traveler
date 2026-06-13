@@ -1,7 +1,6 @@
 package dev.traveler.core.world.navigation;
 
 import dev.traveler.core.world.behavior.context.MovementDirection;
-import dev.traveler.core.world.behavior.context.SurfaceMovementContext;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.movement.EntityDimensions;
 import dev.traveler.core.world.movement.MovementCapabilities;
@@ -29,6 +28,7 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode> {
     private final EntityDimensions dimensions;
     private final MovementCapabilities capabilities;
     private final SurfaceClearanceScorer clearanceScorer;
+    private final SurfaceMovementEvaluator movementEvaluator;
     private final SurfaceNodeIndex nodeIndex;
     private final double[] clearanceScores;
     private final boolean[] clearanceScoreLoaded;
@@ -96,6 +96,7 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode> {
         this.dimensions = profile.dimensions();
         this.capabilities = profile.capabilities();
         this.clearanceScorer = safeSettings.clearanceScorer();
+        this.movementEvaluator = new SurfaceMovementEvaluator(capabilities);
         this.nodeIndex = new SurfaceNodeIndex(searchBounds);
         this.clearanceScores = new double[nodeIndex.size()];
         this.clearanceScoreLoaded = new boolean[nodeIndex.size()];
@@ -436,8 +437,7 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode> {
             SurfaceNode to,
             SurfaceBlock block,
             MovementDirection direction) {
-        SurfaceMovementContext context = new SurfaceMovementContext(from, to, capabilities, direction);
-        return block.behavior().evaluateMovement(context).allowed();
+        return movementEvaluator.decision(from, to, block, direction).allowed();
     }
 
     private double upwardClearance() {

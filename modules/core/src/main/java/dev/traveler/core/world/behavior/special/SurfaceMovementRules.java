@@ -47,6 +47,9 @@ final class SurfaceMovementRules {
         if (-delta > capabilities.maxSafeFallDistance()) {
             return MovementDecision.blocked();
         }
+        if (delta < 0.0) {
+            return MovementDecision.drop();
+        }
         return MovementDecision.walk();
     }
 }
