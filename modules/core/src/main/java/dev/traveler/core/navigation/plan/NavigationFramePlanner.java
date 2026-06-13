@@ -140,7 +140,7 @@ public final class NavigationFramePlanner {
             NavigationPoint position,
             MovementVectorIntent movementVector) {
         double scale = speedScale(position.horizontalDistanceTo(path.lastNode()));
-        boolean sprint = scale >= 0.5 && movementVector.mode() == PlannedMovementMode.DIRECT;
+        boolean sprint = scale >= 0.5 && movementVector.mode().forwardAllowed();
         return new SpeedIntent(scale, sprint);
     }
 
@@ -163,7 +163,7 @@ public final class NavigationFramePlanner {
         if (!movementVector.specialActionAllowed()) {
             return NavigationPhase.ALIGN;
         }
-        if (movementVector.mode() == PlannedMovementMode.DIRECT) {
+        if (movementVector.mode().approachPhase()) {
             return NavigationPhase.APPROACH;
         }
         return NavigationPhase.ALIGN;

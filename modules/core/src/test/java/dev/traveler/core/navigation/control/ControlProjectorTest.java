@@ -43,7 +43,7 @@ class ControlProjectorTest {
     @Test
     void mapsTurnStrafePlanToStrafeOnly() {
         NavigationFramePlan plan = plan(
-                new MovementVectorIntent(new HorizontalVector(4.0, -4.0), PlannedMovementMode.TURN_STRAFE, true),
+                new MovementVectorIntent(new HorizontalVector(4.0, -4.0), PlannedMovementMode.STRAFE_TURN, true),
                 ActionIntent.none(),
                 new NavigationPoint(4.0, 64.0, -4.0));
 
@@ -54,6 +54,24 @@ class ControlProjectorTest {
 
         assertTrue(frame.intent().left());
         assertFalse(frame.intent().forward());
+        assertFalse(frame.intent().back());
+    }
+
+    @Test
+    void mapsForwardArcPlanToForwardAndStrafe() {
+        NavigationFramePlan plan = plan(
+                new MovementVectorIntent(new HorizontalVector(1.0, 2.0), PlannedMovementMode.FORWARD_ARC, true),
+                ActionIntent.none(),
+                new NavigationPoint(1.0, 64.0, 2.0));
+
+        ControlProjectionFrame frame = projector.project(
+                plan,
+                frameInput(new CameraAngles(0.0, 0.0)),
+                MovementIntent.idle());
+
+        assertTrue(frame.intent().forward());
+        assertTrue(frame.intent().left());
+        assertFalse(frame.intent().right());
         assertFalse(frame.intent().back());
     }
 

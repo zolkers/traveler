@@ -48,7 +48,7 @@ class NavigationFramePlannerTest {
                 NavigationControllerState.start());
 
         assertEquals(NavigationPhase.ALIGN, plan.phase());
-        assertEquals(PlannedMovementMode.TURN_STRAFE, plan.movementVector().mode());
+        assertEquals(PlannedMovementMode.STRAFE_TURN, plan.movementVector().mode());
         assertFalse(plan.actionIntent().jumpRequested());
     }
 
@@ -105,7 +105,7 @@ class NavigationFramePlannerTest {
 
         assertEquals(2, plan.routeProgress().nextNodeIndex());
         assertTrue(plan.cameraTarget().yawDegrees() <= 45.0);
-        assertEquals(PlannedMovementMode.DIRECT, plan.movementVector().mode());
+        assertEquals(PlannedMovementMode.SIDESTEP_RECENTER, plan.movementVector().mode());
     }
 
     @Test

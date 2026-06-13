@@ -64,12 +64,12 @@
 - Test: `modules/core/src/test/java/dev/traveler/core/navigation/plan/MovementVectorPolicyTest.java`
 - Test: `modules/core/src/test/java/dev/traveler/core/navigation/control/ControlProjectorTest.java`
 
-- [ ] Write failing tests for `FORWARD_ARC` behavior: medium angle should request `DIRECT` with meaningful strafe, not pure forward.
-- [ ] Write failing tests for `STRAFE_TURN`: wide angle should strafe while the camera catches up instead of waiting.
-- [ ] Write failing tests for `SIDESTEP_RECENTER`: outside corridor should choose lateral correction without special actions.
-- [ ] Implement mode selection based on forward dot, side dot, desired distance, lateral correction, and action setup.
-- [ ] Run `./gradlew.bat :core:test --tests dev.traveler.core.navigation.plan.* --tests dev.traveler.core.navigation.control.*`.
-- [ ] Commit `feat(core): add strategic movement projection`.
+- [x] Write failing tests for `FORWARD_ARC` behavior: medium angle should request `DIRECT` with meaningful strafe, not pure forward.
+- [x] Write failing tests for `STRAFE_TURN`: wide angle should strafe while the camera catches up instead of waiting.
+- [x] Write failing tests for `SIDESTEP_RECENTER`: outside corridor should choose lateral correction without special actions.
+- [x] Implement mode selection based on forward dot, side dot, desired distance, lateral correction, and action setup.
+- [x] Run `./gradlew.bat :core:test --tests dev.traveler.core.navigation.plan.* --tests dev.traveler.core.navigation.control.*`.
+- [x] Commit `feat(core): add strategic movement projection`.
 
 ### Task 5: Clearance-Aware Surface Paths
 

@@ -30,19 +30,19 @@ public final class MovementVectorPolicy {
         CameraAngles camera = Objects.requireNonNull(cameraAngles, "cameraAngles");
         LocomotionPlan action = Objects.requireNonNull(actionPlan, "actionPlan");
         MovementVectorDecision decision = vectorDecision(currentPosition, steeringPlan);
-        PlannedMovementMode mode = modeFor(decision.desiredVector(), camera);
+        PlannedMovementMode mode = modeFor(decision, camera);
         boolean actionAllowed = allowsSpecialAction(action, decision);
         return new MovementVectorIntent(decision.desiredVector(), mode, actionAllowed);
     }
 
     private MovementVectorDecision vectorDecision(NavigationPoint position, SteeringPlan steering) {
         if (shouldRecenter(steering)) {
-            return new MovementVectorDecision(steering.lateralCorrection(), false);
+            return new MovementVectorDecision(steering.lateralCorrection(), false, true);
         }
         if (!steering.tangent().isZero()) {
-            return new MovementVectorDecision(steering.desiredVectorFrom(position), true);
+            return new MovementVectorDecision(steering.desiredVectorFrom(position), true, false);
         }
-        return new MovementVectorDecision(position.horizontalVectorTo(steering.steeringTarget()), true);
+        return new MovementVectorDecision(position.horizontalVectorTo(steering.steeringTarget()), true, false);
     }
 
     private boolean shouldRecenter(SteeringPlan steering) {
@@ -50,28 +50,39 @@ public final class MovementVectorPolicy {
                 && steering.lateralCorrection().length() >= settings.centeringCorrectionThreshold();
     }
 
-    private PlannedMovementMode modeFor(HorizontalVector desiredVector, CameraAngles cameraAngles) {
-        if (desiredVector.isZero()) {
+    private PlannedMovementMode modeFor(MovementVectorDecision decision, CameraAngles cameraAngles) {
+        if (decision.recentering()) {
+            return PlannedMovementMode.SIDESTEP_RECENTER;
+        }
+        if (decision.desiredVector().isZero()) {
             return PlannedMovementMode.WAIT_FOR_CAMERA;
         }
         CameraMovementBasis basis = CameraMovementBasis.fromMinecraftYaw(cameraAngles.yawDegrees());
-        HorizontalVector desired = desiredVector.normalized();
+        HorizontalVector desired = decision.desiredVector().normalized();
         double forwardAmount = desired.dot(basis.forward());
         double sideAmount = Math.abs(desired.dot(basis.right()));
-        return modeForAmounts(forwardAmount, sideAmount, desiredVector.length());
+        return modeForAmounts(forwardAmount, sideAmount, decision.desiredVector().length());
     }
 
     private PlannedMovementMode modeForAmounts(double forwardAmount, double sideAmount, double distance) {
         if (shouldBackpedal(forwardAmount, sideAmount, distance)) {
             return PlannedMovementMode.BACKPEDAL;
         }
-        if (forwardAmount > -settings.pressThreshold()) {
+        if (shouldForwardArc(forwardAmount, sideAmount)) {
+            return PlannedMovementMode.FORWARD_ARC;
+        }
+        if (forwardAmount >= settings.pressThreshold()) {
             return PlannedMovementMode.DIRECT;
         }
         if (sideAmount >= settings.turnStrafeThreshold()) {
-            return PlannedMovementMode.TURN_STRAFE;
+            return PlannedMovementMode.STRAFE_TURN;
         }
         return PlannedMovementMode.WAIT_FOR_CAMERA;
+    }
+
+    private boolean shouldForwardArc(double forwardAmount, double sideAmount) {
+        return forwardAmount >= settings.forwardArcMinimumForward()
+                && sideAmount >= settings.turnStrafeThreshold();
     }
 
     private boolean shouldBackpedal(double forwardAmount, double sideAmount, double distance) {
@@ -84,5 +95,8 @@ public final class MovementVectorPolicy {
         return action.action() == LocomotionAction.WALK || decision.specialActionAllowed();
     }
 
-    private record MovementVectorDecision(HorizontalVector desiredVector, boolean specialActionAllowed) {}
+    private record MovementVectorDecision(
+            HorizontalVector desiredVector,
+            boolean specialActionAllowed,
+            boolean recentering) {}
 }

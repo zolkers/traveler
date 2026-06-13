@@ -4,10 +4,12 @@ public record MovementVectorSettings(
         double pressThreshold,
         double centeringCorrectionThreshold,
         double turnStrafeThreshold,
+        double forwardArcMinimumForward,
         double backpedalMaximumDistance) {
     public MovementVectorSettings {
         requireThreshold(pressThreshold, "pressThreshold");
         requireThreshold(turnStrafeThreshold, "turnStrafeThreshold");
+        requireThreshold(forwardArcMinimumForward, "forwardArcMinimumForward");
         if (!Double.isFinite(centeringCorrectionThreshold) || centeringCorrectionThreshold < 0.0) {
             throw new IllegalArgumentException("centeringCorrectionThreshold must be non-negative.");
         }
@@ -17,7 +19,7 @@ public record MovementVectorSettings(
     }
 
     public static MovementVectorSettings standard() {
-        return new MovementVectorSettings(0.32, 0.5, 0.32, 0.8);
+        return new MovementVectorSettings(0.32, 0.5, 0.32, 0.35, 0.8);
     }
 
     private static void requireThreshold(double value, String name) {

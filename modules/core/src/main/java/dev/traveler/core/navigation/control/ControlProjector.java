@@ -71,7 +71,7 @@ public final class ControlProjector {
     }
 
     private boolean forward(PlannedMovementMode mode, double amount, MovementIntent previous) {
-        return mode == PlannedMovementMode.DIRECT && pressed(amount, previous.forward());
+        return mode.forwardAllowed() && pressed(amount, previous.forward());
     }
 
     private boolean back(PlannedMovementMode mode, double amount, MovementIntent previous) {
@@ -79,11 +79,11 @@ public final class ControlProjector {
     }
 
     private boolean left(PlannedMovementMode mode, double amount, MovementIntent previous) {
-        return allowsStrafe(mode) && pressed(-amount, previous.left());
+        return mode.strafeAllowed() && pressed(-amount, previous.left());
     }
 
     private boolean right(PlannedMovementMode mode, double amount, MovementIntent previous) {
-        return allowsStrafe(mode) && pressed(amount, previous.right());
+        return mode.strafeAllowed() && pressed(amount, previous.right());
     }
 
     private boolean pressed(double amount, boolean wasPressed) {
@@ -91,7 +91,4 @@ public final class ControlProjector {
         return amount >= threshold;
     }
 
-    private static boolean allowsStrafe(PlannedMovementMode mode) {
-        return mode == PlannedMovementMode.DIRECT || mode == PlannedMovementMode.TURN_STRAFE;
-    }
 }
