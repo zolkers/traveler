@@ -26,6 +26,7 @@ import dev.traveler.core.path.PathfinderResult;
 import dev.traveler.core.path.PathfinderStatus;
 import dev.traveler.core.world.block.BlockPosition;
 import java.time.Instant;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class NavigationDebugSnapshotTest {
@@ -72,6 +73,39 @@ class NavigationDebugSnapshotTest {
         assertEquals("path status=FOUND nodes=2 cost=3.50", summary);
     }
 
+    @Test
+    void formatsDetailedChatReportWithAnomalies() {
+        PathfinderDebugSnapshot path = new PathfinderDebugSnapshot(
+                new PathfinderResult<>(PathfinderStatus.NOT_FOUND, new MutableGraphPath<>()),
+                "blocked",
+                Instant.EPOCH);
+
+        String report = DebugTextFormatter.detailedStatus(
+                Optional.of(anomalousSnapshot()),
+                Optional.of(path),
+                Instant.EPOCH.plusSeconds(5));
+
+        assertTrue(report.startsWith("traveler debug\n"));
+        assertTrue(report.contains("path status=NOT_FOUND nodes=0 cost=0.00"));
+        assertTrue(report.contains("nav phase=EXECUTE_ACTION action=JUMP mode=WAIT_FOR_CAMERA progress=2"));
+        assertTrue(report.contains("pos=(1.00,64.00,2.00) target=(1.00,65.00,3.00) targetDistance=1.41"));
+        assertTrue(report.contains("vector=(0.00,0.00) vectorLength=0.00"));
+        assertTrue(report.contains("keys=Z speed=0.20 sprint=false completed=false"));
+        assertTrue(report.contains("camera currentYaw=0.0 targetYaw=140.0 outputYaw=4.0 yawLag=140.0"));
+        assertTrue(report.contains("anomalies=PATH_NOT_FOUND,STALE_NAVIGATION_DEBUG"));
+        assertTrue(report.contains("ZERO_VECTOR_WHILE_NOT_COMPLETED"));
+        assertTrue(report.contains("JUMP_REQUESTED_WITHOUT_SPACE"));
+    }
+
+    @Test
+    void formatsMissingDebugStateAsAnomalies() {
+        String report = DebugTextFormatter.detailedStatus(Optional.empty(), Optional.empty(), Instant.EPOCH);
+
+        assertTrue(report.contains("nav=none"));
+        assertTrue(report.contains("path=none"));
+        assertTrue(report.contains("anomalies=NO_NAVIGATION,NO_PATH"));
+    }
+
     private static NavigationFrameInput frameInput() {
         return new NavigationFrameInput(
                 new NavigationPoint(1.0, 64.0, 2.0),
@@ -100,6 +134,24 @@ class NavigationDebugSnapshotTest {
                 new CameraAngles(4.0, 0.0),
                 MovementTarget.follow(new NavigationPoint(1.0, 65.0, 3.0)),
                 plan,
+                false);
+    }
+
+    private static NavigationDebugSnapshot anomalousSnapshot() {
+        return new NavigationDebugSnapshot(
+                Instant.EPOCH,
+                new NavigationPoint(1.0, 64.0, 2.0),
+                new NavigationPoint(1.0, 65.0, 3.0),
+                new HorizontalVector(0.0, 0.0),
+                NavigationPhase.EXECUTE_ACTION,
+                ActionIntent.jump(),
+                PlannedMovementMode.WAIT_FOR_CAMERA,
+                new PathProgress(2),
+                new CameraAngles(0.0, 0.0),
+                new CameraAngles(140.0, 0.0),
+                new CameraAngles(4.0, 0.0),
+                new MovementIntent(true, false, false, false, false, false),
+                new SpeedIntent(0.2, false),
                 false);
     }
 }

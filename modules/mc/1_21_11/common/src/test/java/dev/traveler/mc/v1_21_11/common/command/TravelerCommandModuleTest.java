@@ -239,8 +239,12 @@ class TravelerCommandModuleTest {
 
         assertEquals(CommandResult.Status.SUCCESS, result.status());
         String reply = source.replies().getLast();
+        assertTrue(reply.startsWith("traveler debug\n"));
         assertTrue(reply.contains("nav phase=APPROACH"));
         assertTrue(reply.contains("path status=FOUND"));
+        assertTrue(reply.contains("pos=(0.00,64.00,0.00)"));
+        assertTrue(reply.contains("camera currentYaw=0.0"));
+        assertTrue(reply.contains("anomalies=none"));
         assertTrue(result.reply().orElseThrow().contains("nav phase=APPROACH"));
     }
 
