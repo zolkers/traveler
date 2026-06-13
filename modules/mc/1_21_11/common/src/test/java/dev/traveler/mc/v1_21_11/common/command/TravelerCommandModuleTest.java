@@ -258,8 +258,8 @@ class TravelerCommandModuleTest {
         PathfinderDebugSnapshot snapshot = module.debugState().latestSnapshot().orElseThrow();
         assertHasSurfaceNodes(snapshot);
         assertEquals(2, snapshot.surfaceNodes().size());
-        assertEquals(0.75, snapshot.surfaceNodes().getFirst().centerX());
-        assertEquals(4.75, snapshot.surfaceNodes().getLast().centerX());
+        assertEquals(new BlockPosition(0, 63, 0), snapshot.surfaceNodes().getFirst().blockPosition());
+        assertEquals(new BlockPosition(4, 63, 0), snapshot.surfaceNodes().getLast().blockPosition());
     }
 
     @Test
