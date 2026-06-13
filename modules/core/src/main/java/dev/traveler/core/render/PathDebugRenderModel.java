@@ -1,7 +1,11 @@
 package dev.traveler.core.render;
 
+import dev.traveler.core.debug.NavigationDebugSnapshot;
 import dev.traveler.core.debug.PathfinderDebugSnapshot;
+import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.graph.GraphPath;
+import dev.traveler.core.navigation.spatial.HorizontalVector;
+import dev.traveler.core.navigation.spatial.NavigationPoint;
 import dev.traveler.core.path.PathfinderResult;
 import dev.traveler.core.path.PathfinderStatus;
 import dev.traveler.core.world.block.BlockPosition;
@@ -18,6 +22,14 @@ public final class PathDebugRenderModel {
     private static final double CENTER_OFFSET = 0.5;
     private static final double DEFAULT_LINE_THICKNESS = 0.08;
     private static final float DEFAULT_NODE_ALPHA = 0.22f;
+    private static final double NAVIGATION_OVERLAY_Y_OFFSET = 1.2;
+    private static final double MOVEMENT_VECTOR_SCALE = 1.5;
+    private static final double CAMERA_VECTOR_SCALE = 2.0;
+    private static final double TARGET_BOX_RADIUS = 0.25;
+    private static final double NAVIGATION_LINE_THICKNESS = 0.06;
+    private static final ColorRgba MOVEMENT_COLOR = new ColorRgba(0.2f, 1.0f, 0.35f, 0.9f);
+    private static final ColorRgba TARGET_COLOR = new ColorRgba(1.0f, 0.85f, 0.15f, 0.85f);
+    private static final ColorRgba CAMERA_COLOR = new ColorRgba(0.85f, 0.25f, 1.0f, 0.85f);
 
     private final ColorRgba pathColor;
     private final ColorRgba nodeColor;
@@ -53,6 +65,11 @@ public final class PathDebugRenderModel {
         return new PathDebugRenderModel(DEFAULT_COLOR, CENTER_OFFSET, DEFAULT_LINE_THICKNESS);
     }
 
+    public DebugRenderFrame frameFor(PathfinderDebugState state) {
+        PathfinderDebugState debugState = Objects.requireNonNull(state, "state");
+        return combine(frameFor(debugState.snapshot()), navigationFrameFor(debugState.latestNavigation()));
+    }
+
     public DebugRenderFrame frameFor(Optional<PathfinderDebugSnapshot> snapshot) {
         Optional<PathfinderDebugSnapshot> current = Objects.requireNonNull(snapshot, "snapshot");
         if (current.isEmpty()) {
@@ -86,6 +103,22 @@ public final class PathDebugRenderModel {
             return DebugRenderFrame.empty();
         }
         return new DebugRenderFrame(surfaceLinesFor(nodes), surfaceBoxesFor(nodes));
+    }
+
+    private DebugRenderFrame navigationFrameFor(Optional<NavigationDebugSnapshot> snapshot) {
+        Optional<NavigationDebugSnapshot> current = Objects.requireNonNull(snapshot, "snapshot");
+        if (current.isEmpty()) {
+            return DebugRenderFrame.empty();
+        }
+        return navigationFrameFor(current.orElseThrow());
+    }
+
+    private DebugRenderFrame navigationFrameFor(NavigationDebugSnapshot snapshot) {
+        List<DebugLine> lines = new ArrayList<>();
+        addMovementVectorLine(lines, snapshot);
+        addTargetLine(lines, snapshot);
+        addCameraLine(lines, snapshot);
+        return new DebugRenderFrame(lines, List.of(targetBoxFor(snapshot)));
     }
 
     private List<DebugLine> linesFor(GraphPath<BlockPosition> path) {
@@ -155,10 +188,45 @@ public final class PathDebugRenderModel {
         lines.add(new DebugLine(from, to, pathColor, lineThickness));
     }
 
+    private static void addMovementVectorLine(List<DebugLine> lines, NavigationDebugSnapshot snapshot) {
+        if (snapshot.movementVector().isZero()) {
+            return;
+        }
+        RenderVertex from = navigationBase(snapshot.agentPosition());
+        RenderVertex to = offsetHorizontal(from, snapshot.movementVector(), MOVEMENT_VECTOR_SCALE);
+        lines.add(new DebugLine(from, to, MOVEMENT_COLOR, NAVIGATION_LINE_THICKNESS));
+    }
+
+    private static void addTargetLine(List<DebugLine> lines, NavigationDebugSnapshot snapshot) {
+        RenderVertex from = navigationBase(snapshot.agentPosition());
+        RenderVertex to = navigationBase(snapshot.movementTarget());
+        if (!from.equals(to)) {
+            lines.add(new DebugLine(from, to, TARGET_COLOR, NAVIGATION_LINE_THICKNESS));
+        }
+    }
+
+    private static void addCameraLine(List<DebugLine> lines, NavigationDebugSnapshot snapshot) {
+        RenderVertex from = navigationBase(snapshot.agentPosition());
+        lines.add(new DebugLine(from, cameraTarget(from, snapshot), CAMERA_COLOR, NAVIGATION_LINE_THICKNESS));
+    }
+
     private DebugBox boxFor(BlockPosition position) {
         RenderVertex min = new RenderVertex(position.x(), position.y(), position.z());
         RenderVertex max = new RenderVertex(position.x() + 1.0, position.y() + 1.0, position.z() + 1.0);
         return new DebugBox(min, max, nodeColor);
+    }
+
+    private static DebugBox targetBoxFor(NavigationDebugSnapshot snapshot) {
+        NavigationPoint target = Objects.requireNonNull(snapshot, "snapshot").movementTarget();
+        RenderVertex min = new RenderVertex(
+                target.x() - TARGET_BOX_RADIUS,
+                target.y() - TARGET_BOX_RADIUS,
+                target.z() - TARGET_BOX_RADIUS);
+        RenderVertex max = new RenderVertex(
+                target.x() + TARGET_BOX_RADIUS,
+                target.y() + TARGET_BOX_RADIUS,
+                target.z() + TARGET_BOX_RADIUS);
+        return new DebugBox(min, max, TARGET_COLOR);
     }
 
     private RenderVertex vertexFor(BlockPosition position) {
@@ -168,6 +236,33 @@ public final class PathDebugRenderModel {
 
     private RenderVertex surfaceVertexFor(SurfaceNode node) {
         return new RenderVertex(node.centerX(), node.renderBlockPosition().y() + yOffset, node.centerZ());
+    }
+
+    private static DebugRenderFrame combine(DebugRenderFrame first, DebugRenderFrame second) {
+        List<DebugLine> lines = new ArrayList<>(first.lines());
+        List<DebugBox> boxes = new ArrayList<>(first.boxes());
+        lines.addAll(second.lines());
+        boxes.addAll(second.boxes());
+        return new DebugRenderFrame(lines, boxes);
+    }
+
+    private static RenderVertex navigationBase(NavigationPoint point) {
+        return new RenderVertex(point.x(), point.y() + NAVIGATION_OVERLAY_Y_OFFSET, point.z());
+    }
+
+    private static RenderVertex offsetHorizontal(RenderVertex from, HorizontalVector vector, double scale) {
+        HorizontalVector direction = vector.normalized().scaled(scale);
+        return new RenderVertex(from.x() + direction.x(), from.y(), from.z() + direction.z());
+    }
+
+    private static RenderVertex cameraTarget(RenderVertex from, NavigationDebugSnapshot snapshot) {
+        double yaw = Math.toRadians(snapshot.cameraTarget().yawDegrees());
+        double pitch = Math.toRadians(snapshot.cameraTarget().pitchDegrees());
+        double horizontalScale = Math.cos(pitch) * CAMERA_VECTOR_SCALE;
+        double x = from.x() - Math.sin(yaw) * horizontalScale;
+        double y = from.y() - Math.sin(pitch) * CAMERA_VECTOR_SCALE;
+        double z = from.z() + Math.cos(yaw) * horizontalScale;
+        return new RenderVertex(x, y, z);
     }
 
     private static ColorRgba transparentNodeColor(ColorRgba color) {

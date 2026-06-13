@@ -35,7 +35,7 @@ public final class FabricPathDebugRenderer implements FabricWorldRenderer {
         if (context == null) {
             return;
         }
-        render(context, renderModel.frameFor(debugState.snapshot()));
+        render(context, renderModel.frameFor(debugState));
     }
 
     private void render(WorldRenderContext context, DebugRenderFrame frame) {
