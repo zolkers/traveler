@@ -2,6 +2,8 @@ package dev.traveler.core.navigation.input;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import dev.traveler.core.navigation.locomotion.AgentMotionState;
+import dev.traveler.core.navigation.locomotion.LocomotionPlan;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import org.junit.jupiter.api.Test;
 
@@ -69,5 +71,65 @@ class MovementInputPlannerTest {
                 MovementIntent.idle());
 
         assertEquals(new MovementIntent(false, false, false, false, true, false), intent);
+    }
+
+    @Test
+    void jumpsWhileKeepingForwardMotionForJumpPlan() {
+        NavigationPoint target = new NavigationPoint(0.0, 65.0, 1.0);
+
+        MovementIntent intent = planner.plan(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                target,
+                0.0,
+                MovementIntent.idle(),
+                LocomotionPlan.jump(),
+                AgentMotionState.groundedStill());
+
+        assertEquals(new MovementIntent(true, false, false, false, true, true), intent);
+    }
+
+    @Test
+    void usesRecoveryInputWhenGroundedAndHorizontallyBlocked() {
+        NavigationPoint target = new NavigationPoint(0.0, 64.0, 4.0);
+
+        MovementIntent intent = planner.plan(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                target,
+                0.0,
+                new MovementIntent(true, false, false, false, false, true),
+                LocomotionPlan.recover(),
+                new AgentMotionState(true, true, 0.01, 0.0));
+
+        assertEquals(new MovementIntent(false, true, true, false, false, false), intent);
+    }
+
+    @Test
+    void doesNotJumpForStepUpPlan() {
+        NavigationPoint target = new NavigationPoint(0.0, 64.5, 1.0);
+
+        MovementIntent intent = planner.plan(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                target,
+                0.0,
+                MovementIntent.idle(),
+                LocomotionPlan.stepUp(),
+                AgentMotionState.groundedStill());
+
+        assertEquals(new MovementIntent(true, false, false, false, false, true), intent);
+    }
+
+    @Test
+    void doesNotPulseJumpWhileAirborne() {
+        NavigationPoint target = new NavigationPoint(0.0, 65.0, 0.0);
+
+        MovementIntent intent = planner.plan(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                target,
+                0.0,
+                MovementIntent.idle(),
+                LocomotionPlan.jump(),
+                new AgentMotionState(false, false, 0.0, -0.1));
+
+        assertEquals(MovementIntent.idle(), intent);
     }
 }

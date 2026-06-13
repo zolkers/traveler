@@ -1,9 +1,14 @@
 package dev.traveler.core.navigation.follow;
 
+import dev.traveler.core.navigation.locomotion.LocomotionPlan;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import java.util.Objects;
 
 public final class PathFollowController {
+    private static final double STEP_UP_HEIGHT = 0.25;
+    private static final double JUMP_HEIGHT = 0.75;
+    private static final double DROP_HEIGHT = -0.75;
+
     private final PathFollowSettings settings;
 
     public PathFollowController(PathFollowSettings settings) {
@@ -20,7 +25,12 @@ public final class PathFollowController {
         int nextIndex = advanceReachedNode(navigationPath, currentPosition, currentProgress.nextNodeIndex());
         NavigationPoint target = lookAheadTarget(navigationPath, currentPosition, nextIndex);
         double speed = speedScale(currentPosition.horizontalDistanceTo(navigationPath.lastNode()));
-        return new PathFollowFrame(MovementTarget.follow(target), new PathProgress(nextIndex), speed, false);
+        return new PathFollowFrame(
+                MovementTarget.follow(target),
+                new PathProgress(nextIndex),
+                speed,
+                locomotionPlan(currentPosition, target),
+                false);
     }
 
     private boolean isCompleted(NavigationPath path, NavigationPoint position) {
@@ -65,6 +75,20 @@ public final class PathFollowController {
 
     private static boolean isVerticalStep(NavigationPoint from, NavigationPoint to) {
         return from.horizontalDistanceTo(to) <= 1.0E-6 && from.distanceTo(to) > 1.0E-6;
+    }
+
+    private static LocomotionPlan locomotionPlan(NavigationPoint position, NavigationPoint target) {
+        double heightDelta = target.y() - position.y();
+        if (heightDelta >= JUMP_HEIGHT) {
+            return LocomotionPlan.jump();
+        }
+        if (heightDelta >= STEP_UP_HEIGHT) {
+            return LocomotionPlan.stepUp();
+        }
+        if (heightDelta <= DROP_HEIGHT) {
+            return LocomotionPlan.drop();
+        }
+        return LocomotionPlan.walk();
     }
 
     private double speedScale(double distanceToGoal) {

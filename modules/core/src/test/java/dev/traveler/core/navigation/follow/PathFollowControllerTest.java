@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.traveler.core.navigation.locomotion.LocomotionAction;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -88,6 +89,34 @@ class PathFollowControllerTest {
 
         assertEquals(new PathProgress(1), frame.progress());
         assertEquals(new NavigationPoint(0.0, 65.0, 0.0), frame.target());
+    }
+
+    @Test
+    void marksOneBlockRiseAsJumpLocomotion() {
+        NavigationPath path = NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(0.0, 65.0, 1.0)));
+
+        PathFollowFrame frame = controller.update(
+                path,
+                new NavigationPoint(0.0, 64.0, 0.0),
+                PathProgress.start());
+
+        assertEquals(LocomotionAction.JUMP, frame.locomotionPlan().action());
+    }
+
+    @Test
+    void marksLargeDescentAsDropLocomotion() {
+        NavigationPath path = NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 65.0, 0.0),
+                new NavigationPoint(0.0, 64.0, 1.0)));
+
+        PathFollowFrame frame = controller.update(
+                path,
+                new NavigationPoint(0.0, 65.0, 0.0),
+                PathProgress.start());
+
+        assertEquals(LocomotionAction.DROP, frame.locomotionPlan().action());
     }
 
     private static NavigationPoint point(double x, double z) {

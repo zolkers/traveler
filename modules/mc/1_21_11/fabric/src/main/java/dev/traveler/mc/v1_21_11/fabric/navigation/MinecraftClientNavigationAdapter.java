@@ -5,12 +5,14 @@ import dev.traveler.core.navigation.NavigationAgentPort;
 import dev.traveler.core.navigation.NavigationFrameInput;
 import dev.traveler.core.navigation.camera.CameraAngles;
 import dev.traveler.core.navigation.input.MovementIntent;
+import dev.traveler.core.navigation.locomotion.AgentMotionState;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import java.util.Objects;
 import java.util.Optional;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Options;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.world.phys.Vec3;
 
 public final class MinecraftClientNavigationAdapter implements NavigationAgentPort {
     private final Minecraft client;
@@ -31,7 +33,7 @@ public final class MinecraftClientNavigationAdapter implements NavigationAgentPo
         }
         NavigationPoint position = new NavigationPoint(player.getX(), player.getY(), player.getZ());
         CameraAngles camera = new CameraAngles(player.getYRot(), player.getXRot());
-        return Optional.of(new NavigationFrameInput(position, camera, deltaSeconds));
+        return Optional.of(new NavigationFrameInput(position, camera, deltaSeconds, motionState(player)));
     }
 
     @Override
@@ -66,5 +68,11 @@ public final class MinecraftClientNavigationAdapter implements NavigationAgentPo
         options.keyRight.setDown(intent.right());
         options.keyJump.setDown(intent.jump());
         options.keySprint.setDown(intent.sprint());
+    }
+
+    private static AgentMotionState motionState(LocalPlayer player) {
+        Vec3 velocity = player.getDeltaMovement();
+        double horizontalSpeed = Math.hypot(velocity.x, velocity.z);
+        return new AgentMotionState(player.onGround(), player.horizontalCollision, horizontalSpeed, velocity.y);
     }
 }

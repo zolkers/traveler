@@ -66,4 +66,55 @@ class NavigationControllerTest {
 
         assertTrue(Math.abs(frame.cameraAngles().yawDegrees()) < 10.0);
     }
+
+    @Test
+    void keepsForwardAndJumpPressedForOneBlockRise() {
+        NavigationPath path = NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(0.0, 65.0, 1.0)));
+        NavigationFrameInput input = new NavigationFrameInput(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new CameraAngles(0.0, 0.0),
+                0.016);
+
+        NavigationControlFrame frame =
+                controller.update(path, input, NavigationControllerState.start());
+
+        assertTrue(frame.intent().forward());
+        assertTrue(frame.intent().jump());
+    }
+
+    @Test
+    void canStrafeBeforeCameraHasFinishedTurning() {
+        NavigationPath path = NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(3.0, 64.0, 0.0)));
+        NavigationFrameInput input = new NavigationFrameInput(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new CameraAngles(0.0, 0.0),
+                0.016);
+
+        NavigationControlFrame frame =
+                controller.update(path, input, NavigationControllerState.start());
+
+        assertTrue(frame.intent().left());
+        assertFalse(frame.intent().forward());
+    }
+
+    @Test
+    void canBackpedalBeforeCameraHasFinishedTurning() {
+        NavigationPath path = NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(0.0, 64.0, -3.0)));
+        NavigationFrameInput input = new NavigationFrameInput(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new CameraAngles(0.0, 0.0),
+                0.016);
+
+        NavigationControlFrame frame =
+                controller.update(path, input, NavigationControllerState.start());
+
+        assertTrue(frame.intent().back());
+        assertFalse(frame.intent().forward());
+    }
 }

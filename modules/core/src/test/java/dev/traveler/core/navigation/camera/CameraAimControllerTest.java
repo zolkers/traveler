@@ -49,6 +49,19 @@ class CameraAimControllerTest {
     }
 
     @Test
+    void clampsYawStepWhenFrameTimeSpikes() {
+        CameraAimController controller = new CameraAimController(
+                new CameraAimSettings(720.0, 360.0, 18.0, 0.01));
+
+        CameraAngles next = controller.update(
+                new CameraAngles(0.0, 0.0),
+                new CameraAngles(180.0, 0.0),
+                1.0);
+
+        assertTrue(Math.abs(next.yawDegrees()) <= 18.0);
+    }
+
+    @Test
     void derivesMinecraftAnglesFromEyeToTarget() {
         CameraAngles target = CameraAimController.targetAngles(
                 new NavigationPoint(0.0, 65.6, 0.0),

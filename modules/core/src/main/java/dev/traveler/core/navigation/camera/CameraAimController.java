@@ -19,10 +19,12 @@ public final class CameraAimController {
         double yaw = currentAngles.yawDegrees() + angularStep(
                 CameraAngles.shortestYawDelta(currentAngles.yawDegrees(), targetAngles.yawDegrees()),
                 settings.maxYawDegreesPerSecond(),
+                settings.maxYawStepDegrees(),
                 frameSeconds);
         double pitch = currentAngles.pitchDegrees() + angularStep(
                 targetAngles.pitchDegrees() - currentAngles.pitchDegrees(),
                 settings.maxPitchDegreesPerSecond(),
+                settings.maxPitchDegreesPerSecond() * frameSeconds,
                 frameSeconds);
         return new CameraAngles(yaw, pitch);
     }
@@ -38,11 +40,13 @@ public final class CameraAimController {
         return new CameraAngles(yaw, pitch);
     }
 
-    private double angularStep(double delta, double maxDegreesPerSecond, double frameSeconds) {
+    private double angularStep(double delta, double maxDegreesPerSecond, double maxStepDegrees, double frameSeconds) {
         if (Math.abs(delta) <= settings.deadzoneDegrees()) {
             return delta;
         }
         double dampedStep = delta * (1.0 - Math.exp(-settings.response() * frameSeconds));
-        return Math.clamp(dampedStep, -maxDegreesPerSecond * frameSeconds, maxDegreesPerSecond * frameSeconds);
+        double velocityStep = maxDegreesPerSecond * frameSeconds;
+        double safeStep = Math.min(maxStepDegrees, velocityStep);
+        return Math.clamp(dampedStep, -safeStep, safeStep);
     }
 }

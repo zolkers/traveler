@@ -4,14 +4,29 @@ public record CameraAimSettings(
         double maxYawDegreesPerSecond,
         double maxPitchDegreesPerSecond,
         double response,
-        double deadzoneDegrees) {
+        double deadzoneDegrees,
+        double maxYawStepDegrees) {
     public CameraAimSettings {
         requirePositive(maxYawDegreesPerSecond, "maxYawDegreesPerSecond");
         requirePositive(maxPitchDegreesPerSecond, "maxPitchDegreesPerSecond");
         requirePositive(response, "response");
+        requirePositive(maxYawStepDegrees, "maxYawStepDegrees");
         if (!Double.isFinite(deadzoneDegrees) || deadzoneDegrees < 0.0) {
             throw new IllegalArgumentException("deadzoneDegrees must be non-negative.");
         }
+    }
+
+    public CameraAimSettings(
+            double maxYawDegreesPerSecond,
+            double maxPitchDegreesPerSecond,
+            double response,
+            double deadzoneDegrees) {
+        this(
+                maxYawDegreesPerSecond,
+                maxPitchDegreesPerSecond,
+                response,
+                deadzoneDegrees,
+                Math.max(6.0, maxYawDegreesPerSecond * 0.025));
     }
 
     public static CameraAimSettings standard() {

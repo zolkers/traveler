@@ -72,7 +72,9 @@ public final class NavigationController {
                 input.position(),
                 follow.target(),
                 input.cameraAngles().yawDegrees(),
-                state.previousIntent());
+                state.previousIntent(),
+                follow.locomotionPlan(),
+                input.motionState());
         if (follow.speedScale() >= 0.5) {
             return intent;
         }
