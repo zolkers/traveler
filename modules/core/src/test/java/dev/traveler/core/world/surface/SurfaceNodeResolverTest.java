@@ -33,6 +33,17 @@ class SurfaceNodeResolverTest {
     }
 
     @Test
+    void standingSurfaceCanUseBottomSlabBelowPassableFeetBlock() {
+        SurfaceNodeResolver resolver =
+                new SurfaceNodeResolver(new FakeSurfaceWorldLayer(Map.of(new BlockPosition(0, 63, 0), bottomSlab())));
+
+        SurfaceNode node = resolver.standingSurface(new BlockPosition(0, 64, 0)).orElseThrow();
+
+        assertEquals(new BlockPosition(0, 63, 0), node.blockPosition());
+        assertEquals(63.5, node.floorY());
+    }
+
+    @Test
     void standingSurfacesExposeEverySupportedSubcellAtFeetHeight() {
         BlockPosition support = new BlockPosition(0, 63, 0);
         SurfaceNodeResolver resolver = new SurfaceNodeResolver(new FakeSurfaceWorldLayer(Map.of(support, fullBlock())));

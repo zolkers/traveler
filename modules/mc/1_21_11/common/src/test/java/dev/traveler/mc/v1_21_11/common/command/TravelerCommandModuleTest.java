@@ -235,6 +235,22 @@ class TravelerCommandModuleTest {
     }
 
     @Test
+    void pathBlockResolvesPassableTargetAboveBottomSlabSurface() {
+        BlockPosition startFeet = new BlockPosition(0, 63, 0);
+        BlockPosition startSlab = new BlockPosition(0, 63, 0);
+        BlockPosition goalSlab = new BlockPosition(1, 63, 0);
+        TravelerCommandModule module = new TravelerCommandModule(new TestSurfaceWorldLayer(Map.of(
+                startSlab, surfaceBlock(BlockShape.bottomSlab()),
+                goalSlab, surfaceBlock(BlockShape.bottomSlab()))));
+
+        dispatchAndDrain(module, new TestSource(startFeet), "traveler path block 1 64 0");
+
+        PathfinderDebugSnapshot snapshot = module.debugState().latestSnapshot().orElseThrow();
+        assertHasSurfaceNodes(snapshot);
+        assertEquals(63.5, snapshot.surfaceNodes().getLast().floorY());
+    }
+
+    @Test
     void pathBlockSearchesCapturedMinecraftSnapshot() {
         SnapshotOnlyBlockGetter blockGetter = new SnapshotOnlyBlockGetter();
         TravelerCommandModule module = new TravelerCommandModule(new PathfinderDebugState(), () -> blockGetter);

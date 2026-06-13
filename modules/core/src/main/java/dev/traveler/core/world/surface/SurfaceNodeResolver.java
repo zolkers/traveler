@@ -9,6 +9,7 @@ import java.util.Optional;
 
 public final class SurfaceNodeResolver {
     private static final int CENTER_CELL = 1;
+    private static final double PARTIAL_SUPPORT_RANGE = 0.5;
     private static final double STANDING_RANGE = 1.0;
     private static final double FLOOR_EPSILON = 0.001;
 
@@ -89,7 +90,7 @@ public final class SurfaceNodeResolver {
     }
 
     private static boolean isStandingSurface(BlockPosition feetPosition, SurfaceNode node) {
-        double minFloor = feetPosition.y() - FLOOR_EPSILON;
+        double minFloor = feetPosition.y() - PARTIAL_SUPPORT_RANGE - FLOOR_EPSILON;
         double maxFloor = feetPosition.y() + STANDING_RANGE + FLOOR_EPSILON;
         return node.floorY() >= minFloor && node.floorY() <= maxFloor;
     }
