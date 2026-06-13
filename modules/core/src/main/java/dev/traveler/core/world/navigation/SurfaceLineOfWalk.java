@@ -61,8 +61,9 @@ public final class SurfaceLineOfWalk implements LineOfWalk<SurfaceNode> {
                 boundsStart,
                 boundsGoal,
                 profile,
-                safeSettings.horizontalMargin(),
-                safeSettings.verticalMargin());
+                SurfaceTraversalGraphSettings.exact(
+                        safeSettings.horizontalMargin(),
+                        safeSettings.verticalMargin()));
     }
 
     @Override

@@ -25,7 +25,7 @@ class SurfaceTraversalGraphFootprintTest {
         SurfaceWorldLayer world = new TestSurfaceWorldLayer(Map.of(
                 start.blockPosition(), SurfaceBlock.solid(BlockShape.fullCube()),
                 destination.blockPosition(), SurfaceBlock.solid(BlockShape.fullCube()),
-                new BlockPosition(1, 64, 1), SurfaceBlock.solid(BlockShape.fullCube())));
+                new BlockPosition(1, 64, 0), SurfaceBlock.solid(BlockShape.fullCube())));
         SurfaceTraversalGraph graph = new SurfaceTraversalGraph(world, start, destination, PLAYER, 8, 4);
 
         List<Connection<SurfaceNode>> connections = connectionsFrom(graph, start);

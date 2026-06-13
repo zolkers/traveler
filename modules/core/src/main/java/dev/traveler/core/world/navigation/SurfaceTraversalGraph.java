@@ -28,12 +28,15 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode> {
     private final EntityDimensions dimensions;
     private final MovementCapabilities capabilities;
     private final SurfaceClearanceScorer clearanceScorer;
+    private final SurfaceBodyClearanceMode bodyClearanceMode;
     private final SurfaceMovementEvaluator movementEvaluator;
     private final SurfaceNodeIndex nodeIndex;
     private final double[] clearanceScores;
     private final boolean[] clearanceScoreLoaded;
     private final boolean[] bodyClearance;
     private final boolean[] bodyClearanceLoaded;
+    private final boolean[] exactBodyClearance;
+    private final boolean[] exactBodyClearanceLoaded;
     private final SurfaceBlockCache surfaceBlocks;
 
     public SurfaceTraversalGraph(
@@ -96,12 +99,15 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode> {
         this.dimensions = profile.dimensions();
         this.capabilities = profile.capabilities();
         this.clearanceScorer = safeSettings.clearanceScorer();
+        this.bodyClearanceMode = safeSettings.bodyClearanceMode();
         this.movementEvaluator = new SurfaceMovementEvaluator(capabilities);
         this.nodeIndex = new SurfaceNodeIndex(searchBounds);
         this.clearanceScores = new double[nodeIndex.size()];
         this.clearanceScoreLoaded = new boolean[nodeIndex.size()];
         this.bodyClearance = new boolean[nodeIndex.size()];
         this.bodyClearanceLoaded = new boolean[nodeIndex.size()];
+        this.exactBodyClearance = new boolean[nodeIndex.size()];
+        this.exactBodyClearanceLoaded = new boolean[nodeIndex.size()];
     }
 
     @Override
@@ -314,7 +320,7 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode> {
     }
 
     boolean hasBodyClearanceAt(SurfaceNode node) {
-        return insideBounds(node) && hasBodyClearance(node);
+        return insideBounds(node) && hasExactBodyClearance(node);
     }
 
     private boolean canStandOn(SurfaceNode node) {
@@ -323,26 +329,49 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode> {
     }
 
     private boolean hasBodyClearance(SurfaceNode node) {
+        return cachedBodyClearance(node, bodyClearance, bodyClearanceLoaded, bodyClearanceMode);
+    }
+
+    private boolean hasExactBodyClearance(SurfaceNode node) {
+        return cachedBodyClearance(
+                node,
+                exactBodyClearance,
+                exactBodyClearanceLoaded,
+                SurfaceBodyClearanceMode.EXACT);
+    }
+
+    private boolean cachedBodyClearance(
+            SurfaceNode node,
+            boolean[] cache,
+            boolean[] loaded,
+            SurfaceBodyClearanceMode mode) {
         int index = nodeIndex.indexOf(node);
-        if (bodyClearanceLoaded[index]) {
-            return bodyClearance[index];
+        if (loaded[index]) {
+            return cache[index];
         }
-        boolean clear = computeBodyClearance(node);
-        bodyClearance[index] = clear;
-        bodyClearanceLoaded[index] = true;
+        boolean clear = computeBodyClearance(node, mode);
+        cache[index] = clear;
+        loaded[index] = true;
         return clear;
     }
 
-    private boolean computeBodyClearance(SurfaceNode node) {
+    private boolean computeBodyClearance(SurfaceNode node, SurfaceBodyClearanceMode mode) {
         double minY = node.floorY() + BODY_EPSILON;
         double maxY = node.floorY() + dimensions.height();
-        SurfaceBodyFootprint footprint = SurfaceBodyFootprint.around(node, dimensions);
+        SurfaceBodyFootprint footprint = bodyFootprint(node, mode);
         for (int y = (int) Math.floor(minY); y <= (int) Math.floor(maxY); y++) {
             if (collidesWithFootprint(node, footprint, y, minY, maxY)) {
                 return false;
             }
         }
         return true;
+    }
+
+    private SurfaceBodyFootprint bodyFootprint(SurfaceNode node, SurfaceBodyClearanceMode mode) {
+        if (mode == SurfaceBodyClearanceMode.ADJUSTED) {
+            return SurfaceBodyFootprint.adjustedAround(node, dimensions);
+        }
+        return SurfaceBodyFootprint.around(node, dimensions);
     }
 
     private boolean collidesWithFootprint(

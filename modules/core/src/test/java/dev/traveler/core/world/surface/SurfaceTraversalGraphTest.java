@@ -190,8 +190,13 @@ class SurfaceTraversalGraphTest {
         SurfaceNode start = new SurfaceNode(lowSlab, 1, 1, 63.5);
         FakeSurfaceWorldLayer stairWorld =
                 new FakeSurfaceWorldLayer(Map.of(lowSlab, bottomSlab(), stair, northFacingBottomStair()));
-        FakeSurfaceWorldLayer fullBlockWorld =
-                new FakeSurfaceWorldLayer(Map.of(lowSlab, bottomSlab(), fullBlock, fullBlock()));
+        FakeSurfaceWorldLayer fullBlockWorld = new FakeSurfaceWorldLayer(Map.of(
+                lowSlab,
+                bottomSlab(),
+                fullBlock,
+                fullBlock(),
+                fullBlock.above(),
+                fullBlock()));
         SurfaceTraversalGraph stairGraph = new SurfaceTraversalGraph(stairWorld, start, start, PLAYER, 8, 4);
         SurfaceTraversalGraph fullBlockGraph = new SurfaceTraversalGraph(fullBlockWorld, start, start, PLAYER, 8, 4);
 
