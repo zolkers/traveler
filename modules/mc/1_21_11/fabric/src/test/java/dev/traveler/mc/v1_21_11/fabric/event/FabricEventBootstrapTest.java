@@ -32,7 +32,9 @@ class FabricEventBootstrapTest {
     void worldRenderPublishesTravelerEventAndDelegatesRenderer() {
         List<WorldRenderEvent> events = new ArrayList<>();
         AtomicInteger renders = new AtomicInteger();
-        FabricEventBootstrap bootstrap = new FabricEventBootstrap(context -> renders.incrementAndGet());
+        AtomicInteger navigationUpdates = new AtomicInteger();
+        FabricEventBootstrap bootstrap =
+                new FabricEventBootstrap(context -> renders.incrementAndGet(), navigationUpdates::incrementAndGet);
         WorldRenderEvent renderEvent = new WorldRenderEvent(0.5f, 1.0, 2.0, 3.0);
 
         TravelerEventSubscription subscription = TravelerClientEvents.WORLD_RENDER.register(events::add);
@@ -43,6 +45,7 @@ class FabricEventBootstrapTest {
         }
 
         assertEquals(List.of(renderEvent), events);
+        assertEquals(1, navigationUpdates.get());
         assertEquals(1, renders.get());
     }
 }

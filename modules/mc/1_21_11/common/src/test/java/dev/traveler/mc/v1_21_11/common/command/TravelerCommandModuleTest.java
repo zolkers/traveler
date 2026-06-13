@@ -14,6 +14,8 @@ import dev.traveler.core.layer.BlockClassification;
 import dev.traveler.core.layer.SurfaceBlock;
 import dev.traveler.core.layer.SurfaceWorldLayer;
 import dev.traveler.core.layer.WorldLayer;
+import dev.traveler.core.navigation.NavigationSession;
+import dev.traveler.core.navigation.spatial.NavigationPoint;
 import dev.traveler.core.path.PathfinderResult;
 import dev.traveler.core.world.geometry.BlockShape;
 import dev.traveler.core.world.block.BlockPosition;
@@ -32,9 +34,11 @@ class TravelerCommandModuleTest {
     void exposesModularCommandCatalog() {
         TravelerCommandModule module = new TravelerCommandModule();
 
-        assertEquals(2, module.catalog().routes().size());
+        assertEquals(4, module.catalog().routes().size());
         assertTrue(module.catalog().route("traveler path test").isPresent());
         assertTrue(module.catalog().route("traveler path block <x:int> <y:int> <z:int>").isPresent());
+        assertTrue(module.catalog().route("traveler navigate block <x:int> <y:int> <z:int>").isPresent());
+        assertTrue(module.catalog().route("traveler navigate stop").isPresent());
     }
 
     @Test
@@ -73,6 +77,31 @@ class TravelerCommandModuleTest {
         assertEquals(CommandResult.Status.SUCCESS, result.status());
         assertTrue(module.debugState().latestResult().isPresent());
         assertTrue(module.debugState().latestMessage().orElseThrow().contains("1,2,3"));
+    }
+
+    @Test
+    void navigateBlockStartsNavigationAndStoresDebugPath() {
+        TravelerCommandModule module = new TravelerCommandModule();
+
+        CommandResult result = module.framework().dispatch(new TestSource(), "traveler navigate block 1 2 3");
+
+        assertEquals(CommandResult.Status.SUCCESS, result.status());
+        NavigationSession session = module.navigationState().activeSession().orElseThrow();
+        assertEquals(new NavigationPoint(1.5, 2.0, 3.5), session.path().lastNode());
+        assertTrue(module.debugState().latestResult().isPresent());
+        assertTrue(result.reply().orElseThrow().contains("navigate block"));
+    }
+
+    @Test
+    void navigateStopClearsActiveNavigation() {
+        TravelerCommandModule module = new TravelerCommandModule();
+        module.framework().dispatch(new TestSource(), "traveler navigate block 1 2 3");
+
+        CommandResult result = module.framework().dispatch(new TestSource(), "traveler navigate stop");
+
+        assertEquals(CommandResult.Status.SUCCESS, result.status());
+        assertTrue(module.navigationState().activeSession().isEmpty());
+        assertTrue(module.navigationState().latestMessage().orElseThrow().contains("stopped"));
     }
 
     @Test

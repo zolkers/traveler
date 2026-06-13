@@ -2,6 +2,8 @@ package dev.traveler.mc.v1_21_11.fabric.event;
 
 import dev.traveler.mc.v1_21_11.fabric.render.FabricPathDebugRenderer;
 import dev.traveler.mc.v1_21_11.fabric.render.FabricWorldRenderer;
+import dev.traveler.mc.v1_21_11.fabric.navigation.FabricNavigationRuntime;
+import dev.traveler.mc.v1_21_11.fabric.navigation.MinecraftClientNavigationAdapter;
 import dev.traveler.mc.v1_21_11.common.command.TravelerCommandModule;
 import dev.traveler.core.event.ClientTickEvent;
 import dev.traveler.core.event.TravelerClientEvents;
@@ -15,17 +17,25 @@ import net.minecraft.world.phys.Vec3;
 
 public final class FabricEventBootstrap {
     private final FabricWorldRenderer renderer;
+    private final Runnable navigationUpdate;
     private long tickIndex;
 
     FabricEventBootstrap(FabricWorldRenderer renderer) {
+        this(renderer, () -> {});
+    }
+
+    FabricEventBootstrap(FabricWorldRenderer renderer, Runnable navigationUpdate) {
         this.renderer = Objects.requireNonNull(renderer, "renderer");
+        this.navigationUpdate = Objects.requireNonNull(navigationUpdate, "navigationUpdate");
     }
 
     public static void registerClientEvents(TravelerCommandModule module) {
         TravelerCommandModule commandModule = Objects.requireNonNull(module, "module");
         FabricPathDebugRenderer renderer =
                 new FabricPathDebugRenderer(PathDebugRenderModel.defaultModel(), commandModule.debugState());
-        new FabricEventBootstrap(renderer).register();
+        FabricNavigationRuntime navigationRuntime = new FabricNavigationRuntime(
+                commandModule.navigationState(), MinecraftClientNavigationAdapter.currentClient());
+        new FabricEventBootstrap(renderer, () -> navigationRuntime.update(System.nanoTime())).register();
     }
 
     void emitClientTick() {
@@ -35,6 +45,7 @@ public final class FabricEventBootstrap {
 
     void renderWorld(WorldRenderContext context, WorldRenderEvent event) {
         TravelerClientEvents.WORLD_RENDER.dispatch(Objects.requireNonNull(event, "event"));
+        navigationUpdate.run();
         renderer.render(context);
     }
 
