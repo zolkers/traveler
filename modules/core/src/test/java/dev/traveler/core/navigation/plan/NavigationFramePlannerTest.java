@@ -11,7 +11,6 @@ import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.control.MovementIntent;
 import dev.traveler.core.navigation.locomotion.AgentMotionState;
 import dev.traveler.core.navigation.locomotion.LocomotionAction;
-import dev.traveler.core.navigation.spatial.HorizontalVector;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import java.util.List;
 import org.junit.jupiter.api.Test;

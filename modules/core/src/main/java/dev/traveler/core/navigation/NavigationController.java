@@ -24,7 +24,9 @@ public final class NavigationController {
     }
 
     public static NavigationController standard(CameraAimSettings cameraAimSettings) {
-        return new NavigationController(NavigationFramePlanner.standard(), ControlProjector.standard(cameraAimSettings));
+        return new NavigationController(
+                NavigationFramePlanner.standard(),
+                ControlProjector.standard(cameraAimSettings));
     }
 
     public NavigationControlFrame update(

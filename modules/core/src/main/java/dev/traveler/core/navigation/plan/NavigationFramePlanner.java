@@ -2,7 +2,6 @@ package dev.traveler.core.navigation.plan;
 
 import dev.traveler.core.navigation.NavigationControllerState;
 import dev.traveler.core.navigation.NavigationFrameInput;
-import dev.traveler.core.navigation.camera.CameraAngles;
 import dev.traveler.core.navigation.follow.MovementTarget;
 import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.follow.PathFollowSettings;
