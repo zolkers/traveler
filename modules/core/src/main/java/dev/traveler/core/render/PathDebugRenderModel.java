@@ -16,25 +16,41 @@ import java.util.Set;
 public final class PathDebugRenderModel {
     private static final ColorRgba DEFAULT_COLOR = new ColorRgba(0.1f, 0.75f, 1.0f, 0.9f);
     private static final double CENTER_OFFSET = 0.5;
-    private static final double SURFACE_Y_OFFSET = 0.08;
+    private static final double DEFAULT_LINE_THICKNESS = 0.08;
     private static final float DEFAULT_NODE_ALPHA = 0.22f;
 
     private final ColorRgba pathColor;
     private final ColorRgba nodeColor;
     private final double yOffset;
+    private final double lineThickness;
 
     public PathDebugRenderModel(ColorRgba pathColor, double yOffset) {
-        this(pathColor, yOffset, transparentNodeColor(pathColor));
+        this(pathColor, yOffset, DEFAULT_LINE_THICKNESS);
+    }
+
+    public PathDebugRenderModel(ColorRgba pathColor, double yOffset, double lineThickness) {
+        this(pathColor, yOffset, lineThickness, transparentNodeColor(pathColor));
     }
 
     public PathDebugRenderModel(ColorRgba pathColor, double yOffset, ColorRgba nodeColor) {
+        this(pathColor, yOffset, DEFAULT_LINE_THICKNESS, nodeColor);
+    }
+
+    public PathDebugRenderModel(
+            ColorRgba pathColor,
+            double yOffset,
+            double lineThickness,
+            ColorRgba nodeColor) {
         this.pathColor = Objects.requireNonNull(pathColor, "pathColor");
         this.nodeColor = Objects.requireNonNull(nodeColor, "nodeColor");
+        requireFinite(yOffset, "yOffset");
+        requirePositive(lineThickness, "lineThickness");
         this.yOffset = yOffset;
+        this.lineThickness = lineThickness;
     }
 
     public static PathDebugRenderModel defaultModel() {
-        return new PathDebugRenderModel(DEFAULT_COLOR, 0.35);
+        return new PathDebugRenderModel(DEFAULT_COLOR, CENTER_OFFSET, DEFAULT_LINE_THICKNESS);
     }
 
     public DebugRenderFrame frameFor(Optional<PathfinderDebugSnapshot> snapshot) {
@@ -136,7 +152,7 @@ public final class PathDebugRenderModel {
         if (from.equals(to)) {
             return;
         }
-        lines.add(new DebugLine(from, to, pathColor));
+        lines.add(new DebugLine(from, to, pathColor, lineThickness));
     }
 
     private DebugBox boxFor(BlockPosition position) {
@@ -151,11 +167,23 @@ public final class PathDebugRenderModel {
     }
 
     private RenderVertex surfaceVertexFor(SurfaceNode node) {
-        return new RenderVertex(node.centerX(), node.floorY() + SURFACE_Y_OFFSET, node.centerZ());
+        return new RenderVertex(node.centerX(), node.renderBlockPosition().y() + yOffset, node.centerZ());
     }
 
     private static ColorRgba transparentNodeColor(ColorRgba color) {
         Objects.requireNonNull(color, "color");
         return new ColorRgba(color.red(), color.green(), color.blue(), DEFAULT_NODE_ALPHA);
+    }
+
+    private static void requireFinite(double value, String name) {
+        if (!Double.isFinite(value)) {
+            throw new IllegalArgumentException(name + " must be finite.");
+        }
+    }
+
+    private static void requirePositive(double value, String name) {
+        if (!Double.isFinite(value) || value <= 0.0) {
+            throw new IllegalArgumentException(name + " must be positive.");
+        }
     }
 }

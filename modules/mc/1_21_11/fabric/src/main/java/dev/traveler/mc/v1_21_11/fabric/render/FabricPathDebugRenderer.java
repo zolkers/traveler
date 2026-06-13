@@ -7,6 +7,7 @@ import dev.traveler.core.render.ColorRgba;
 import dev.traveler.core.render.DebugBox;
 import dev.traveler.core.render.DebugLine;
 import dev.traveler.core.render.DebugRenderFrame;
+import dev.traveler.core.render.LinePrism;
 import dev.traveler.core.render.PathDebugRenderModel;
 import dev.traveler.core.render.RenderVertex;
 import java.util.Objects;
@@ -20,7 +21,6 @@ import net.minecraft.world.phys.Vec3;
 
 public final class FabricPathDebugRenderer implements FabricWorldRenderer {
     private static final double MIN_LINE_LENGTH = 1.0E-6D;
-    private static final float LINE_WIDTH = 3.0f;
 
     private final PathDebugRenderModel renderModel;
     private final PathfinderDebugState debugState;
@@ -76,8 +76,7 @@ public final class FabricPathDebugRenderer implements FabricWorldRenderer {
         if (relative.length() <= MIN_LINE_LENGTH) {
             return;
         }
-        emitLineVertex(context.pose(), context.lineVertices(), relative.from(), relative.normal(), line.color());
-        emitLineVertex(context.pose(), context.lineVertices(), relative.to(), relative.normal(), line.color());
+        emitLinePrism(LinePrism.around(relative.from(), relative.to(), line.thickness()), line.color(), context);
     }
 
     private static void emitBox(DebugBox box, DrawContext context) {
@@ -133,12 +132,13 @@ public final class FabricPathDebugRenderer implements FabricWorldRenderer {
         emitBoxVertex(context.pose(), context.boxVertices(), fourth, color);
     }
 
-    private static void emitLineVertex(
-            PoseStack.Pose pose, VertexConsumer vertices, RenderVertex vertex, Normal normal, ColorRgba color) {
-        vertices.addVertex(pose, (float) vertex.x(), (float) vertex.y(), (float) vertex.z())
-                .setColor(channel(color.red()), channel(color.green()), channel(color.blue()), channel(color.alpha()))
-                .setNormal(pose, normal.x(), normal.y(), normal.z())
-                .setLineWidth(LINE_WIDTH);
+    private static void emitLinePrism(LinePrism prism, ColorRgba color, DrawContext context) {
+        emitFace(context, color, prism.startA(), prism.endA(), prism.endB(), prism.startB());
+        emitFace(context, color, prism.startB(), prism.endB(), prism.endC(), prism.startC());
+        emitFace(context, color, prism.startC(), prism.endC(), prism.endD(), prism.startD());
+        emitFace(context, color, prism.startD(), prism.endD(), prism.endA(), prism.startA());
+        emitFace(context, color, prism.startA(), prism.startB(), prism.startC(), prism.startD());
+        emitFace(context, color, prism.endD(), prism.endC(), prism.endB(), prism.endA());
     }
 
     private static void emitBoxVertex(
@@ -149,6 +149,10 @@ public final class FabricPathDebugRenderer implements FabricWorldRenderer {
 
     private static int channel(float value) {
         return Math.round(value * 255.0f);
+    }
+
+    private static RenderVertex relative(RenderVertex vertex, Vec3 camera) {
+        return new RenderVertex(vertex.x() - camera.x, vertex.y() - camera.y, vertex.z() - camera.z);
     }
 
     private record DrawContext(PoseStack.Pose pose, MultiBufferSource consumers, Vec3 camera) {
@@ -162,16 +166,12 @@ public final class FabricPathDebugRenderer implements FabricWorldRenderer {
             return Optional.of(new DrawContext(matrices.last(), consumers, camera.orElseThrow()));
         }
 
-        private VertexConsumer lineVertices() {
-            return consumers.getBuffer(RenderTypes.lines());
-        }
-
         private VertexConsumer boxVertices() {
             return consumers.getBuffer(RenderTypes.debugQuads());
         }
     }
 
-    private record RelativeLine(RenderVertex from, RenderVertex to, Normal normal, double length) {
+    private record RelativeLine(RenderVertex from, RenderVertex to, double length) {
         private static RelativeLine create(DebugLine line, Vec3 camera) {
             RenderVertex from = relative(line.from(), camera);
             RenderVertex to = relative(line.to(), camera);
@@ -179,21 +179,9 @@ public final class FabricPathDebugRenderer implements FabricWorldRenderer {
             double deltaY = to.y() - from.y();
             double deltaZ = to.z() - from.z();
             double length = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
-            return new RelativeLine(from, to, Normal.create(deltaX, deltaY, deltaZ, length), length);
+            return new RelativeLine(from, to, length);
         }
 
-        private static RenderVertex relative(RenderVertex vertex, Vec3 camera) {
-            return new RenderVertex(vertex.x() - camera.x, vertex.y() - camera.y, vertex.z() - camera.z);
-        }
-    }
-
-    private record Normal(float x, float y, float z) {
-        private static Normal create(double deltaX, double deltaY, double deltaZ, double length) {
-            if (length <= MIN_LINE_LENGTH) {
-                return new Normal(0.0f, 1.0f, 0.0f);
-            }
-            return new Normal((float) (deltaX / length), (float) (deltaY / length), (float) (deltaZ / length));
-        }
     }
 
     private record RelativeBox(RenderVertex min, RenderVertex max, ColorRgba color) {
@@ -217,8 +205,5 @@ public final class FabricPathDebugRenderer implements FabricWorldRenderer {
             return useMax ? max.z() : min.z();
         }
 
-        private static RenderVertex relative(RenderVertex vertex, Vec3 camera) {
-            return new RenderVertex(vertex.x() - camera.x, vertex.y() - camera.y, vertex.z() - camera.z);
-        }
     }
 }

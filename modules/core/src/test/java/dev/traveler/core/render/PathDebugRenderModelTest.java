@@ -36,7 +36,7 @@ class PathDebugRenderModelTest {
     @Test
     void pathNodesBecomeCenteredLineSegmentsAndTransparentBlockBoxes() {
         ColorRgba color = new ColorRgba(0.1f, 0.6f, 1.0f, 0.85f);
-        PathDebugRenderModel model = new PathDebugRenderModel(color, 0.35);
+        PathDebugRenderModel model = PathDebugRenderModel.defaultModel();
         PathfinderDebugState state = new PathfinderDebugState();
         state.update(foundPath(
                 new BlockPosition(1, 64, 1),
@@ -47,16 +47,16 @@ class PathDebugRenderModelTest {
 
         assertEquals(3, frame.lines().size());
         assertEquals(3, frame.boxes().size());
-        assertEquals(new RenderVertex(1.5, 64.35, 1.5), frame.lines().getFirst().from());
-        assertEquals(new RenderVertex(2.5, 64.35, 1.5), frame.lines().getFirst().to());
-        assertEquals(new RenderVertex(2.5, 64.35, 1.5), frame.lines().get(1).from());
-        assertEquals(new RenderVertex(2.5, 65.35, 1.5), frame.lines().get(1).to());
-        assertEquals(new RenderVertex(2.5, 65.35, 1.5), frame.lines().get(2).from());
-        assertEquals(new RenderVertex(3.5, 65.35, 1.5), frame.lines().get(2).to());
+        assertEquals(new RenderVertex(1.5, 64.5, 1.5), frame.lines().getFirst().from());
+        assertEquals(new RenderVertex(2.5, 64.5, 1.5), frame.lines().getFirst().to());
+        assertEquals(new RenderVertex(2.5, 64.5, 1.5), frame.lines().get(1).from());
+        assertEquals(new RenderVertex(2.5, 65.5, 1.5), frame.lines().get(1).to());
+        assertEquals(new RenderVertex(2.5, 65.5, 1.5), frame.lines().get(2).from());
+        assertEquals(new RenderVertex(3.5, 65.5, 1.5), frame.lines().get(2).to());
         assertEquals(new RenderVertex(1.0, 64.0, 1.0), frame.boxes().getFirst().min());
         assertEquals(new RenderVertex(2.0, 65.0, 2.0), frame.boxes().getFirst().max());
         assertTrue(frame.boxes().getFirst().color().alpha() < color.alpha());
-        assertEquals(color, frame.lines().getFirst().color());
+        assertEquals(0.08, frame.lines().getFirst().thickness());
     }
 
     @Test
@@ -78,9 +78,9 @@ class PathDebugRenderModelTest {
     }
 
     @Test
-    void surfacePathsRenderLinesJustAboveFloorAndBoxesAroundVisualBlocks() {
+    void surfacePathsRenderLinesThroughVisualBlockCentersAndBoxesAroundVisualBlocks() {
         ColorRgba color = new ColorRgba(0.1f, 0.6f, 1.0f, 0.85f);
-        PathDebugRenderModel model = new PathDebugRenderModel(color, 0.35);
+        PathDebugRenderModel model = new PathDebugRenderModel(color, 0.5);
         PathfinderDebugState state = new PathfinderDebugState();
         state.updateSurface(foundSurfacePath(
                 new SurfaceNode(new BlockPosition(1, 63, 1), 1, 1, 63.5),
@@ -89,8 +89,8 @@ class PathDebugRenderModelTest {
         DebugRenderFrame frame = model.frameFor(state.snapshot());
 
         assertEquals(1, frame.lines().size());
-        assertEquals(new RenderVertex(1.75, 63.58, 1.75), frame.lines().getFirst().from());
-        assertEquals(new RenderVertex(2.25, 64.08, 1.75), frame.lines().getFirst().to());
+        assertEquals(new RenderVertex(1.75, 63.5, 1.75), frame.lines().getFirst().from());
+        assertEquals(new RenderVertex(2.25, 64.5, 1.75), frame.lines().getFirst().to());
         assertEquals(new RenderVertex(1.0, 63.0, 1.0), frame.boxes().getFirst().min());
         assertEquals(new RenderVertex(2.0, 64.0, 2.0), frame.boxes().getFirst().max());
         assertEquals(new RenderVertex(2.0, 64.0, 1.0), frame.boxes().get(1).min());
@@ -118,6 +118,14 @@ class PathDebugRenderModelTest {
     void colorChannelsMustStayInUnitRange() {
         assertThrows(IllegalArgumentException.class, () -> new ColorRgba(-0.1f, 0.0f, 0.0f, 1.0f));
         assertThrows(IllegalArgumentException.class, () -> new ColorRgba(0.0f, 1.1f, 0.0f, 1.0f));
+    }
+
+    @Test
+    void lineThicknessMustBePositive() {
+        ColorRgba color = new ColorRgba(0.1f, 0.6f, 1.0f, 0.85f);
+
+        assertThrows(IllegalArgumentException.class, () -> new PathDebugRenderModel(color, 0.5, 0.0));
+        assertThrows(IllegalArgumentException.class, () -> new PathDebugRenderModel(color, 0.5, -0.01));
     }
 
     private static PathfinderResult<BlockPosition> foundPath(
