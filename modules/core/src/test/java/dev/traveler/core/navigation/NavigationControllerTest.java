@@ -153,7 +153,7 @@ class NavigationControllerTest {
     }
 
     @Test
-    void canBackpedalBeforeCameraHasFinishedTurning() {
+    void waitsForCameraInsteadOfBackpedalingTowardFarTargetBehind() {
         NavigationPath path = NavigationPath.of(List.of(
                 new NavigationPoint(0.0, 64.0, 0.0),
                 new NavigationPoint(0.0, 64.0, -3.0)));
@@ -165,7 +165,25 @@ class NavigationControllerTest {
         NavigationControlFrame frame =
                 controller.update(path, input, NavigationControllerState.start());
 
-        assertTrue(frame.intent().back());
+        assertEquals(MovementIntent.idle(), frame.intent());
+        assertTrue(Math.abs(frame.cameraAngles().yawDegrees()) > 0.0);
+    }
+
+    @Test
+    void usesTurnStrafeForWideCameraTurn() {
+        NavigationPath path = NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(4.0, 64.0, -4.0)));
+        NavigationFrameInput input = new NavigationFrameInput(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new CameraAngles(0.0, 0.0),
+                0.016);
+
+        NavigationControlFrame frame =
+                controller.update(path, input, NavigationControllerState.start());
+
+        assertTrue(frame.intent().left());
+        assertFalse(frame.intent().back());
         assertFalse(frame.intent().forward());
     }
 

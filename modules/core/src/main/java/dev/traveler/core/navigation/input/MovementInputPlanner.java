@@ -12,9 +12,11 @@ public final class MovementInputPlanner {
     private static final double JUMP_HEIGHT_THRESHOLD = 0.25;
 
     private final MovementInputSettings settings;
+    private final MovementVectorSelector vectorSelector;
 
     public MovementInputPlanner(MovementInputSettings settings) {
         this.settings = Objects.requireNonNull(settings, "settings");
+        this.vectorSelector = new MovementVectorSelector();
     }
 
     public MovementIntent plan(
@@ -65,12 +67,16 @@ public final class MovementInputPlanner {
             return recoveryIntent(previous);
         }
         NavigationPoint destination = steering.steeringTarget();
-        StrafingStrategy strategy = StrafingStrategy.select(steering, settings.centeringCorrectionThreshold());
-        HorizontalVector desired = strategy.desiredVector(position, steering);
+        MovementDirective directive = vectorSelector.select(position, steering, settings);
+        HorizontalVector desired = directive.desiredVector();
         if (desired.isZero()) {
             return verticalIntent(position, destination, plan, motion);
         }
-        return withJump(intentFor(desired, cameraYawDegrees, previous), plan, motion, strategy);
+        return withJump(
+                intentFor(desired, cameraYawDegrees, previous),
+                plan,
+                motion,
+                directive.allowsSpecialAction());
     }
 
     private MovementIntent intentFor(HorizontalVector desired, double yawDegrees, MovementIntent previous) {
@@ -78,10 +84,15 @@ public final class MovementInputPlanner {
         HorizontalVector scaled = desired.normalized().scaled(Math.min(1.0, desired.length()));
         double forwardAmount = scaled.dot(basis.forward());
         double rightAmount = scaled.dot(basis.right());
-        boolean forward = pressed(forwardAmount, previous.forward());
-        boolean back = pressed(-forwardAmount, previous.back());
-        boolean left = pressed(-rightAmount, previous.left());
-        boolean right = pressed(rightAmount, previous.right());
+        TurnInputMode mode = TurnInputMode.select(
+                forwardAmount,
+                Math.abs(rightAmount),
+                desired.length(),
+                settings);
+        boolean forward = mode.allowsForward() && pressed(forwardAmount, previous.forward());
+        boolean back = mode.allowsBack() && pressed(-forwardAmount, previous.back());
+        boolean left = mode.allowsStrafe() && pressed(-rightAmount, previous.left());
+        boolean right = mode.allowsStrafe() && pressed(rightAmount, previous.right());
         return new MovementIntent(forward, back, left, right, false, forward && !back);
     }
 
@@ -115,8 +126,8 @@ public final class MovementInputPlanner {
             MovementIntent intent,
             LocomotionPlan plan,
             AgentMotionState motion,
-            StrafingStrategy strategy) {
-        if (!plan.jumpRequested() || !motion.onGround() || !strategy.allowsSpecialAction()) {
+            boolean allowsSpecialAction) {
+        if (!plan.jumpRequested() || !motion.onGround() || !allowsSpecialAction) {
             return intent;
         }
         return new MovementIntent(

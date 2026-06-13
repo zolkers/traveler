@@ -205,11 +205,33 @@ class MovementInputPlannerTest {
     }
 
     @Test
+    void usesTurnStrafeInsteadOfBackpedalingThroughWideCameraTurn() {
+        MovementIntent intent = planner.plan(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(4.0, 64.0, -4.0),
+                0.0,
+                MovementIntent.idle());
+
+        assertEquals(new MovementIntent(false, false, true, false, false, false), intent);
+    }
+
+    @Test
+    void waitsForCameraInsteadOfBackpedalingTowardFarTargetBehind() {
+        MovementIntent intent = planner.plan(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(0.0, 64.0, -4.0),
+                0.0,
+                MovementIntent.idle());
+
+        assertEquals(MovementIntent.idle(), intent);
+    }
+
+    @Test
     void backpedalsWhenSteeringTargetIsBehindEndOfPath() {
         SteeringPlan steering = SteeringPlan.corridor(
-                new NavigationPoint(0.0, 64.0, 4.0),
-                new NavigationPoint(0.0, 64.0, 4.0),
-                new NavigationPoint(0.0, 64.0, 4.0),
+                new NavigationPoint(0.0, 64.0, 5.4),
+                new NavigationPoint(0.0, 64.0, 5.4),
+                new NavigationPoint(0.0, 64.0, 5.4),
                 new HorizontalVector(0.0, 1.0),
                 new HorizontalVector(0.0, 0.0),
                 0.0,
