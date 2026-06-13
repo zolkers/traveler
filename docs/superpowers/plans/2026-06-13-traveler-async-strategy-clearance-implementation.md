@@ -32,11 +32,11 @@
 - Modify: `modules/mc/1_21_11/common/src/main/java/dev/traveler/mc/v1_21_11/common/command/TravelerPathSearchService.java`
 - Test: `modules/mc/1_21_11/common/src/test/java/dev/traveler/mc/v1_21_11/common/command/TravelerCommandModuleTest.java`
 
-- [ ] Write failing tests that verify snapshot-backed searches do not call the live world after capture.
-- [ ] Capture all blocks inside the existing search bounds on the client thread into an immutable map of `SurfaceBlock` values.
-- [ ] Route worker searches through the immutable snapshot and keep direct block fallback behavior for tests without a world.
-- [ ] Run `./gradlew.bat :mc_1_21_11_common:test --tests dev.traveler.mc.v1_21_11.common.command.TravelerCommandModuleTest`.
-- [ ] Commit `feat(mc): capture immutable path search snapshots`.
+- [x] Write failing tests that verify snapshot-backed searches do not call the live world after capture.
+- [x] Capture all blocks inside the existing search bounds on the client thread into an immutable map of `SurfaceBlock` values.
+- [x] Route worker searches through the immutable snapshot and keep direct block fallback behavior for tests without a world.
+- [x] Run `./gradlew.bat :mc_1_21_11_common:test --tests dev.traveler.mc.v1_21_11.common.command.TravelerCommandModuleTest`.
+- [x] Commit `feat(mc): capture immutable path search snapshots`.
 
 ### Task 3: Async Commands And Navigation Completion
 

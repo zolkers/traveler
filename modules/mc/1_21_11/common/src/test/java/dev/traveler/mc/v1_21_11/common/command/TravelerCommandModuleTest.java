@@ -37,15 +37,27 @@ import dev.traveler.core.world.geometry.BlockShape;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.block.BlockPassability;
 import dev.traveler.core.world.movement.FluidHandling;
+import dev.traveler.mc.v1_21_11.common.adapter.testing.AbstractTestBlockGetter;
+import dev.traveler.mc.v1_21_11.common.adapter.testing.MinecraftTestBootstrap;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.material.FluidState;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 class TravelerCommandModuleTest {
+    @BeforeAll
+    static void bootstrapMinecraft() {
+        MinecraftTestBootstrap.bootstrap();
+    }
+
     @Test
     void exposesModularCommandCatalog() {
         TravelerCommandModule module = new TravelerCommandModule();
@@ -181,6 +193,19 @@ class TravelerCommandModuleTest {
         PathfinderDebugSnapshot snapshot = module.debugState().latestSnapshot().orElseThrow();
         assertTrue(snapshot.hasSurfaceNodes());
         assertEquals(63.5, snapshot.surfaceNodes().getLast().floorY());
+    }
+
+    @Test
+    void pathBlockSearchesCapturedMinecraftSnapshot() {
+        SnapshotOnlyBlockGetter blockGetter = new SnapshotOnlyBlockGetter();
+        TravelerCommandModule module = new TravelerCommandModule(new PathfinderDebugState(), () -> blockGetter);
+
+        CommandResult result = module.framework().dispatch(
+                new TestSource(new BlockPosition(0, 64, 0)), "traveler path block 2 63 0");
+
+        assertEquals(CommandResult.Status.SUCCESS, result.status());
+        assertTrue(blockGetter.readDuringCapture);
+        assertTrue(module.debugState().latestSnapshot().orElseThrow().hasSurfaceNodes());
     }
 
     @Test
@@ -383,6 +408,33 @@ class TravelerCommandModuleTest {
         @Override
         public SurfaceBlock surfaceBlock(BlockPosition position) {
             return blocks.getOrDefault(position, SurfaceBlock.empty());
+        }
+    }
+
+    private static final class SnapshotOnlyBlockGetter extends AbstractTestBlockGetter {
+        private boolean readDuringCapture;
+
+        @Override
+        public BlockState getBlockState(BlockPos position) {
+            requireSnapshotCapture();
+            readDuringCapture = true;
+            if (position.getY() == 63) {
+                return Blocks.STONE.defaultBlockState();
+            }
+            return Blocks.AIR.defaultBlockState();
+        }
+
+        @Override
+        public FluidState getFluidState(BlockPos position) {
+            return getBlockState(position).getFluidState();
+        }
+
+        private static void requireSnapshotCapture() {
+            boolean captureStack = StackWalker.getInstance().walk(frames -> frames.anyMatch(
+                    frame -> frame.getClassName().endsWith("ImmutableMinecraftWorldSnapshot")));
+            if (!captureStack) {
+                throw new AssertionError("live minecraft world read outside immutable path snapshot capture");
+            }
         }
     }
 }

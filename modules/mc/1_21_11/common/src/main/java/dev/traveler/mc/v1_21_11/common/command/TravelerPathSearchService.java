@@ -26,6 +26,8 @@ import dev.traveler.core.world.navigation.SurfaceTraversalGraph;
 import dev.traveler.core.world.navigation.SurfaceTraversalGraphSettings;
 import dev.traveler.core.world.surface.SurfaceNode;
 import dev.traveler.core.world.surface.SurfaceNodeResolver;
+import dev.traveler.mc.v1_21_11.common.adapter.world.ImmutableMinecraftWorldSnapshot;
+import dev.traveler.mc.v1_21_11.common.adapter.world.MinecraftWorldSnapshot;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -54,6 +56,9 @@ final class TravelerPathSearchService {
 
     TravelerPathSearchResult blockPath(TravelerCommandContext context, BlockPosition target) {
         WorldLayer worldLayer = worldLayerSupplier.get();
+        if (worldLayer instanceof MinecraftWorldSnapshot minecraftWorldLayer) {
+            return minecraftBlockPath(context, minecraftWorldLayer, target);
+        }
         if (worldLayer instanceof SurfaceWorldLayer surfaceWorldLayer) {
             return surfaceBlockPath(context, surfaceWorldLayer, target);
         }
@@ -62,6 +67,14 @@ final class TravelerPathSearchService {
         PathfinderResult<BlockPosition> result = findPath(worldLayer, start, goal);
         String message = blockMessage(worldLayer, target, result.status());
         return new TravelerPathSearchResult(result, Optional.empty(), message);
+    }
+
+    private TravelerPathSearchResult minecraftBlockPath(
+            TravelerCommandContext context, MinecraftWorldSnapshot worldLayer, BlockPosition target) {
+        BlockPosition start = startPosition(context, target);
+        SurfaceWorldLayer snapshot = ImmutableMinecraftWorldSnapshot.capture(
+                worldLayer, start, target, SEARCH_HORIZONTAL_MARGIN, SEARCH_VERTICAL_MARGIN);
+        return surfaceBlockPath(context, snapshot, target);
     }
 
     private TravelerPathSearchResult surfaceBlockPath(
