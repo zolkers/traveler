@@ -303,7 +303,8 @@ public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
             SurfaceNode node, int globalX, int globalZ, int blockY, double minY, double maxY) {
         int blockX = blockCoordinate(globalX);
         int blockZ = blockCoordinate(globalZ);
-        if (isOwnSupportBlock(node, blockX, blockY, blockZ)) {
+        BlockPosition support = node.blockPosition();
+        if (blockY == support.y() && blockX == support.x() && blockZ == support.z()) {
             return false;
         }
         SurfaceBlock block = surfaceBlock(blockX, blockY, blockZ);
@@ -314,12 +315,6 @@ public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
         }
         return block.shape().collidesWithCellBody(
                 cellCoordinate(globalX), cellCoordinate(globalZ), localMinY, localMaxY);
-    }
-
-    private static boolean isOwnSupportBlock(SurfaceNode node, int blockX, int blockY, int blockZ) {
-        return blockX == node.blockPosition().x()
-                && blockY == node.blockPosition().y()
-                && blockZ == node.blockPosition().z();
     }
 
     private boolean insideBounds(SurfaceNode node) {
