@@ -1,5 +1,6 @@
 package dev.traveler.core.navigation.follow;
 
+import dev.traveler.core.navigation.locomotion.LocomotionAction;
 import dev.traveler.core.navigation.locomotion.LocomotionPlan;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import java.util.Objects;
@@ -23,13 +24,17 @@ public final class PathFollowController {
             return completedFrame(navigationPath);
         }
         int nextIndex = advanceReachedNode(navigationPath, currentPosition, currentProgress.nextNodeIndex());
-        NavigationPoint target = lookAheadTarget(navigationPath, currentPosition, nextIndex);
+        NavigationPoint actionTarget = navigationPath.nodeAt(nextIndex);
+        LocomotionPlan plan = locomotionPlan(currentPosition, actionTarget);
+        NavigationPoint steeringTarget = steeringTarget(navigationPath, currentPosition, nextIndex, plan);
+        MovementTarget movementTarget = movementTarget(plan, actionTarget, steeringTarget);
         double speed = speedScale(currentPosition.horizontalDistanceTo(navigationPath.lastNode()));
         return new PathFollowFrame(
-                MovementTarget.follow(target),
+                movementTarget,
                 new PathProgress(nextIndex),
                 speed,
-                locomotionPlan(currentPosition, target),
+                steeringTarget,
+                plan,
                 false);
     }
 
@@ -73,6 +78,21 @@ public final class PathFollowController {
         return path.lastNode();
     }
 
+    private NavigationPoint actionLookAheadTarget(NavigationPath path, int nextIndex) {
+        double remainingDistance = settings.lookAheadDistance();
+        NavigationPoint cursor = path.nodeAt(nextIndex);
+        for (int index = nextIndex + 1; index < path.nodeCount(); index++) {
+            NavigationPoint node = path.nodeAt(index);
+            double segmentDistance = cursor.horizontalDistanceTo(node);
+            if (segmentDistance >= remainingDistance) {
+                return cursor.interpolate(node, remainingDistance / segmentDistance);
+            }
+            remainingDistance -= segmentDistance;
+            cursor = node;
+        }
+        return path.lastNode();
+    }
+
     private static boolean isVerticalStep(NavigationPoint from, NavigationPoint to) {
         return from.horizontalDistanceTo(to) <= 1.0E-6 && from.distanceTo(to) > 1.0E-6;
     }
@@ -89,6 +109,27 @@ public final class PathFollowController {
             return LocomotionPlan.drop();
         }
         return LocomotionPlan.walk();
+    }
+
+    private NavigationPoint steeringTarget(
+            NavigationPath path,
+            NavigationPoint position,
+            int nextIndex,
+            LocomotionPlan plan) {
+        if (plan.action() == LocomotionAction.WALK) {
+            return lookAheadTarget(path, position, nextIndex);
+        }
+        return actionLookAheadTarget(path, nextIndex);
+    }
+
+    private static MovementTarget movementTarget(
+            LocomotionPlan plan,
+            NavigationPoint actionTarget,
+            NavigationPoint steeringTarget) {
+        if (plan.action() == LocomotionAction.WALK) {
+            return MovementTarget.follow(steeringTarget);
+        }
+        return MovementTarget.follow(actionTarget);
     }
 
     private double speedScale(double distanceToGoal) {

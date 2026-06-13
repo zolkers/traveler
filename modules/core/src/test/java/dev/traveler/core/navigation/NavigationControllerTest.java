@@ -85,6 +85,26 @@ class NavigationControllerTest {
     }
 
     @Test
+    void anticipatesAfterJumpInsteadOfTurningBackToActionNode() {
+        NavigationPath path = NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(0.0, 65.0, 0.0),
+                new NavigationPoint(0.0, 65.0, 4.0)));
+        NavigationFrameInput input = new NavigationFrameInput(
+                new NavigationPoint(0.0, 64.2, 0.3),
+                new CameraAngles(0.0, 0.0),
+                0.016);
+
+        NavigationControlFrame frame =
+                controller.update(path, input, NavigationControllerState.start());
+
+        assertTrue(frame.intent().forward());
+        assertTrue(frame.intent().jump());
+        assertFalse(frame.intent().back());
+        assertEquals(new NavigationPoint(0.0, 65.0, 0.0), frame.movementTarget().point());
+    }
+
+    @Test
     void canStrafeBeforeCameraHasFinishedTurning() {
         NavigationPath path = NavigationPath.of(List.of(
                 new NavigationPoint(0.0, 64.0, 0.0),

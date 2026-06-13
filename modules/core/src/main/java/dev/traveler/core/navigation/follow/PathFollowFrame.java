@@ -8,6 +8,7 @@ public record PathFollowFrame(
         MovementTarget movementTarget,
         PathProgress progress,
         double speedScale,
+        NavigationPoint steeringTarget,
         LocomotionPlan locomotionPlan,
         boolean completed) {
     public PathFollowFrame(
@@ -15,12 +16,22 @@ public record PathFollowFrame(
             PathProgress progress,
             double speedScale,
             boolean completed) {
-        this(movementTarget, progress, speedScale, LocomotionPlan.walk(), completed);
+        this(movementTarget, progress, speedScale, movementTarget.point(), LocomotionPlan.walk(), completed);
+    }
+
+    public PathFollowFrame(
+            MovementTarget movementTarget,
+            PathProgress progress,
+            double speedScale,
+            LocomotionPlan locomotionPlan,
+            boolean completed) {
+        this(movementTarget, progress, speedScale, movementTarget.point(), locomotionPlan, completed);
     }
 
     public PathFollowFrame {
         Objects.requireNonNull(movementTarget, "movementTarget");
         Objects.requireNonNull(progress, "progress");
+        Objects.requireNonNull(steeringTarget, "steeringTarget");
         Objects.requireNonNull(locomotionPlan, "locomotionPlan");
         if (!Double.isFinite(speedScale) || speedScale < 0.0 || speedScale > 1.0) {
             throw new IllegalArgumentException("speedScale must be between 0 and 1.");

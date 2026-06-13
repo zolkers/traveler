@@ -92,6 +92,23 @@ class PathFollowControllerTest {
     }
 
     @Test
+    void anticipatesBeyondVerticalActionWithoutSkippingItsMovementTarget() {
+        NavigationPath path = NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(0.0, 65.0, 0.0),
+                new NavigationPoint(0.0, 65.0, 4.0)));
+
+        PathFollowFrame frame = controller.update(
+                path,
+                new NavigationPoint(0.0, 64.2, 0.3),
+                PathProgress.start());
+
+        assertEquals(new NavigationPoint(0.0, 65.0, 0.0), frame.movementTarget().point());
+        assertEquals(new NavigationPoint(0.0, 65.0, 2.0), frame.steeringTarget());
+        assertEquals(LocomotionAction.JUMP, frame.locomotionPlan().action());
+    }
+
+    @Test
     void marksOneBlockRiseAsJumpLocomotion() {
         NavigationPath path = NavigationPath.of(List.of(
                 new NavigationPoint(0.0, 64.0, 0.0),

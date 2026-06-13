@@ -51,7 +51,7 @@ public final class NavigationController {
         }
         CameraAngles cameraAngles = cameraAimController.update(
                 frameInput.cameraAngles(),
-                CameraAimController.targetAngles(frameInput.position(), follow.target()),
+                CameraAimController.targetAngles(frameInput.position(), follow.steeringTarget()),
                 frameInput.deltaSeconds());
         MovementIntent intent = movementIntent(frameInput, currentState, follow);
         NavigationControllerState nextState = new NavigationControllerState(follow.progress(), intent);
@@ -70,7 +70,7 @@ public final class NavigationController {
             PathFollowFrame follow) {
         MovementIntent intent = inputPlanner.plan(
                 input.position(),
-                follow.target(),
+                follow.steeringTarget(),
                 input.cameraAngles().yawDegrees(),
                 state.previousIntent(),
                 follow.locomotionPlan(),
