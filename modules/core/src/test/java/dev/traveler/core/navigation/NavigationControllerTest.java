@@ -91,6 +91,25 @@ class NavigationControllerTest {
     }
 
     @Test
+    void keepsForwardPressedForOneBlockDrop() {
+        NavigationPath path = NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(0.0, 63.0, 1.0)));
+        NavigationFrameInput input = new NavigationFrameInput(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new CameraAngles(0.0, 0.0),
+                0.016);
+
+        NavigationControlFrame frame =
+                controller.update(path, input, NavigationControllerState.start());
+
+        assertTrue(frame.intent().forward());
+        assertFalse(frame.intent().jump());
+        assertEquals(NavigationPhase.EXECUTE_ACTION, frame.plan().phase());
+        assertEquals(PlannedMovementMode.DIRECT, frame.plan().movementVector().mode());
+    }
+
+    @Test
     void keepsCameraPitchNeutralDuringJumpLookahead() {
         NavigationPath path = NavigationPath.of(List.of(
                 new NavigationPoint(0.0, 64.0, 0.0),

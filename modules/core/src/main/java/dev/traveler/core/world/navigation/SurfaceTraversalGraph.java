@@ -22,8 +22,9 @@ public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
     private static final double BODY_EPSILON = 0.0001;
     private static final double FLOOR_EPSILON = 0.001;
     private static final int[] SUPPORT_Y_OFFSETS = {0, 1, -1};
+    private static final int SPECIAL_CONNECTIONS_PER_NODE = 8;
     private static final int MAX_CONNECTIONS_PER_NODE =
-            HorizontalDirections.EIGHT_WAY.length * SUPPORT_Y_OFFSETS.length;
+            HorizontalDirections.EIGHT_WAY.length * SUPPORT_Y_OFFSETS.length + SPECIAL_CONNECTIONS_PER_NODE;
 
     private final SurfaceWorldLayer worldLayer;
     private final SearchBounds bounds;
@@ -122,6 +123,7 @@ public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
         for (int yOffset : SUPPORT_Y_OFFSETS) {
             addConnectionForCandidateY(node, direction, connections, destinationX, destinationZ, yOffset);
         }
+        addDropConnection(node, direction, connections);
         addJumpConnection(node, direction, connections);
     }
 
@@ -148,6 +150,46 @@ public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
                 && hasBodyClearance(to)
                 && destinationAllowsMovement(from, to, block, direction)
                 && canUseDirection(from, to, direction);
+    }
+
+    private void addDropConnection(
+            SurfaceNode node, HorizontalOffset direction, List<Connection<SurfaceNode>> connections) {
+        if (!canAttemptDrop(direction)) {
+            return;
+        }
+        SurfaceNode candidate = dropSurfaceNode(node, direction);
+        if (candidate == null) {
+            return;
+        }
+        SurfaceBlock block = surfaceBlock(candidate.blockPosition());
+        if (!canReachDrop(node, candidate, block, direction)) {
+            return;
+        }
+        connections.add(new Connection<>(node, candidate, movementCost(node, candidate)));
+    }
+
+    private boolean canAttemptDrop(HorizontalOffset direction) {
+        return !direction.isDiagonal() && capabilities.maxSafeFallDistance() > capabilities.maxStepUp();
+    }
+
+    private SurfaceNode dropSurfaceNode(SurfaceNode node, HorizontalOffset direction) {
+        int destinationX = globalX(node) + direction.x() * 2;
+        int destinationZ = globalZ(node) + direction.z() * 2;
+        return surfaceNode(destinationX, node.blockPosition().y() - 1, destinationZ);
+    }
+
+    private boolean canReachDrop(
+            SurfaceNode from, SurfaceNode to, SurfaceBlock block, HorizontalOffset direction) {
+        return insideBounds(to)
+                && isDropDown(from, to)
+                && hasBodyClearance(to)
+                && destinationAllowsMovement(from, to, block, direction);
+    }
+
+    private boolean isDropDown(SurfaceNode from, SurfaceNode to) {
+        double delta = from.floorY() - to.floorY();
+        return delta > capabilities.maxStepUp() + FLOOR_EPSILON
+                && delta <= capabilities.maxSafeFallDistance() + FLOOR_EPSILON;
     }
 
     private void addJumpConnection(

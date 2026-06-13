@@ -83,6 +83,22 @@ class SurfaceTraversalGraphTest {
     }
 
     @Test
+    void oneBlockDropProvidesWalkableSurfaceConnection() {
+        BlockPosition highBlock = new BlockPosition(0, 63, 0);
+        BlockPosition lowBlock = new BlockPosition(1, 62, 0);
+        SurfaceNode start = new SurfaceNode(highBlock, 1, 1, 64.0);
+        SurfaceNode destination = new SurfaceNode(lowBlock, 1, 1, 63.0);
+        FakeSurfaceWorldLayer world =
+                new FakeSurfaceWorldLayer(Map.of(highBlock, fullBlock(), lowBlock, fullBlock()));
+        SurfaceTraversalGraph graph = new SurfaceTraversalGraph(world, start, destination, PLAYER, 8, 4);
+
+        Connection<SurfaceNode> connection = connectionTo(graph, start, destination);
+
+        assertNotNull(connection);
+        assertEquals(63.0, connection.to().floorY());
+    }
+
+    @Test
     void neighborExpansionDoesNotRereadTheSameSurfaceBlock() {
         BlockPosition startBlock = new BlockPosition(0, 63, 0);
         BlockPosition destinationBlock = new BlockPosition(1, 63, 0);
