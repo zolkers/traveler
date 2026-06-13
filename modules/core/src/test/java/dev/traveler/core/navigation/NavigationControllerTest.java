@@ -87,6 +87,39 @@ class NavigationControllerTest {
     }
 
     @Test
+    void keepsCameraPitchNeutralDuringJumpLookahead() {
+        NavigationPath path = NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(0.0, 65.0, 0.0),
+                new NavigationPoint(0.0, 65.0, 4.0)));
+        NavigationFrameInput input = new NavigationFrameInput(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new CameraAngles(0.0, 0.0),
+                0.016);
+
+        NavigationControlFrame frame =
+                controller.update(path, input, NavigationControllerState.start());
+
+        assertEquals(0.0, frame.cameraAngles().pitchDegrees());
+    }
+
+    @Test
+    void keepsCameraYawWhenActionHasNoHorizontalLookahead() {
+        NavigationPath path = NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(0.0, 65.0, 0.0)));
+        NavigationFrameInput input = new NavigationFrameInput(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new CameraAngles(90.0, 0.0),
+                0.016);
+
+        NavigationControlFrame frame =
+                controller.update(path, input, NavigationControllerState.start());
+
+        assertEquals(90.0, frame.cameraAngles().yawDegrees());
+    }
+
+    @Test
     void keepsJumpPressedAcrossRenderFramesUntilMinecraftTickCanConsumeIt() {
         NavigationPath path = NavigationPath.of(List.of(
                 new NavigationPoint(0.0, 64.0, 0.0),

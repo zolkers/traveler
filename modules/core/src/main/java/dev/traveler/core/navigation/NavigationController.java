@@ -3,6 +3,7 @@ package dev.traveler.core.navigation;
 import dev.traveler.core.navigation.camera.CameraAimController;
 import dev.traveler.core.navigation.camera.CameraAimSettings;
 import dev.traveler.core.navigation.camera.CameraAngles;
+import dev.traveler.core.navigation.camera.CameraTargetPlanner;
 import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.follow.PathFollowController;
 import dev.traveler.core.navigation.follow.PathFollowFrame;
@@ -19,6 +20,7 @@ import java.util.Objects;
 public final class NavigationController {
     private final PathFollowController pathFollowController;
     private final CameraAimController cameraAimController;
+    private final CameraTargetPlanner cameraTargetPlanner;
     private final MovementInputPlanner inputPlanner;
     private final LocomotionSequencer locomotionSequencer;
 
@@ -26,7 +28,12 @@ public final class NavigationController {
             PathFollowController pathFollowController,
             CameraAimController cameraAimController,
             MovementInputPlanner inputPlanner) {
-        this(pathFollowController, cameraAimController, inputPlanner, LocomotionSequencer.standard());
+        this(
+                pathFollowController,
+                cameraAimController,
+                CameraTargetPlanner.standard(),
+                inputPlanner,
+                LocomotionSequencer.standard());
     }
 
     public NavigationController(
@@ -34,8 +41,23 @@ public final class NavigationController {
             CameraAimController cameraAimController,
             MovementInputPlanner inputPlanner,
             LocomotionSequencer locomotionSequencer) {
+        this(
+                pathFollowController,
+                cameraAimController,
+                CameraTargetPlanner.standard(),
+                inputPlanner,
+                locomotionSequencer);
+    }
+
+    public NavigationController(
+            PathFollowController pathFollowController,
+            CameraAimController cameraAimController,
+            CameraTargetPlanner cameraTargetPlanner,
+            MovementInputPlanner inputPlanner,
+            LocomotionSequencer locomotionSequencer) {
         this.pathFollowController = Objects.requireNonNull(pathFollowController, "pathFollowController");
         this.cameraAimController = Objects.requireNonNull(cameraAimController, "cameraAimController");
+        this.cameraTargetPlanner = Objects.requireNonNull(cameraTargetPlanner, "cameraTargetPlanner");
         this.inputPlanner = Objects.requireNonNull(inputPlanner, "inputPlanner");
         this.locomotionSequencer = Objects.requireNonNull(locomotionSequencer, "locomotionSequencer");
     }
@@ -68,7 +90,11 @@ public final class NavigationController {
         }
         CameraAngles cameraAngles = cameraAimController.update(
                 frameInput.cameraAngles(),
-                CameraAimController.targetAngles(frameInput.position(), follow.steeringTarget()),
+                cameraTargetPlanner.targetAngles(
+                        navigationPath,
+                        frameInput.position(),
+                        follow.progress(),
+                        frameInput.cameraAngles()),
                 frameInput.deltaSeconds());
         LocomotionDecision locomotion = locomotionSequencer.update(
                 locomotionState(currentState, follow),
