@@ -8,6 +8,8 @@ import dev.traveler.core.world.behavior.BlockBehavior;
 import dev.traveler.core.world.behavior.BlockBehaviorKey;
 import dev.traveler.core.world.behavior.BlockBehaviorRegistry;
 import dev.traveler.core.world.behavior.context.HorizontalFacing;
+import dev.traveler.core.world.behavior.special.WaterloggedBlockBehavior;
+import dev.traveler.core.world.block.BlockPassability;
 import dev.traveler.core.world.geometry.BlockShape;
 import dev.traveler.core.world.geometry.CollisionBox;
 import java.util.ArrayList;
@@ -35,9 +37,10 @@ public final class MinecraftSurfaceBlockAdapter {
 
     public SurfaceBlock surfaceBlock(MinecraftBlockContext context) {
         MinecraftBlockContext safeContext = Objects.requireNonNull(context, "context");
-        BlockClassification classification = classifier.classify(safeContext);
         BlockShape shape = shapeOf(safeContext);
-        return new SurfaceBlock(classification, shape, behaviorFor(safeContext.state(), shape));
+        BlockBehavior behavior = behaviorFor(safeContext.state(), shape);
+        BlockClassification classification = classificationFor(safeContext, behavior);
+        return new SurfaceBlock(classification, shape, behavior);
     }
 
     private BlockShape shapeOf(MinecraftBlockContext context) {
@@ -80,6 +83,24 @@ public final class MinecraftSurfaceBlockAdapter {
             return behaviorRegistry.stair(horizontalFacing(state.getValue(StairBlock.FACING)));
         }
         return behaviorRegistry.behavior(BlockBehaviorKey.FULL_BLOCK);
+    }
+
+    private BlockClassification classificationFor(MinecraftBlockContext context, BlockBehavior behavior) {
+        BlockClassification base = classifier.classify(context);
+        if (!isWalkableSurfaceBehavior(behavior)) {
+            return base;
+        }
+        return new BlockClassification(BlockPassability.WALKABLE, base.fluidHandling());
+    }
+
+    private boolean isWalkableSurfaceBehavior(BlockBehavior behavior) {
+        if (behavior.key() == BlockBehaviorKey.SLAB || behavior.key() == BlockBehaviorKey.STAIR) {
+            return true;
+        }
+        if (behavior instanceof WaterloggedBlockBehavior waterlogged) {
+            return isWalkableSurfaceBehavior(waterlogged.delegate());
+        }
+        return false;
     }
 
     private static HorizontalFacing horizontalFacing(Direction direction) {

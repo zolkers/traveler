@@ -50,7 +50,7 @@ class MinecraftSurfaceBlockAdapterTest {
                 Blocks.OAK_SLAB.defaultBlockState().setValue(SlabBlock.TYPE, SlabType.BOTTOM));
 
         assertEquals(0.5, block.shape().floorHeightForCell(0, 0).orElseThrow());
-        assertEquals(BlockPassability.SOLID, block.classification().passability());
+        assertEquals(BlockPassability.WALKABLE, block.classification().passability());
     }
 
     @Test
@@ -105,6 +105,7 @@ class MinecraftSurfaceBlockAdapterTest {
 
         assertEquals(BlockBehaviorKey.SLAB, drySlab.behavior().key());
         assertEquals(BlockBehaviorKey.WATERLOGGED, wetSlab.behavior().key());
+        assertEquals(BlockPassability.WALKABLE, wetSlab.classification().passability());
     }
 
     @Test
