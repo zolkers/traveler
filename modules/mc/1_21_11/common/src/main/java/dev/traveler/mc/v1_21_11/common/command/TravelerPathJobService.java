@@ -166,11 +166,25 @@ final class TravelerPathJobService implements AutoCloseable {
         result.updateDebug(debugState);
         Optional<NavigationPath> path = result.navigationPath();
         if (path.isEmpty()) {
-            navigationFailure(result, feedback);
+            completeEmptyNavigation(result, feedback);
             return;
         }
         String message = result.message().replaceFirst("^path", "navigate") + " | " + pathSummary();
         navigationState.start(path.orElseThrow(), message);
+        feedback.reply(message);
+    }
+
+    private void completeEmptyNavigation(TravelerPathSearchResult result, TravelerCommandFeedback feedback) {
+        if (result.alreadyAtTarget()) {
+            navigationAlreadyAtTarget(result, feedback);
+            return;
+        }
+        navigationFailure(result, feedback);
+    }
+
+    private void navigationAlreadyAtTarget(TravelerPathSearchResult result, TravelerCommandFeedback feedback) {
+        String message = "navigation already at target | " + result.message();
+        navigationState.stop(message);
         feedback.reply(message);
     }
 

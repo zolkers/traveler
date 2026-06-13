@@ -249,6 +249,54 @@ class TravelerCommandModuleTest {
     }
 
     @Test
+    void navigateBlockStartsAfterCapturedMinecraftSnapshot() {
+        CountingBlockGetter blockGetter = new CountingBlockGetter();
+        TravelerCommandModule module = new TravelerCommandModule(new PathfinderDebugState(), () -> blockGetter);
+        TestSource source = new TestSource(new BlockPosition(0, 64, 0));
+
+        CommandResult result = module.framework().dispatch(source, "traveler navigate block 2 63 0");
+
+        assertEquals(CommandResult.Status.SUCCESS, result.status());
+        assertTrue(result.reply().orElseThrow().contains("navigate queued id="));
+
+        waitForJobs(module, () -> module.navigationState().activeSession().isPresent());
+
+        assertTrue(source.replies().getLast().contains("navigate block"));
+    }
+
+    @Test
+    void navigateBlockStartsAfterDistantCapturedMinecraftSnapshot() {
+        CountingBlockGetter blockGetter = new CountingBlockGetter();
+        TravelerCommandModule module = new TravelerCommandModule(new PathfinderDebugState(), () -> blockGetter);
+        TestSource source = new TestSource(new BlockPosition(0, 64, 0));
+
+        CommandResult result = module.framework().dispatch(source, "traveler navigate block 0 63 50");
+
+        assertEquals(CommandResult.Status.SUCCESS, result.status());
+        assertTrue(result.reply().orElseThrow().contains("navigate queued id="));
+
+        waitForJobs(module, () -> module.navigationState().activeSession().isPresent());
+
+        assertTrue(source.replies().getLast().contains("navigate block"));
+    }
+
+    @Test
+    void navigateBlockReportsAlreadyAtTargetForSingleNodeSnapshotPath() {
+        CountingBlockGetter blockGetter = new CountingBlockGetter();
+        TravelerCommandModule module = new TravelerCommandModule(new PathfinderDebugState(), () -> blockGetter);
+        TestSource source = new TestSource(new BlockPosition(0, 64, 0));
+
+        CommandResult result = module.framework().dispatch(source, "traveler navigate block 0 63 0");
+
+        assertEquals(CommandResult.Status.SUCCESS, result.status());
+        assertTrue(result.reply().orElseThrow().contains("navigate queued id="));
+
+        waitForJobs(module, () -> source.replies().getLast().contains("already at target"));
+
+        assertTrue(module.navigationState().activeSession().isEmpty());
+    }
+
+    @Test
     void pathBlockReturnsBeforeCapturingMinecraftSnapshot() {
         CountingBlockGetter blockGetter = new CountingBlockGetter();
         TravelerCommandModule module = new TravelerCommandModule(new PathfinderDebugState(), () -> blockGetter);

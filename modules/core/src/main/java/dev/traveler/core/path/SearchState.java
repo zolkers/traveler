@@ -13,6 +13,7 @@ final class SearchState<N> {
     private final PathfinderRequest<N> request;
     private final PriorityQueue<SearchNode<N>> openNodes = new PriorityQueue<>(Comparator
             .<SearchNode<N>>comparingDouble(SearchNode::estimatedTotalCost)
+            .thenComparingDouble(SearchNode::heuristicCost)
             .thenComparingLong(SearchNode::sequence));
     private final Map<N, Double> costs = new HashMap<>();
     private final Map<N, Connection<N>> previousConnections = new HashMap<>();

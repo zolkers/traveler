@@ -31,6 +31,7 @@ import dev.traveler.core.world.surface.SurfaceNodeResolver;
 import dev.traveler.mc.v1_21_11.common.adapter.world.ImmutableMinecraftWorldSnapshot;
 import dev.traveler.mc.v1_21_11.common.adapter.world.MinecraftWorldSnapshot;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -167,6 +168,11 @@ final class TravelerPathSearchService {
         if (startNodes.isEmpty() || goalNodes.isEmpty()) {
             return surfaceNotFound();
         }
+        Optional<PathfinderResult<SurfaceNode>> preferred =
+                preferredSurfacePath(worldLayer, start, target, startNodes, goalNodes);
+        if (preferred.isPresent()) {
+            return preferred.orElseThrow();
+        }
         return bestSurfacePath(worldLayer, startNodes, goalNodes);
     }
 
@@ -198,6 +204,34 @@ final class TravelerPathSearchService {
             return targetSurfaces;
         }
         return resolver.standingSurface(target).map(List::of).orElseGet(List::of);
+    }
+
+    private static Optional<PathfinderResult<SurfaceNode>> preferredSurfacePath(
+            SurfaceWorldLayer worldLayer,
+            BlockPosition start,
+            BlockPosition target,
+            List<SurfaceNode> starts,
+            List<SurfaceNode> goals) {
+        PathfinderResult<SurfaceNode> result = searchSurfacePath(
+                worldLayer,
+                nearestSurface(starts, start),
+                nearestSurface(goals, target));
+        if (!isFound(result)) {
+            return Optional.empty();
+        }
+        return Optional.of(result);
+    }
+
+    private static SurfaceNode nearestSurface(List<SurfaceNode> nodes, BlockPosition position) {
+        return nodes.stream()
+                .min(Comparator.comparingDouble(node -> centerDistance(node, position)))
+                .orElseThrow();
+    }
+
+    private static double centerDistance(SurfaceNode node, BlockPosition position) {
+        double centerX = position.x() + 0.5;
+        double centerZ = position.z() + 0.5;
+        return Math.hypot(node.centerX() - centerX, node.centerZ() - centerZ);
     }
 
     private static PathfinderResult<SurfaceNode> bestSurfacePath(

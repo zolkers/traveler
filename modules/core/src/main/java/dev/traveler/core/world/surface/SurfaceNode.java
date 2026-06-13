@@ -30,4 +30,27 @@ public record SurfaceNode(BlockPosition blockPosition, int cellX, int cellZ, dou
     public double centerZ() {
         return blockPosition.z() + SurfaceCell.centerOffset(cellZ);
     }
+
+    @Override
+    public boolean equals(Object value) {
+        if (this == value) {
+            return true;
+        }
+        if (!(value instanceof SurfaceNode other)) {
+            return false;
+        }
+        return cellX == other.cellX
+                && cellZ == other.cellZ
+                && Double.compare(floorY, other.floorY) == 0
+                && blockPosition.equals(other.blockPosition);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = blockPosition.hashCode();
+        result = 31 * result + cellX;
+        result = 31 * result + cellZ;
+        long floorBits = Double.doubleToLongBits(floorY);
+        return 31 * result + (int) (floorBits ^ (floorBits >>> 32));
+    }
 }

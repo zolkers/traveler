@@ -43,8 +43,18 @@ record TravelerPathSearchResult(
         return navigationPath(points);
     }
 
+    boolean alreadyAtTarget() {
+        return status() == PathfinderStatus.FOUND && navigationPointCount() == 1;
+    }
+
     PathfinderStatus status() {
         return blockResult.status();
+    }
+
+    private int navigationPointCount() {
+        return surfaceResult
+                .map(result -> result.path().nodeCount())
+                .orElseGet(() -> blockResult.path().nodeCount());
     }
 
     private static Optional<NavigationPath> navigationPath(List<NavigationPoint> points) {

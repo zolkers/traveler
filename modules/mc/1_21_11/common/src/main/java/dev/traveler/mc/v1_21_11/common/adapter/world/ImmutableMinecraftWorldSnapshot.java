@@ -3,6 +3,7 @@ package dev.traveler.mc.v1_21_11.common.adapter.world;
 import dev.traveler.core.layer.SurfaceBlock;
 import dev.traveler.core.layer.SurfaceWorldLayer;
 import dev.traveler.core.world.block.BlockPosition;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -11,7 +12,7 @@ public final class ImmutableMinecraftWorldSnapshot implements SurfaceWorldLayer 
     private final Map<BlockPosition, SurfaceBlock> blocks;
 
     private ImmutableMinecraftWorldSnapshot(Map<BlockPosition, SurfaceBlock> blocks) {
-        this.blocks = Map.copyOf(blocks);
+        this.blocks = Collections.unmodifiableMap(new HashMap<>(blocks));
     }
 
     public static ImmutableMinecraftWorldSnapshot capture(

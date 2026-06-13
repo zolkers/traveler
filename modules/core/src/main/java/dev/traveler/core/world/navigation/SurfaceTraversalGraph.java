@@ -31,6 +31,7 @@ public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
     private final MovementCapabilities capabilities;
     private final SurfaceClearanceScorer clearanceScorer;
     private final Map<SurfaceNode, Double> clearanceScores = new HashMap<>();
+    private final Map<SurfaceNode, Boolean> bodyClearance = new HashMap<>();
     private final SurfaceBlockCache surfaceBlocks;
 
     public SurfaceTraversalGraph(
@@ -268,6 +269,16 @@ public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
     }
 
     private boolean hasBodyClearance(SurfaceNode node) {
+        Boolean cached = bodyClearance.get(node);
+        if (cached != null) {
+            return cached;
+        }
+        boolean clear = computeBodyClearance(node);
+        bodyClearance.put(node, clear);
+        return clear;
+    }
+
+    private boolean computeBodyClearance(SurfaceNode node) {
         double minY = node.floorY() + BODY_EPSILON;
         double maxY = node.floorY() + dimensions.height();
         SurfaceBodyFootprint footprint = SurfaceBodyFootprint.around(node, dimensions);
