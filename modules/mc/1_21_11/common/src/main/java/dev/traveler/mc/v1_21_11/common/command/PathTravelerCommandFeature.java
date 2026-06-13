@@ -25,6 +25,7 @@ import dev.traveler.core.world.navigation.SurfaceLineOfWalk;
 import dev.traveler.core.world.navigation.SurfaceLineOfWalkSettings;
 import dev.traveler.core.world.navigation.SurfaceSmoothingPolicy;
 import dev.traveler.core.world.navigation.SurfaceTraversalGraph;
+import dev.traveler.core.world.navigation.SurfaceTraversalGraphSettings;
 import dev.traveler.core.world.surface.SurfaceNode;
 import dev.traveler.core.world.surface.SurfaceNodeResolver;
 import java.util.List;
@@ -138,8 +139,7 @@ public final class PathTravelerCommandFeature {
                 resolvedStart,
                 resolvedGoal,
                 CLIENT_CAPABILITIES,
-                SEARCH_HORIZONTAL_MARGIN,
-                SEARCH_VERTICAL_MARGIN);
+                SurfaceTraversalGraphSettings.standard(SEARCH_HORIZONTAL_MARGIN, SEARCH_VERTICAL_MARGIN));
         PathfinderRequest<SurfaceNode> request = new PathfinderRequest<>(
                 graph, resolvedStart, resolvedGoal, PathTravelerCommandFeature::surfaceDistance);
         PathfinderResult<SurfaceNode> result = new AStarPathfinder<SurfaceNode>().search(request);

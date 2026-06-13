@@ -10,7 +10,9 @@ import dev.traveler.core.graph.Graph;
 import dev.traveler.core.layer.SurfaceBlock;
 import dev.traveler.core.layer.SurfaceWorldLayer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
@@ -24,6 +26,8 @@ public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
     private final SurfaceWorldLayer worldLayer;
     private final SearchBounds bounds;
     private final MovementCapabilities capabilities;
+    private final SurfaceClearanceScorer clearanceScorer;
+    private final Map<SurfaceNode, Double> clearanceScores = new HashMap<>();
     private final SurfaceBlockCache surfaceBlocks;
 
     public SurfaceTraversalGraph(
@@ -33,17 +37,33 @@ public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
             MovementCapabilities capabilities,
             int horizontalMargin,
             int verticalMargin) {
+        this(
+                worldLayer,
+                start,
+                goal,
+                capabilities,
+                SurfaceTraversalGraphSettings.basic(horizontalMargin, verticalMargin));
+    }
+
+    public SurfaceTraversalGraph(
+            SurfaceWorldLayer worldLayer,
+            SurfaceNode start,
+            SurfaceNode goal,
+            MovementCapabilities capabilities,
+            SurfaceTraversalGraphSettings settings) {
         this.worldLayer = Objects.requireNonNull(worldLayer, "worldLayer");
         SurfaceNode safeStart = Objects.requireNonNull(start, "start");
         SurfaceNode safeGoal = Objects.requireNonNull(goal, "goal");
+        SurfaceTraversalGraphSettings safeSettings = Objects.requireNonNull(settings, "settings");
         SearchBounds searchBounds = SearchBounds.around(
                 safeStart.blockPosition(),
                 safeGoal.blockPosition(),
-                horizontalMargin,
-                verticalMargin);
+                safeSettings.horizontalMargin(),
+                safeSettings.verticalMargin());
         this.bounds = searchBounds;
         this.surfaceBlocks = new SurfaceBlockCache(this.worldLayer, searchBounds);
         this.capabilities = Objects.requireNonNull(capabilities, "capabilities");
+        this.clearanceScorer = safeSettings.clearanceScorer();
     }
 
     @Override
@@ -159,8 +179,17 @@ public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
         return surfaceNode(globalX, blockY, globalZ);
     }
 
-    boolean canStandAt(SurfaceNode node) {
-        return canStandOn(node);
+    SurfaceNode nearestSurfaceAt(int globalX, int globalZ, double floorY) {
+        int baseY = (int) Math.floor(floorY);
+        SurfaceNode nearest = null;
+        for (int yOffset : SUPPORT_Y_OFFSETS) {
+            nearest = nearestOf(nearest, surfaceNodeAt(globalX, baseY + yOffset, globalZ), floorY);
+        }
+        return nearest;
+    }
+
+    boolean hasBodyClearanceAt(SurfaceNode node) {
+        return insideBounds(node) && hasBodyClearance(node);
     }
 
     private boolean canStandOn(SurfaceNode node) {
@@ -196,7 +225,21 @@ public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
     private double movementCost(SurfaceNode from, SurfaceNode to) {
         double horizontalCost = horizontalCost(from, to);
         double climbCost = climbCost(to.floorY() - from.floorY());
-        return horizontalCost + climbCost;
+        double clearanceCost = clearanceCost(to);
+        return horizontalCost + climbCost + clearanceCost;
+    }
+
+    private double clearanceCost(SurfaceNode node) {
+        if (!clearanceScorer.isEnabled()) {
+            return 0.0;
+        }
+        Double cached = clearanceScores.get(node);
+        if (cached != null) {
+            return cached;
+        }
+        double score = clearanceScorer.score(this, node);
+        clearanceScores.put(node, score);
+        return score;
     }
 
     private static double horizontalCost(SurfaceNode from, SurfaceNode to) {
@@ -244,6 +287,20 @@ public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
 
     private static boolean sameFloor(SurfaceNode first, SurfaceNode second) {
         return Math.abs(first.floorY() - second.floorY()) <= FLOOR_EPSILON;
+    }
+
+    private static SurfaceNode nearestOf(SurfaceNode current, SurfaceNode candidate, double floorY) {
+        if (candidate == null) {
+            return current;
+        }
+        if (current == null || floorDistance(candidate, floorY) < floorDistance(current, floorY)) {
+            return candidate;
+        }
+        return current;
+    }
+
+    private static double floorDistance(SurfaceNode node, double floorY) {
+        return Math.abs(node.floorY() - floorY);
     }
 
     private static double clamp(double value) {

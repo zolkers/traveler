@@ -9,12 +9,18 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.traveler.core.graph.Connection;
+import dev.traveler.core.graph.GraphPath;
 import dev.traveler.core.layer.SurfaceBlock;
 import dev.traveler.core.layer.SurfaceWorldLayer;
+import dev.traveler.core.path.AStarPathfinder;
+import dev.traveler.core.path.PathfinderRequest;
+import dev.traveler.core.path.PathfinderResult;
+import dev.traveler.core.path.PathfinderStatus;
 import dev.traveler.core.world.behavior.special.AirBlockBehavior;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.geometry.BlockShape;
 import dev.traveler.core.world.movement.MovementCapabilities;
+import dev.traveler.core.world.navigation.SurfaceTraversalGraphSettings;
 import dev.traveler.core.world.navigation.SurfaceTraversalGraph;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -155,6 +161,26 @@ class SurfaceTraversalGraphTest {
         assertTrue(stairCost < fullBlockCost);
     }
 
+    @Test
+    void clearanceScoringPrefersOpenGroundOverWallHuggingRoutes() {
+        SurfaceNode start = nodeAt(0, 0);
+        SurfaceNode goal = nodeAt(5, 0);
+        FakeSurfaceWorldLayer world = new FakeSurfaceWorldLayer(wideSurfaceWithSouthWall(0, 5));
+        SurfaceTraversalGraph graph = new SurfaceTraversalGraph(
+                world,
+                start,
+                goal,
+                PLAYER,
+                SurfaceTraversalGraphSettings.standard(8, 4));
+
+        PathfinderResult<SurfaceNode> result = new AStarPathfinder<SurfaceNode>()
+                .search(new PathfinderRequest<>(graph, start, goal, SurfaceTraversalGraphTest::distance));
+        GraphPath<SurfaceNode> path = result.path();
+
+        assertEquals(PathfinderStatus.FOUND, result.status());
+        assertTrue(path.nodes().stream().anyMatch(node -> node.blockPosition().z() < 0));
+    }
+
     private static Connection<SurfaceNode> connectionTo(
             SurfaceTraversalGraph graph, SurfaceNode start, SurfaceNode destination) {
         return connectionsFrom(graph, start).stream()
@@ -167,6 +193,29 @@ class SurfaceTraversalGraphTest {
         List<Connection<SurfaceNode>> connections = new ArrayList<>();
         graph.outgoingConnections(start).forEach(connections::add);
         return List.copyOf(connections);
+    }
+
+    private static Map<BlockPosition, SurfaceBlock> wideSurfaceWithSouthWall(int minX, int maxX) {
+        Map<BlockPosition, SurfaceBlock> blocks = new HashMap<>();
+        for (int x = minX; x <= maxX; x++) {
+            addSurfaceColumn(blocks, x);
+            blocks.put(new BlockPosition(x, 64, 1), fullBlock());
+        }
+        return blocks;
+    }
+
+    private static void addSurfaceColumn(Map<BlockPosition, SurfaceBlock> blocks, int x) {
+        for (int z = -2; z <= 0; z++) {
+            blocks.put(new BlockPosition(x, 63, z), fullBlock());
+        }
+    }
+
+    private static SurfaceNode nodeAt(int x, int z) {
+        return new SurfaceNode(new BlockPosition(x, 63, z), 1, 1, 64.0);
+    }
+
+    private static double distance(SurfaceNode from, SurfaceNode to) {
+        return Math.hypot(from.centerX() - to.centerX(), from.centerZ() - to.centerZ());
     }
 
     private static final class CountingSurfaceWorldLayer implements SurfaceWorldLayer {

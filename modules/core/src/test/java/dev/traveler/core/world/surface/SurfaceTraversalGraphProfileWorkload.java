@@ -17,6 +17,7 @@ import dev.traveler.core.world.navigation.SurfaceLineOfWalk;
 import dev.traveler.core.world.navigation.SurfaceLineOfWalkSettings;
 import dev.traveler.core.world.navigation.SurfaceSmoothingPolicy;
 import dev.traveler.core.world.navigation.SurfaceTraversalGraph;
+import dev.traveler.core.world.navigation.SurfaceTraversalGraphSettings;
 import java.util.List;
 
 public final class SurfaceTraversalGraphProfileWorkload {
@@ -61,7 +62,8 @@ public final class SurfaceTraversalGraphProfileWorkload {
     }
 
     private static PathfinderResult<SurfaceNode> search(ProfileSurfaceWorldLayer world, boolean smoothing) {
-        Graph<SurfaceNode> graph = new SurfaceTraversalGraph(world, START, GOAL, PLAYER, 56, 4);
+        Graph<SurfaceNode> graph =
+                new SurfaceTraversalGraph(world, START, GOAL, PLAYER, SurfaceTraversalGraphSettings.standard(56, 4));
         PathfinderRequest<SurfaceNode> request =
                 new PathfinderRequest<>(graph, START, GOAL, SurfaceTraversalGraphProfileWorkload::distance);
         PathfinderResult<SurfaceNode> result = new AStarPathfinder<SurfaceNode>().search(request);

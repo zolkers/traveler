@@ -9,7 +9,6 @@ import java.util.Objects;
 
 public final class SurfaceLineOfWalk implements LineOfWalk<SurfaceNode> {
     private static final double FLOOR_EPSILON = 0.001;
-    private static final int[] SUPPORT_Y_OFFSETS = {0, -1, 1};
 
     private final SurfaceTraversalGraph graph;
     private final SurfaceLineOfWalkSettings settings;
@@ -93,26 +92,7 @@ public final class SurfaceLineOfWalk implements LineOfWalk<SurfaceNode> {
         int globalX = interpolate(globalX(from), globalX(to), step, steps);
         int globalZ = interpolate(globalZ(from), globalZ(to), step, steps);
         double floorY = interpolateFloorY(from, to, step, steps);
-        return nearestSurface(graph, globalX, globalZ, floorY);
-    }
-
-    private SurfaceNode nearestSurface(SurfaceTraversalGraph graph, int globalX, int globalZ, double floorY) {
-        int baseY = (int) Math.floor(floorY);
-        SurfaceNode nearest = null;
-        for (int yOffset : SUPPORT_Y_OFFSETS) {
-            nearest = nearestOf(nearest, graph.surfaceNodeAt(globalX, baseY + yOffset, globalZ), floorY);
-        }
-        return nearest;
-    }
-
-    private static SurfaceNode nearestOf(SurfaceNode current, SurfaceNode candidate, double floorY) {
-        if (candidate == null) {
-            return current;
-        }
-        if (current == null || floorDistance(candidate, floorY) < floorDistance(current, floorY)) {
-            return candidate;
-        }
-        return current;
+        return graph.nearestSurfaceAt(globalX, globalZ, floorY);
     }
 
     private static boolean canWalkStep(SurfaceTraversalGraph graph, SurfaceNode from, SurfaceNode to) {
@@ -140,12 +120,11 @@ public final class SurfaceLineOfWalk implements LineOfWalk<SurfaceNode> {
     }
 
     private boolean hasClearanceAt(SurfaceTraversalGraph graph, SurfaceNode sample, HorizontalOffset direction) {
-        SurfaceNode adjacent = nearestSurface(
-                graph,
+        SurfaceNode adjacent = graph.nearestSurfaceAt(
                 globalX(sample) + direction.x(),
                 globalZ(sample) + direction.z(),
                 sample.floorY());
-        return adjacent != null && sameFloor(sample, adjacent) && graph.canStandAt(adjacent);
+        return adjacent != null && sameFloor(sample, adjacent) && graph.hasBodyClearanceAt(adjacent);
     }
 
     private static int horizontalSteps(SurfaceNode from, SurfaceNode to) {
@@ -162,12 +141,8 @@ public final class SurfaceLineOfWalk implements LineOfWalk<SurfaceNode> {
         return from.floorY() + (to.floorY() - from.floorY()) * progress;
     }
 
-    private static double floorDistance(SurfaceNode node, double floorY) {
-        return Math.abs(node.floorY() - floorY);
-    }
-
     private static boolean sameFloor(SurfaceNode first, SurfaceNode second) {
-        return floorDistance(first, second.floorY()) <= FLOOR_EPSILON;
+        return Math.abs(first.floorY() - second.floorY()) <= FLOOR_EPSILON;
     }
 
     private static int globalX(SurfaceNode node) {
