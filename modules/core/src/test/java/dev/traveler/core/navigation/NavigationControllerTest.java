@@ -8,6 +8,8 @@ import dev.traveler.core.navigation.camera.CameraAimSettings;
 import dev.traveler.core.navigation.camera.CameraAngles;
 import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.input.MovementIntent;
+import dev.traveler.core.navigation.locomotion.AgentMotionState;
+import dev.traveler.core.navigation.spatial.HorizontalVector;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -105,6 +107,35 @@ class NavigationControllerTest {
     }
 
     @Test
+    void waitsForStableGroundContactBeforeTriggeringConsecutiveJump() {
+        NavigationPath path = NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(0.0, 65.0, 1.0),
+                new NavigationPoint(0.0, 66.0, 2.0)));
+        NavigationControlFrame first = controller.update(
+                path,
+                new NavigationFrameInput(
+                        new NavigationPoint(0.0, 64.0, 0.0),
+                        new CameraAngles(0.0, 0.0),
+                        0.016),
+                NavigationControllerState.start());
+        NavigationFrameInput landed = new NavigationFrameInput(
+                new NavigationPoint(0.0, 65.0, 1.0),
+                new CameraAngles(0.0, 0.0),
+                0.016,
+                AgentMotionState.groundedStill());
+
+        NavigationControlFrame firstGroundFrame = controller.update(path, landed, first.state());
+        NavigationControlFrame secondGroundFrame = controller.update(path, landed, firstGroundFrame.state());
+        NavigationControlFrame thirdGroundFrame = controller.update(path, landed, secondGroundFrame.state());
+
+        assertTrue(first.intent().jump());
+        assertFalse(firstGroundFrame.intent().jump());
+        assertFalse(secondGroundFrame.intent().jump());
+        assertTrue(thirdGroundFrame.intent().jump());
+    }
+
+    @Test
     void canStrafeBeforeCameraHasFinishedTurning() {
         NavigationPath path = NavigationPath.of(List.of(
                 new NavigationPoint(0.0, 64.0, 0.0),
@@ -136,5 +167,29 @@ class NavigationControllerTest {
 
         assertTrue(frame.intent().back());
         assertFalse(frame.intent().forward());
+    }
+
+    @Test
+    void doesNotTriggerJumpWhileStillFallingIntoConsecutiveActionNode() {
+        NavigationPath path = NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(0.0, 65.0, 1.0),
+                new NavigationPoint(0.0, 66.0, 2.0)));
+        NavigationControlFrame first = controller.update(
+                path,
+                new NavigationFrameInput(
+                        new NavigationPoint(0.0, 64.0, 0.0),
+                        new CameraAngles(0.0, 0.0),
+                        0.016),
+                NavigationControllerState.start());
+        NavigationFrameInput falling = new NavigationFrameInput(
+                new NavigationPoint(0.0, 65.0, 1.0),
+                new CameraAngles(0.0, 0.0),
+                0.016,
+                new AgentMotionState(false, false, new HorizontalVector(0.0, 0.2), -0.3));
+
+        NavigationControlFrame frame = controller.update(path, falling, first.state());
+
+        assertFalse(frame.intent().jump());
     }
 }

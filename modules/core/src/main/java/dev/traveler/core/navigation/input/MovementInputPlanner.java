@@ -65,11 +65,12 @@ public final class MovementInputPlanner {
             return recoveryIntent(previous);
         }
         NavigationPoint destination = steering.steeringTarget();
-        HorizontalVector desired = steering.desiredVectorFrom(position);
+        StrafingStrategy strategy = StrafingStrategy.select(steering, settings.centeringCorrectionThreshold());
+        HorizontalVector desired = strategy.desiredVector(position, steering);
         if (desired.isZero()) {
             return verticalIntent(position, destination, plan, motion);
         }
-        return withJump(intentFor(desired, cameraYawDegrees, previous), plan, motion);
+        return withJump(intentFor(desired, cameraYawDegrees, previous), plan, motion, strategy);
     }
 
     private MovementIntent intentFor(HorizontalVector desired, double yawDegrees, MovementIntent previous) {
@@ -113,8 +114,9 @@ public final class MovementInputPlanner {
     private static MovementIntent withJump(
             MovementIntent intent,
             LocomotionPlan plan,
-            AgentMotionState motion) {
-        if (!plan.jumpRequested() || !motion.onGround()) {
+            AgentMotionState motion,
+            StrafingStrategy strategy) {
+        if (!plan.jumpRequested() || !motion.onGround() || !strategy.allowsSpecialAction()) {
             return intent;
         }
         return new MovementIntent(

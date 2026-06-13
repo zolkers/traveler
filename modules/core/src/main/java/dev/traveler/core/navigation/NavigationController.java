@@ -10,20 +10,33 @@ import dev.traveler.core.navigation.follow.PathFollowSettings;
 import dev.traveler.core.navigation.input.MovementInputPlanner;
 import dev.traveler.core.navigation.input.MovementInputSettings;
 import dev.traveler.core.navigation.input.MovementIntent;
+import dev.traveler.core.navigation.locomotion.LocomotionDecision;
+import dev.traveler.core.navigation.locomotion.LocomotionPlan;
+import dev.traveler.core.navigation.locomotion.LocomotionSequencer;
 import java.util.Objects;
 
 public final class NavigationController {
     private final PathFollowController pathFollowController;
     private final CameraAimController cameraAimController;
     private final MovementInputPlanner inputPlanner;
+    private final LocomotionSequencer locomotionSequencer;
 
     public NavigationController(
             PathFollowController pathFollowController,
             CameraAimController cameraAimController,
             MovementInputPlanner inputPlanner) {
+        this(pathFollowController, cameraAimController, inputPlanner, LocomotionSequencer.standard());
+    }
+
+    public NavigationController(
+            PathFollowController pathFollowController,
+            CameraAimController cameraAimController,
+            MovementInputPlanner inputPlanner,
+            LocomotionSequencer locomotionSequencer) {
         this.pathFollowController = Objects.requireNonNull(pathFollowController, "pathFollowController");
         this.cameraAimController = Objects.requireNonNull(cameraAimController, "cameraAimController");
         this.inputPlanner = Objects.requireNonNull(inputPlanner, "inputPlanner");
+        this.locomotionSequencer = Objects.requireNonNull(locomotionSequencer, "locomotionSequencer");
     }
 
     public static NavigationController standard() {
@@ -56,8 +69,14 @@ public final class NavigationController {
                 frameInput.cameraAngles(),
                 CameraAimController.targetAngles(frameInput.position(), follow.steeringTarget()),
                 frameInput.deltaSeconds());
-        MovementIntent intent = movementIntent(frameInput, currentState, follow);
-        NavigationControllerState nextState = new NavigationControllerState(follow.progress(), intent);
+        LocomotionDecision locomotion = locomotionSequencer.update(
+                currentState.locomotionState(),
+                follow.locomotionPlan(),
+                frameInput.motionState(),
+                currentState.previousIntent());
+        MovementIntent intent = movementIntent(frameInput, currentState, follow, locomotion.plan());
+        NavigationControllerState nextState =
+                new NavigationControllerState(follow.progress(), intent, locomotion.state());
         return new NavigationControlFrame(nextState, intent, cameraAngles, follow.movementTarget(), false);
     }
 
@@ -70,13 +89,14 @@ public final class NavigationController {
     private MovementIntent movementIntent(
             NavigationFrameInput input,
             NavigationControllerState state,
-            PathFollowFrame follow) {
+            PathFollowFrame follow,
+            LocomotionPlan locomotionPlan) {
         MovementIntent intent = inputPlanner.plan(
                 input.position(),
                 follow.steeringPlan(),
                 input.cameraAngles().yawDegrees(),
                 state.previousIntent(),
-                follow.locomotionPlan(),
+                locomotionPlan,
                 input.motionState());
         if (follow.speedScale() >= 0.5) {
             return intent;

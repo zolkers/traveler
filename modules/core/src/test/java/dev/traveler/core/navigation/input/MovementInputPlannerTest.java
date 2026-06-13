@@ -159,6 +159,52 @@ class MovementInputPlannerTest {
     }
 
     @Test
+    void recentersWithPureStrafeWhenLateralErrorDominatesCorridorFollow() {
+        SteeringPlan steering = SteeringPlan.corridor(
+                new NavigationPoint(-2.0, 64.0, 4.0),
+                new NavigationPoint(0.0, 64.0, 4.0),
+                new NavigationPoint(0.0, 64.0, 2.0),
+                new HorizontalVector(0.0, 1.0),
+                new HorizontalVector(-2.0, 0.0),
+                2.0,
+                2.0,
+                true);
+
+        MovementIntent intent = planner.plan(
+                new NavigationPoint(2.0, 64.0, 2.0),
+                steering,
+                0.0,
+                MovementIntent.idle(),
+                LocomotionPlan.walk(),
+                AgentMotionState.groundedStill());
+
+        assertEquals(new MovementIntent(false, false, false, true, false, false), intent);
+    }
+
+    @Test
+    void recentersBeforeTriggeringSpecialJumpAction() {
+        SteeringPlan steering = SteeringPlan.corridor(
+                new NavigationPoint(-2.0, 65.0, 4.0),
+                new NavigationPoint(0.0, 65.0, 4.0),
+                new NavigationPoint(0.0, 64.0, 2.0),
+                new HorizontalVector(0.0, 1.0),
+                new HorizontalVector(-2.0, 0.0),
+                2.0,
+                2.0,
+                true);
+
+        MovementIntent intent = planner.plan(
+                new NavigationPoint(2.0, 64.0, 2.0),
+                steering,
+                0.0,
+                MovementIntent.idle(),
+                LocomotionPlan.jump(),
+                AgentMotionState.groundedStill());
+
+        assertEquals(new MovementIntent(false, false, false, true, false, false), intent);
+    }
+
+    @Test
     void backpedalsWhenSteeringTargetIsBehindEndOfPath() {
         SteeringPlan steering = SteeringPlan.corridor(
                 new NavigationPoint(0.0, 64.0, 4.0),
