@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.traveler.core.navigation.NavigationFrameInput;
+import dev.traveler.core.navigation.camera.CameraAimSettings;
 import dev.traveler.core.navigation.camera.CameraAngles;
 import dev.traveler.core.navigation.follow.MovementTarget;
 import dev.traveler.core.navigation.follow.PathProgress;
@@ -73,6 +74,26 @@ class ControlProjectorTest {
     }
 
     @Test
+    void projectsKeysAgainstTheCameraThatWillBeAppliedThisFrame() {
+        ControlProjector fastProjector = ControlProjector.standard(
+                new CameraAimSettings(10_000.0, 10_000.0, 100.0, 0.0, 180.0));
+        NavigationFramePlan plan = plan(
+                new MovementVectorIntent(new HorizontalVector(-1.0, 0.0), PlannedMovementMode.DIRECT, true),
+                ActionIntent.none(),
+                new NavigationPoint(-1.0, 64.0, 0.0),
+                new CameraAngles(90.0, 0.0));
+
+        ControlProjectionFrame frame = fastProjector.project(
+                plan,
+                frameInput(new CameraAngles(0.0, 0.0), 0.1),
+                MovementIntent.idle());
+
+        assertTrue(frame.intent().forward());
+        assertFalse(frame.intent().left());
+        assertFalse(frame.intent().right());
+    }
+
+    @Test
     void rotatesCameraAcrossYawWrapWithoutChoosingALongArc() {
         NavigationFramePlan plan = plan(
                 MovementVectorIntent.idle(),
@@ -131,10 +152,14 @@ class ControlProjectorTest {
     }
 
     private static NavigationFrameInput frameInput(CameraAngles cameraAngles) {
+        return frameInput(cameraAngles, 0.016);
+    }
+
+    private static NavigationFrameInput frameInput(CameraAngles cameraAngles, double deltaSeconds) {
         return new NavigationFrameInput(
                 new NavigationPoint(0.0, 64.0, 0.0),
                 cameraAngles,
-                0.016,
+                deltaSeconds,
                 AgentMotionState.groundedStill());
     }
 }

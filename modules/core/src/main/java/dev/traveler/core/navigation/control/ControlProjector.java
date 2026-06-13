@@ -42,7 +42,7 @@ public final class ControlProjector {
                 frameInput.cameraAngles(),
                 framePlan.cameraTarget(),
                 frameInput.deltaSeconds());
-        return new ControlProjectionFrame(intentFor(framePlan, frameInput.cameraAngles(), previous), camera);
+        return new ControlProjectionFrame(intentFor(framePlan, camera, previous), camera);
     }
 
     private MovementIntent intentFor(
