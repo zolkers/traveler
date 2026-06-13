@@ -111,7 +111,12 @@
 **Files:**
 - No production edits expected.
 
-- [ ] Run `./gradlew.bat check`.
-- [ ] Run the surface smoothing JFR workload and inspect hot methods.
-- [ ] Run `git status --short` and `git log --oneline -6`.
-- [ ] If all checks pass, report remaining known risk: async snapshot size and worker cancellation behavior should be tuned with real in-game traces.
+- [x] Run `./gradlew.bat check`.
+- [x] Run the surface smoothing JFR workload and inspect hot methods.
+- [x] Run `git status --short` and `git log --oneline -6`.
+- [x] If all checks pass, report remaining known risk: async snapshot size and worker cancellation behavior should be tuned with real in-game traces.
+
+**Verification notes:**
+- `./gradlew.bat check` passed after async commands, strategic movement, clearance, anti-wall debug, and jump transition fixes.
+- JFR smooth workload: `found=25 searches=25 mode=smooth millis=5076 blockReads=1074185`.
+- Hot methods after micro-optimization are expected footprint/cache costs: `SurfaceTraversalGraph.collidesWithFootprintColumn`, `SurfaceBlockCache.cached`, and A* map access. The artificial `isOwnSupportBlock` hotspot was removed.
