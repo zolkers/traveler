@@ -11,6 +11,7 @@ import dev.traveler.core.navigation.input.MovementInputPlanner;
 import dev.traveler.core.navigation.input.MovementInputSettings;
 import dev.traveler.core.navigation.input.MovementIntent;
 import dev.traveler.core.navigation.locomotion.LocomotionDecision;
+import dev.traveler.core.navigation.locomotion.LocomotionExecutionState;
 import dev.traveler.core.navigation.locomotion.LocomotionPlan;
 import dev.traveler.core.navigation.locomotion.LocomotionSequencer;
 import java.util.Objects;
@@ -70,7 +71,7 @@ public final class NavigationController {
                 CameraAimController.targetAngles(frameInput.position(), follow.steeringTarget()),
                 frameInput.deltaSeconds());
         LocomotionDecision locomotion = locomotionSequencer.update(
-                currentState.locomotionState(),
+                locomotionState(currentState, follow),
                 follow.locomotionPlan(),
                 frameInput.motionState(),
                 currentState.previousIntent());
@@ -102,5 +103,14 @@ public final class NavigationController {
             return intent;
         }
         return intent.withSprint(false);
+    }
+
+    private static LocomotionExecutionState locomotionState(
+            NavigationControllerState state,
+            PathFollowFrame follow) {
+        if (state.progress().equals(follow.progress())) {
+            return state.locomotionState();
+        }
+        return state.locomotionState().withoutActionHold();
     }
 }

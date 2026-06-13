@@ -4,7 +4,7 @@ public record CameraAngles(double yawDegrees, double pitchDegrees) {
     public CameraAngles {
         requireFinite(yawDegrees, "yawDegrees");
         requireFinite(pitchDegrees, "pitchDegrees");
-        yawDegrees = cleanZero(normalizeYaw(yawDegrees));
+        yawDegrees = cleanZero(yawDegrees);
         pitchDegrees = cleanZero(Math.clamp(pitchDegrees, -90.0, 90.0));
     }
 

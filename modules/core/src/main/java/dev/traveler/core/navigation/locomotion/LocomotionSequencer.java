@@ -26,14 +26,26 @@ public final class LocomotionSequencer {
         if (requested.action() == LocomotionAction.RECOVER) {
             return new LocomotionDecision(requested, LocomotionExecutionState.settling());
         }
+        if (shouldHoldAction(currentState, requested, motion)) {
+            return new LocomotionDecision(requested, currentState.decrementActionHold());
+        }
         LocomotionExecutionState advanced = advance(currentState, motion, previous);
         if (isSpecial(requested) && advanced.settlingAfterAction()) {
             return new LocomotionDecision(LocomotionPlan.walk(), advanced);
         }
         if (isSpecial(requested)) {
-            return new LocomotionDecision(requested, LocomotionExecutionState.settling());
+            return new LocomotionDecision(requested, LocomotionExecutionState.settling(settings.actionHoldFrames()));
         }
         return new LocomotionDecision(requested, advanced);
+    }
+
+    private static boolean shouldHoldAction(
+            LocomotionExecutionState state,
+            LocomotionPlan requested,
+            AgentMotionState motion) {
+        return isSpecial(requested)
+                && state.actionHoldFrames() > 0
+                && motion.onGround();
     }
 
     private LocomotionExecutionState advance(

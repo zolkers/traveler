@@ -22,6 +22,20 @@ class CameraAimControllerTest {
     }
 
     @Test
+    void preservesContinuousYawAcrossWrapToAvoidMinecraftLongArcInterpolation() {
+        CameraAimController controller = new CameraAimController(
+                new CameraAimSettings(10_000.0, 360.0, 1_000.0, 0.01, 10_000.0));
+
+        CameraAngles next = controller.update(
+                new CameraAngles(179.9, 0.0),
+                new CameraAngles(-178.1, 0.0),
+                0.016);
+
+        assertTrue(next.yawDegrees() > 180.0);
+        assertTrue(Math.abs(CameraAngles.shortestYawDelta(179.9, next.yawDegrees())) <= 2.0);
+    }
+
+    @Test
     void snapsTinyYawDeltaToTargetToAvoidCameraBuzz() {
         CameraAimController controller = new CameraAimController(
                 new CameraAimSettings(720.0, 360.0, 18.0, 0.05));

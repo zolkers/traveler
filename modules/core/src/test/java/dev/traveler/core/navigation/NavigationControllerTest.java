@@ -87,6 +87,24 @@ class NavigationControllerTest {
     }
 
     @Test
+    void keepsJumpPressedAcrossRenderFramesUntilMinecraftTickCanConsumeIt() {
+        NavigationPath path = NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(0.0, 65.0, 1.0)));
+        NavigationFrameInput input = new NavigationFrameInput(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new CameraAngles(0.0, 0.0),
+                0.004,
+                AgentMotionState.groundedStill());
+
+        NavigationControlFrame first = controller.update(path, input, NavigationControllerState.start());
+        NavigationControlFrame second = controller.update(path, input, first.state());
+
+        assertTrue(first.intent().jump());
+        assertTrue(second.intent().jump());
+    }
+
+    @Test
     void anticipatesAfterJumpInsteadOfTurningBackToActionNode() {
         NavigationPath path = NavigationPath.of(List.of(
                 new NavigationPoint(0.0, 64.0, 0.0),
