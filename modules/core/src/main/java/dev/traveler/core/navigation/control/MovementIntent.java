@@ -1,4 +1,4 @@
-package dev.traveler.core.navigation.input;
+package dev.traveler.core.navigation.control;
 
 public record MovementIntent(
         boolean forward,

@@ -1,6 +1,6 @@
 package dev.traveler.core.navigation.locomotion;
 
-import dev.traveler.core.navigation.input.MovementIntent;
+import dev.traveler.core.navigation.control.MovementIntent;
 import java.util.Objects;
 
 public final class LocomotionSequencer {

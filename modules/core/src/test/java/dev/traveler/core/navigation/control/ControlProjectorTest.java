@@ -8,7 +8,7 @@ import dev.traveler.core.navigation.NavigationFrameInput;
 import dev.traveler.core.navigation.camera.CameraAngles;
 import dev.traveler.core.navigation.follow.MovementTarget;
 import dev.traveler.core.navigation.follow.PathProgress;
-import dev.traveler.core.navigation.input.MovementIntent;
+import dev.traveler.core.navigation.control.MovementIntent;
 import dev.traveler.core.navigation.locomotion.AgentMotionState;
 import dev.traveler.core.navigation.locomotion.LocomotionExecutionState;
 import dev.traveler.core.navigation.plan.ActionIntent;

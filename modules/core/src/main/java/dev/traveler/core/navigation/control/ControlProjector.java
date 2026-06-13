@@ -4,7 +4,6 @@ import dev.traveler.core.navigation.NavigationFrameInput;
 import dev.traveler.core.navigation.camera.CameraAimController;
 import dev.traveler.core.navigation.camera.CameraAimSettings;
 import dev.traveler.core.navigation.camera.CameraAngles;
-import dev.traveler.core.navigation.input.MovementIntent;
 import dev.traveler.core.navigation.plan.NavigationFramePlan;
 import dev.traveler.core.navigation.plan.PlannedMovementMode;
 import dev.traveler.core.navigation.spatial.CameraMovementBasis;

@@ -2,7 +2,7 @@ package dev.traveler.core.navigation;
 
 import dev.traveler.core.navigation.camera.CameraAngles;
 import dev.traveler.core.navigation.follow.MovementTarget;
-import dev.traveler.core.navigation.input.MovementIntent;
+import dev.traveler.core.navigation.control.MovementIntent;
 import dev.traveler.core.navigation.plan.NavigationFramePlan;
 import java.util.Objects;
 

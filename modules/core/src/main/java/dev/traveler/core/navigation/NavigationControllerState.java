@@ -1,7 +1,7 @@
 package dev.traveler.core.navigation;
 
 import dev.traveler.core.navigation.follow.PathProgress;
-import dev.traveler.core.navigation.input.MovementIntent;
+import dev.traveler.core.navigation.control.MovementIntent;
 import dev.traveler.core.navigation.locomotion.LocomotionExecutionState;
 import java.util.Objects;
 

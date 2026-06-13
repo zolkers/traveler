@@ -2,7 +2,7 @@ package dev.traveler.core.navigation.locomotion;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import dev.traveler.core.navigation.input.MovementIntent;
+import dev.traveler.core.navigation.control.MovementIntent;
 import dev.traveler.core.navigation.spatial.HorizontalVector;
 import org.junit.jupiter.api.Test;
 
