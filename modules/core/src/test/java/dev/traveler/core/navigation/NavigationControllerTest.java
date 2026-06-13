@@ -9,6 +9,8 @@ import dev.traveler.core.navigation.camera.CameraAngles;
 import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.input.MovementIntent;
 import dev.traveler.core.navigation.locomotion.AgentMotionState;
+import dev.traveler.core.navigation.plan.NavigationPhase;
+import dev.traveler.core.navigation.plan.PlannedMovementMode;
 import dev.traveler.core.navigation.spatial.HorizontalVector;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import java.util.List;
@@ -84,6 +86,8 @@ class NavigationControllerTest {
 
         assertTrue(frame.intent().forward());
         assertTrue(frame.intent().jump());
+        assertEquals(NavigationPhase.EXECUTE_ACTION, frame.plan().phase());
+        assertEquals(PlannedMovementMode.DIRECT, frame.plan().movementVector().mode());
     }
 
     @Test

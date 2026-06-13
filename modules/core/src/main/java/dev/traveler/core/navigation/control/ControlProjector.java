@@ -23,9 +23,13 @@ public final class ControlProjector {
     }
 
     public static ControlProjector standard() {
+        return standard(CameraAimSettings.standard());
+    }
+
+    public static ControlProjector standard(CameraAimSettings cameraAimSettings) {
         return new ControlProjector(
                 ControlProjectionSettings.standard(),
-                new CameraAimController(CameraAimSettings.standard()));
+                new CameraAimController(cameraAimSettings));
     }
 
     public ControlProjectionFrame project(

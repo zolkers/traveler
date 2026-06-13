@@ -1,65 +1,22 @@
 package dev.traveler.core.navigation;
 
-import dev.traveler.core.navigation.camera.CameraAimController;
 import dev.traveler.core.navigation.camera.CameraAimSettings;
-import dev.traveler.core.navigation.camera.CameraAngles;
-import dev.traveler.core.navigation.camera.CameraTargetPlanner;
+import dev.traveler.core.navigation.control.ControlProjectionFrame;
+import dev.traveler.core.navigation.control.ControlProjector;
 import dev.traveler.core.navigation.follow.NavigationPath;
-import dev.traveler.core.navigation.follow.PathFollowController;
-import dev.traveler.core.navigation.follow.PathFollowFrame;
-import dev.traveler.core.navigation.follow.PathFollowSettings;
-import dev.traveler.core.navigation.input.MovementInputPlanner;
-import dev.traveler.core.navigation.input.MovementInputSettings;
-import dev.traveler.core.navigation.input.MovementIntent;
-import dev.traveler.core.navigation.locomotion.LocomotionDecision;
-import dev.traveler.core.navigation.locomotion.LocomotionExecutionState;
-import dev.traveler.core.navigation.locomotion.LocomotionPlan;
-import dev.traveler.core.navigation.locomotion.LocomotionSequencer;
+import dev.traveler.core.navigation.plan.NavigationFramePlan;
+import dev.traveler.core.navigation.plan.NavigationFramePlanner;
 import java.util.Objects;
 
 public final class NavigationController {
-    private final PathFollowController pathFollowController;
-    private final CameraAimController cameraAimController;
-    private final CameraTargetPlanner cameraTargetPlanner;
-    private final MovementInputPlanner inputPlanner;
-    private final LocomotionSequencer locomotionSequencer;
+    private final NavigationFramePlanner planner;
+    private final ControlProjector projector;
 
     public NavigationController(
-            PathFollowController pathFollowController,
-            CameraAimController cameraAimController,
-            MovementInputPlanner inputPlanner) {
-        this(
-                pathFollowController,
-                cameraAimController,
-                CameraTargetPlanner.standard(),
-                inputPlanner,
-                LocomotionSequencer.standard());
-    }
-
-    public NavigationController(
-            PathFollowController pathFollowController,
-            CameraAimController cameraAimController,
-            MovementInputPlanner inputPlanner,
-            LocomotionSequencer locomotionSequencer) {
-        this(
-                pathFollowController,
-                cameraAimController,
-                CameraTargetPlanner.standard(),
-                inputPlanner,
-                locomotionSequencer);
-    }
-
-    public NavigationController(
-            PathFollowController pathFollowController,
-            CameraAimController cameraAimController,
-            CameraTargetPlanner cameraTargetPlanner,
-            MovementInputPlanner inputPlanner,
-            LocomotionSequencer locomotionSequencer) {
-        this.pathFollowController = Objects.requireNonNull(pathFollowController, "pathFollowController");
-        this.cameraAimController = Objects.requireNonNull(cameraAimController, "cameraAimController");
-        this.cameraTargetPlanner = Objects.requireNonNull(cameraTargetPlanner, "cameraTargetPlanner");
-        this.inputPlanner = Objects.requireNonNull(inputPlanner, "inputPlanner");
-        this.locomotionSequencer = Objects.requireNonNull(locomotionSequencer, "locomotionSequencer");
+            NavigationFramePlanner planner,
+            ControlProjector projector) {
+        this.planner = Objects.requireNonNull(planner, "planner");
+        this.projector = Objects.requireNonNull(projector, "projector");
     }
 
     public static NavigationController standard() {
@@ -67,10 +24,7 @@ public final class NavigationController {
     }
 
     public static NavigationController standard(CameraAimSettings cameraAimSettings) {
-        return new NavigationController(
-                new PathFollowController(PathFollowSettings.standard()),
-                new CameraAimController(cameraAimSettings),
-                new MovementInputPlanner(MovementInputSettings.standard()));
+        return new NavigationController(NavigationFramePlanner.standard(), ControlProjector.standard(cameraAimSettings));
     }
 
     public NavigationControlFrame update(
@@ -80,63 +34,18 @@ public final class NavigationController {
         NavigationPath navigationPath = Objects.requireNonNull(path, "path");
         NavigationFrameInput frameInput = Objects.requireNonNull(input, "input");
         NavigationControllerState currentState = Objects.requireNonNull(state, "state");
-        PathFollowFrame follow = pathFollowController.update(
-                navigationPath,
-                frameInput.position(),
-                currentState.progress(),
-                frameInput.motionState());
-        if (follow.completed()) {
-            return completedFrame(frameInput, follow);
-        }
-        CameraAngles cameraAngles = cameraAimController.update(
-                frameInput.cameraAngles(),
-                cameraTargetPlanner.targetAngles(
-                        navigationPath,
-                        frameInput.position(),
-                        follow.progress(),
-                        frameInput.cameraAngles()),
-                frameInput.deltaSeconds());
-        LocomotionDecision locomotion = locomotionSequencer.update(
-                locomotionState(currentState, follow),
-                follow.locomotionPlan(),
-                frameInput.motionState(),
-                currentState.previousIntent());
-        MovementIntent intent = movementIntent(frameInput, currentState, follow, locomotion.plan());
-        NavigationControllerState nextState =
-                new NavigationControllerState(follow.progress(), intent, locomotion.state());
-        return new NavigationControlFrame(nextState, intent, cameraAngles, follow.movementTarget(), false);
-    }
-
-    private NavigationControlFrame completedFrame(NavigationFrameInput input, PathFollowFrame follow) {
-        NavigationControllerState nextState = new NavigationControllerState(follow.progress(), MovementIntent.idle());
+        NavigationFramePlan plan = planner.plan(navigationPath, frameInput, currentState);
+        ControlProjectionFrame projection = projector.project(plan, frameInput, currentState.previousIntent());
+        NavigationControllerState nextState = new NavigationControllerState(
+                plan.routeProgress(),
+                projection.intent(),
+                plan.locomotionState());
         return new NavigationControlFrame(
-                nextState, MovementIntent.idle(), input.cameraAngles(), follow.movementTarget(), true);
-    }
-
-    private MovementIntent movementIntent(
-            NavigationFrameInput input,
-            NavigationControllerState state,
-            PathFollowFrame follow,
-            LocomotionPlan locomotionPlan) {
-        MovementIntent intent = inputPlanner.plan(
-                input.position(),
-                follow.steeringPlan(),
-                input.cameraAngles().yawDegrees(),
-                state.previousIntent(),
-                locomotionPlan,
-                input.motionState());
-        if (follow.speedScale() >= 0.5) {
-            return intent;
-        }
-        return intent.withSprint(false);
-    }
-
-    private static LocomotionExecutionState locomotionState(
-            NavigationControllerState state,
-            PathFollowFrame follow) {
-        if (state.progress().equals(follow.progress())) {
-            return state.locomotionState();
-        }
-        return state.locomotionState().withoutActionHold();
+                nextState,
+                projection.intent(),
+                projection.cameraAngles(),
+                plan.movementTarget(),
+                plan,
+                plan.completed());
     }
 }
