@@ -33,9 +33,10 @@ class RouteSearchServiceTest {
     void reportsMissingStartSurface() {
         Map<BlockPosition, SurfaceBlock> blocks = flatSurface(2, 2);
         RouteSearchService service = new RouteSearchService(RouteSearchSettings.standardClient());
+        TestSurfaceWorldLayer world = new TestSurfaceWorldLayer(blocks);
 
         RouteSearchResult result =
-                service.search(new TestSurfaceWorldLayer(blocks), new BlockPosition(0, 64, 0), new BlockPosition(2, 63, 0));
+                service.search(world, new BlockPosition(0, 64, 0), new BlockPosition(2, 63, 0));
 
         assertEquals(PathfinderStatus.NOT_FOUND, result.status());
         assertEquals(RouteSearchFailureReason.NO_START_SURFACE, result.diagnostics().reason());
@@ -46,9 +47,10 @@ class RouteSearchServiceTest {
     void reportsMissingGoalSurface() {
         Map<BlockPosition, SurfaceBlock> blocks = flatSurface(0, 0);
         RouteSearchService service = new RouteSearchService(RouteSearchSettings.standardClient());
+        TestSurfaceWorldLayer world = new TestSurfaceWorldLayer(blocks);
 
         RouteSearchResult result =
-                service.search(new TestSurfaceWorldLayer(blocks), new BlockPosition(0, 64, 0), new BlockPosition(2, 63, 0));
+                service.search(world, new BlockPosition(0, 64, 0), new BlockPosition(2, 63, 0));
 
         assertEquals(PathfinderStatus.NOT_FOUND, result.status());
         assertEquals(RouteSearchFailureReason.NO_GOAL_SURFACE, result.diagnostics().reason());

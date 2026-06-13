@@ -34,7 +34,8 @@ record TravelerPathSearchResult(
         if (status() != PathfinderStatus.FOUND) {
             return Optional.empty();
         }
-        Optional<NavigationPath> routePath = searchResult.route().map(TravelerPathSearchResult::navigationPathFromRoute);
+        Optional<NavigationPath> routePath =
+                searchResult.route().map(TravelerPathSearchResult::navigationPathFromRoute);
         if (routePath.isPresent()) {
             return routePath;
         }
