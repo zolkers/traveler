@@ -1,6 +1,7 @@
 package dev.traveler.core.world.movement;
 
 import dev.traveler.core.world.block.BlockPassability;
+import java.util.Objects;
 import java.util.Set;
 
 public final class MovementProfiles {
@@ -8,6 +9,13 @@ public final class MovementProfiles {
 
     public static MovementProfile defaultPlayer() {
         return new MovementProfile(defaultPlayerDimensions(), defaultPlayerCapabilities(), defaultPlayerRules());
+    }
+
+    public static MovementProfile defaultPlayerWith(MovementCapabilities capabilities) {
+        return new MovementProfile(
+                defaultPlayerDimensions(),
+                Objects.requireNonNull(capabilities, "capabilities"),
+                defaultPlayerRules());
     }
 
     public static EntityDimensions defaultPlayerDimensions() {

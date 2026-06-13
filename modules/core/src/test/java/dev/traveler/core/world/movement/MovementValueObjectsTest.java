@@ -98,6 +98,17 @@ class MovementValueObjectsTest {
     }
 
     @Test
+    void defaultPlayerWithKeepsCustomCapabilitiesOnly() {
+        MovementCapabilities capabilities = new MovementCapabilities(true, false, false, false, 0.6, 1.25, 3.0);
+
+        MovementProfile profile = MovementProfiles.defaultPlayerWith(capabilities);
+
+        assertEquals(MovementProfiles.defaultPlayerDimensions(), profile.dimensions());
+        assertSame(capabilities, profile.capabilities());
+        assertEquals(MovementProfiles.defaultPlayerRules(), profile.rules());
+    }
+
+    @Test
     void movementProfileAndTraversalRulesRejectMissingComponents() {
         EntityDimensions dimensions = MovementProfiles.defaultPlayerDimensions();
         MovementCapabilities capabilities = MovementProfiles.defaultPlayerCapabilities();
@@ -123,6 +134,7 @@ class MovementValueObjectsTest {
         assertThrows(NullPointerException.class, () -> new MovementProfile(null, capabilities, rules));
         assertThrows(NullPointerException.class, () -> new MovementProfile(dimensions, null, rules));
         assertThrows(NullPointerException.class, () -> new MovementProfile(dimensions, capabilities, null));
+        assertThrows(NullPointerException.class, () -> MovementProfiles.defaultPlayerWith(null));
         assertEquals(new TraversalCost(1.0), rules.defaultCost());
     }
 

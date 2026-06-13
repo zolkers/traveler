@@ -15,6 +15,8 @@ import dev.traveler.core.smooth.PathSmoother;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.movement.FluidHandling;
 import dev.traveler.core.world.movement.MovementCapabilities;
+import dev.traveler.core.world.movement.MovementProfile;
+import dev.traveler.core.world.movement.MovementProfiles;
 import dev.traveler.core.world.navigation.BlockLineOfWalk;
 import dev.traveler.core.world.navigation.BlockTraversalGraph;
 import dev.traveler.core.world.navigation.SurfaceLineOfWalk;
@@ -36,6 +38,7 @@ final class TravelerPathSearchService {
     private static final int SEARCH_VERTICAL_MARGIN = 8;
     private static final MovementCapabilities CLIENT_CAPABILITIES =
             new MovementCapabilities(true, false, false, false, 0.6, 1.25, 3.0);
+    private static final MovementProfile CLIENT_PROFILE = MovementProfiles.defaultPlayerWith(CLIENT_CAPABILITIES);
 
     private final Supplier<? extends WorldLayer> worldLayerSupplier;
 
@@ -119,7 +122,7 @@ final class TravelerPathSearchService {
                 worldLayer,
                 start,
                 goal,
-                CLIENT_CAPABILITIES,
+                CLIENT_PROFILE,
                 SurfaceTraversalGraphSettings.standard(SEARCH_HORIZONTAL_MARGIN, SEARCH_VERTICAL_MARGIN));
         PathfinderRequest<SurfaceNode> request =
                 new PathfinderRequest<>(graph, start, goal, TravelerPathSearchService::surfaceDistance);
@@ -192,7 +195,7 @@ final class TravelerPathSearchService {
                         worldLayer,
                         nodes.getFirst(),
                         nodes.getLast(),
-                        CLIENT_CAPABILITIES,
+                        CLIENT_PROFILE,
                         SurfaceLineOfWalkSettings.smoothing(SEARCH_HORIZONTAL_MARGIN, SEARCH_VERTICAL_MARGIN)),
                         new SurfaceSmoothingPolicy(worldLayer))
                 .smooth(nodes);

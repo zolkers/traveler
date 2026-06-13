@@ -3,7 +3,10 @@ package dev.traveler.core.world.navigation;
 import dev.traveler.core.graph.Connection;
 import dev.traveler.core.layer.SurfaceWorldLayer;
 import dev.traveler.core.smooth.LineOfWalk;
+import dev.traveler.core.world.movement.EntityDimensions;
 import dev.traveler.core.world.movement.MovementCapabilities;
+import dev.traveler.core.world.movement.MovementProfile;
+import dev.traveler.core.world.movement.MovementProfiles;
 import dev.traveler.core.world.surface.SurfaceNode;
 import java.util.Objects;
 
@@ -12,6 +15,7 @@ public final class SurfaceLineOfWalk implements LineOfWalk<SurfaceNode> {
 
     private final SurfaceTraversalGraph graph;
     private final SurfaceLineOfWalkSettings settings;
+    private final EntityDimensions dimensions;
 
     public SurfaceLineOfWalk(
             SurfaceWorldLayer worldLayer,
@@ -34,13 +38,29 @@ public final class SurfaceLineOfWalk implements LineOfWalk<SurfaceNode> {
             SurfaceNode boundsGoal,
             MovementCapabilities capabilities,
             SurfaceLineOfWalkSettings settings) {
+        this(
+                worldLayer,
+                boundsStart,
+                boundsGoal,
+                MovementProfiles.defaultPlayerWith(capabilities),
+                settings);
+    }
+
+    public SurfaceLineOfWalk(
+            SurfaceWorldLayer worldLayer,
+            SurfaceNode boundsStart,
+            SurfaceNode boundsGoal,
+            MovementProfile movementProfile,
+            SurfaceLineOfWalkSettings settings) {
         SurfaceLineOfWalkSettings safeSettings = Objects.requireNonNull(settings, "settings");
+        MovementProfile profile = Objects.requireNonNull(movementProfile, "movementProfile");
         this.settings = safeSettings;
+        dimensions = profile.dimensions();
         graph = new SurfaceTraversalGraph(
                 worldLayer,
                 boundsStart,
                 boundsGoal,
-                capabilities,
+                profile,
                 safeSettings.horizontalMargin(),
                 safeSettings.verticalMargin());
     }
@@ -111,19 +131,30 @@ public final class SurfaceLineOfWalk implements LineOfWalk<SurfaceNode> {
         if (!settings.requiresAdjacentClearance()) {
             return true;
         }
-        for (HorizontalOffset direction : HorizontalDirections.CARDINAL) {
-            if (!hasClearanceAt(graph, sample, direction)) {
+        SurfaceBodyFootprint footprint = SurfaceBodyFootprint.around(sample, dimensions);
+        for (int x = footprint.minGlobalX(); x <= footprint.maxGlobalX(); x++) {
+            if (!hasColumnClearance(graph, sample, footprint, x)) {
                 return false;
             }
         }
         return true;
     }
 
-    private boolean hasClearanceAt(SurfaceTraversalGraph graph, SurfaceNode sample, HorizontalOffset direction) {
-        SurfaceNode adjacent = graph.nearestSurfaceAt(
-                globalX(sample) + direction.x(),
-                globalZ(sample) + direction.z(),
-                sample.floorY());
+    private boolean hasColumnClearance(
+            SurfaceTraversalGraph graph,
+            SurfaceNode sample,
+            SurfaceBodyFootprint footprint,
+            int globalX) {
+        for (int z = footprint.minGlobalZ(); z <= footprint.maxGlobalZ(); z++) {
+            if (!hasClearanceAt(graph, sample, globalX, z)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean hasClearanceAt(SurfaceTraversalGraph graph, SurfaceNode sample, int globalX, int globalZ) {
+        SurfaceNode adjacent = graph.nearestSurfaceAt(globalX, globalZ, sample.floorY());
         return adjacent != null && sameFloor(sample, adjacent) && graph.hasBodyClearanceAt(adjacent);
     }
 

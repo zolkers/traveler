@@ -3,7 +3,10 @@ package dev.traveler.core.world.navigation;
 import dev.traveler.core.world.behavior.context.MovementDirection;
 import dev.traveler.core.world.behavior.context.SurfaceMovementContext;
 import dev.traveler.core.world.block.BlockPosition;
+import dev.traveler.core.world.movement.EntityDimensions;
 import dev.traveler.core.world.movement.MovementCapabilities;
+import dev.traveler.core.world.movement.MovementProfile;
+import dev.traveler.core.world.movement.MovementProfiles;
 import dev.traveler.core.world.surface.SurfaceNode;
 import dev.traveler.core.graph.Connection;
 import dev.traveler.core.graph.Graph;
@@ -16,7 +19,6 @@ import java.util.Map;
 import java.util.Objects;
 
 public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
-    private static final double PLAYER_HEIGHT = 1.8;
     private static final double BODY_EPSILON = 0.0001;
     private static final double FLOOR_EPSILON = 0.001;
     private static final int[] SUPPORT_Y_OFFSETS = {0, 1, -1};
@@ -25,6 +27,7 @@ public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
 
     private final SurfaceWorldLayer worldLayer;
     private final SearchBounds bounds;
+    private final EntityDimensions dimensions;
     private final MovementCapabilities capabilities;
     private final SurfaceClearanceScorer clearanceScorer;
     private final Map<SurfaceNode, Double> clearanceScores = new HashMap<>();
@@ -41,7 +44,22 @@ public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
                 worldLayer,
                 start,
                 goal,
-                capabilities,
+                MovementProfiles.defaultPlayerWith(capabilities),
+                SurfaceTraversalGraphSettings.basic(horizontalMargin, verticalMargin));
+    }
+
+    public SurfaceTraversalGraph(
+            SurfaceWorldLayer worldLayer,
+            SurfaceNode start,
+            SurfaceNode goal,
+            MovementProfile movementProfile,
+            int horizontalMargin,
+            int verticalMargin) {
+        this(
+                worldLayer,
+                start,
+                goal,
+                movementProfile,
                 SurfaceTraversalGraphSettings.basic(horizontalMargin, verticalMargin));
     }
 
@@ -51,10 +69,20 @@ public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
             SurfaceNode goal,
             MovementCapabilities capabilities,
             SurfaceTraversalGraphSettings settings) {
+        this(worldLayer, start, goal, MovementProfiles.defaultPlayerWith(capabilities), settings);
+    }
+
+    public SurfaceTraversalGraph(
+            SurfaceWorldLayer worldLayer,
+            SurfaceNode start,
+            SurfaceNode goal,
+            MovementProfile movementProfile,
+            SurfaceTraversalGraphSettings settings) {
         this.worldLayer = Objects.requireNonNull(worldLayer, "worldLayer");
         SurfaceNode safeStart = Objects.requireNonNull(start, "start");
         SurfaceNode safeGoal = Objects.requireNonNull(goal, "goal");
         SurfaceTraversalGraphSettings safeSettings = Objects.requireNonNull(settings, "settings");
+        MovementProfile profile = Objects.requireNonNull(movementProfile, "movementProfile");
         SearchBounds searchBounds = SearchBounds.around(
                 safeStart.blockPosition(),
                 safeGoal.blockPosition(),
@@ -62,7 +90,8 @@ public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
                 safeSettings.verticalMargin());
         this.bounds = searchBounds;
         this.surfaceBlocks = new SurfaceBlockCache(this.worldLayer, searchBounds);
-        this.capabilities = Objects.requireNonNull(capabilities, "capabilities");
+        this.dimensions = profile.dimensions();
+        this.capabilities = profile.capabilities();
         this.clearanceScorer = safeSettings.clearanceScorer();
     }
 
@@ -199,7 +228,7 @@ public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
 
     private boolean hasBodyClearance(SurfaceNode node) {
         double minY = node.floorY() + BODY_EPSILON;
-        double maxY = node.floorY() + PLAYER_HEIGHT;
+        double maxY = node.floorY() + dimensions.height();
         for (int y = (int) Math.floor(minY); y <= (int) Math.floor(maxY); y++) {
             if (collidesWithBody(node, y, minY, maxY)) {
                 return false;
