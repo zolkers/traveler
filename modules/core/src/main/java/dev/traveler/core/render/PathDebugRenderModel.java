@@ -202,7 +202,7 @@ public final class PathDebugRenderModel {
     }
 
     private RenderVertex surfaceVertexFor(SurfaceNode node) {
-        return new RenderVertex(node.centerX(), node.renderBlockPosition().y() + yOffset, node.centerZ());
+        return new RenderVertex(node.centerX(), node.floorY() + yOffset, node.centerZ());
     }
 
     private static DebugRenderFrame combine(DebugRenderFrame first, DebugRenderFrame second) {

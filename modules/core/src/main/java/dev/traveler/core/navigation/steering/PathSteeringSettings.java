@@ -5,13 +5,24 @@ public record PathSteeringSettings(
         double predictionSeconds,
         double corridorRadius,
         double lateralCorrectionGain,
-        double maxCorrectionDistance) {
+        double maxCorrectionDistance,
+        double clearanceWarningLateralError) {
+    public PathSteeringSettings(
+            double pathOffset,
+            double predictionSeconds,
+            double corridorRadius,
+            double lateralCorrectionGain,
+            double maxCorrectionDistance) {
+        this(pathOffset, predictionSeconds, corridorRadius, lateralCorrectionGain, maxCorrectionDistance, 0.65);
+    }
+
     public PathSteeringSettings {
         requireNonNegative(pathOffset, "pathOffset");
         requireNonNegative(predictionSeconds, "predictionSeconds");
         requireNonNegative(corridorRadius, "corridorRadius");
         requireNonNegative(lateralCorrectionGain, "lateralCorrectionGain");
         requireNonNegative(maxCorrectionDistance, "maxCorrectionDistance");
+        requireNonNegative(clearanceWarningLateralError, "clearanceWarningLateralError");
     }
 
     public static PathSteeringSettings standard() {
@@ -19,7 +30,7 @@ public record PathSteeringSettings(
     }
 
     public static PathSteeringSettings standard(double pathOffset) {
-        return new PathSteeringSettings(pathOffset, 0.25, 0.35, 1.0, 0.75);
+        return new PathSteeringSettings(pathOffset, 0.25, 0.35, 1.0, 0.75, 0.65);
     }
 
     private static void requireNonNegative(double value, String name) {

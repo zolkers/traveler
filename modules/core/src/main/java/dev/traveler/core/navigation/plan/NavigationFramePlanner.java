@@ -95,7 +95,8 @@ public final class NavigationFramePlanner {
                 speedIntent,
                 ToleranceProfile.standard(),
                 timing.state(),
-                false);
+                false,
+                NavigationSteeringDebug.from(steering));
     }
 
     private NavigationFramePlan completedPlan(

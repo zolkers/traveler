@@ -106,12 +106,26 @@ class PathDebugRenderModelTest {
         DebugRenderFrame frame = model.frameFor(state.snapshot());
 
         assertEquals(1, frame.lines().size());
-        assertEquals(new RenderVertex(1.75, 63.5, 1.75), frame.lines().getFirst().from());
+        assertEquals(new RenderVertex(1.75, 64.0, 1.75), frame.lines().getFirst().from());
         assertEquals(new RenderVertex(2.25, 64.5, 1.75), frame.lines().getFirst().to());
         assertEquals(new RenderVertex(1.0, 63.0, 1.0), frame.boxes().getFirst().min());
         assertEquals(new RenderVertex(2.0, 64.0, 2.0), frame.boxes().getFirst().max());
         assertEquals(new RenderVertex(2.0, 64.0, 1.0), frame.boxes().get(1).min());
         assertEquals(new RenderVertex(3.0, 65.0, 2.0), frame.boxes().get(1).max());
+    }
+
+    @Test
+    void surfacePathLineYUsesSurfaceFloorPlusOffset() {
+        PathDebugRenderModel model = new PathDebugRenderModel(new ColorRgba(0.1f, 0.6f, 1.0f, 0.85f), 0.35);
+        PathfinderDebugState state = new PathfinderDebugState();
+        state.updateSurface(foundSurfacePath(
+                new SurfaceNode(new BlockPosition(1, 63, 1), 1, 1, 63.5),
+                new SurfaceNode(new BlockPosition(2, 63, 1), 0, 1, 64.0)));
+
+        DebugRenderFrame frame = model.frameFor(state.snapshot());
+
+        assertEquals(63.85, frame.lines().getFirst().from().y());
+        assertEquals(64.35, frame.lines().getFirst().to().y());
     }
 
     @Test

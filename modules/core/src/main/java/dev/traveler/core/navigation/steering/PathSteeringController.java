@@ -37,6 +37,7 @@ public final class PathSteeringController {
         NavigationPoint pathTarget = corridor.targetAt(targetDistance);
         HorizontalVector correction = lateralCorrection(predicted, projection);
         NavigationPoint steeringTarget = offset(pathTarget, correction);
+        boolean outsideCorridor = projection.lateralError() > settings.corridorRadius();
         return SteeringPlan.corridor(
                 steeringTarget,
                 pathTarget,
@@ -45,7 +46,8 @@ public final class PathSteeringController {
                 correction,
                 projection.lateralError(),
                 Math.clamp(targetDistance, 0.0, corridor.length()),
-                projection.lateralError() > settings.corridorRadius());
+                outsideCorridor,
+                projection.lateralError() >= settings.clearanceWarningLateralError());
     }
 
     private NavigationPoint predictedPosition(NavigationPoint position, AgentMotionState motion) {

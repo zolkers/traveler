@@ -28,7 +28,45 @@ public record NavigationDebugSnapshot(
         CameraAngles outputCamera,
         MovementIntent intent,
         SpeedIntent speedIntent,
-        boolean completed) {
+        boolean completed,
+        boolean specialActionAllowed,
+        double lateralError,
+        boolean clearanceWarning) {
+    public NavigationDebugSnapshot(
+            Instant updatedAt,
+            NavigationPoint agentPosition,
+            NavigationPoint movementTarget,
+            HorizontalVector movementVector,
+            NavigationPhase phase,
+            ActionIntent actionIntent,
+            PlannedMovementMode movementMode,
+            PathProgress routeProgress,
+            CameraAngles currentCamera,
+            CameraAngles cameraTarget,
+            CameraAngles outputCamera,
+            MovementIntent intent,
+            SpeedIntent speedIntent,
+            boolean completed) {
+        this(
+                updatedAt,
+                agentPosition,
+                movementTarget,
+                movementVector,
+                phase,
+                actionIntent,
+                movementMode,
+                routeProgress,
+                currentCamera,
+                cameraTarget,
+                outputCamera,
+                intent,
+                speedIntent,
+                completed,
+                false,
+                0.0,
+                false);
+    }
+
     public NavigationDebugSnapshot {
         Objects.requireNonNull(updatedAt, "updatedAt");
         Objects.requireNonNull(agentPosition, "agentPosition");
@@ -43,6 +81,9 @@ public record NavigationDebugSnapshot(
         Objects.requireNonNull(outputCamera, "outputCamera");
         Objects.requireNonNull(intent, "intent");
         Objects.requireNonNull(speedIntent, "speedIntent");
+        if (!Double.isFinite(lateralError) || lateralError < 0.0) {
+            throw new IllegalArgumentException("lateralError must be non-negative.");
+        }
     }
 
     public static NavigationDebugSnapshot from(
@@ -65,6 +106,9 @@ public record NavigationDebugSnapshot(
                 controlFrame.cameraAngles(),
                 controlFrame.intent(),
                 controlFrame.plan().speedIntent(),
-                controlFrame.completed());
+                controlFrame.completed(),
+                controlFrame.plan().movementVector().specialActionAllowed(),
+                controlFrame.plan().steeringDebug().lateralError(),
+                controlFrame.plan().steeringDebug().clearanceWarning());
     }
 }

@@ -64,4 +64,22 @@ class PathSteeringControllerTest {
         assertTrue(plan.steeringTarget().z() < position.z());
         assertTrue(plan.desiredVectorFrom(position).z() < 0.0);
     }
+
+    @Test
+    void flagsClearanceWarningWhenLateralCorrectionIsHigh() {
+        PathSteeringController controller = new PathSteeringController(
+                new PathSteeringSettings(2.0, 0.0, 0.35, 1.0, 0.75, 0.65));
+        NavigationPath path = NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(0.0, 64.0, 8.0)));
+
+        SteeringPlan plan = controller.plan(
+                path,
+                new NavigationPoint(1.5, 64.0, 2.0),
+                AgentMotionState.groundedStill(),
+                1);
+
+        assertTrue(plan.clearanceWarning());
+        assertEquals(0.75, plan.lateralCorrection().length());
+    }
 }

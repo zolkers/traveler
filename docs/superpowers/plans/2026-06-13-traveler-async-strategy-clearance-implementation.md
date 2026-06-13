@@ -100,11 +100,11 @@
 - Test: `modules/core/src/test/java/dev/traveler/core/navigation/steering/PathSteeringControllerTest.java`
 - Test: `modules/core/src/test/java/dev/traveler/core/debug/DebugTextFormatterTest.java`
 
-- [ ] Write failing tests for short-range anti-wall correction when lateral error or clearance risk is high.
-- [ ] Add debug text fields for phase, mode, special action allowed, lateral error, and clearance warning when available.
-- [ ] Tint risky debug nodes differently if render model already exposes per-node material; otherwise include risk in chat/debug text only.
-- [ ] Run `./gradlew.bat :core:test --tests dev.traveler.core.navigation.* --tests dev.traveler.core.debug.* --tests dev.traveler.core.render.*`.
-- [ ] Commit `feat(core): expose anti-wall navigation debug`.
+- [x] Write failing tests for short-range anti-wall correction when lateral error or clearance risk is high.
+- [x] Add debug text fields for phase, mode, special action allowed, lateral error, and clearance warning when available.
+- [x] Tint risky debug nodes differently if render model already exposes per-node material; otherwise include risk in chat/debug text only.
+- [x] Run `./gradlew.bat :core:test --tests dev.traveler.core.navigation.* --tests dev.traveler.core.debug.* --tests dev.traveler.core.render.*`.
+- [x] Commit `feat(core): expose anti-wall navigation debug`.
 
 ### Task 7: Final Verification
 

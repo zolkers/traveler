@@ -16,6 +16,7 @@ import dev.traveler.core.navigation.plan.ActionIntent;
 import dev.traveler.core.navigation.plan.MovementVectorIntent;
 import dev.traveler.core.navigation.plan.NavigationFramePlan;
 import dev.traveler.core.navigation.plan.NavigationPhase;
+import dev.traveler.core.navigation.plan.NavigationSteeringDebug;
 import dev.traveler.core.navigation.plan.PlannedMovementMode;
 import dev.traveler.core.navigation.plan.SpeedIntent;
 import dev.traveler.core.navigation.plan.ToleranceProfile;
@@ -55,6 +56,18 @@ class NavigationDebugSnapshotTest {
         assertTrue(summary.contains("keys=Z+SPACE+SPRINT"));
         assertTrue(summary.contains("target=(1.00,65.00,3.00)"));
         assertTrue(summary.contains("yaw=0.0->12.0"));
+    }
+
+    @Test
+    void formatsSteeringDebugFieldsForChat() {
+        NavigationDebugSnapshot snapshot = NavigationDebugSnapshot.from(
+                frameInput(),
+                frame(new NavigationSteeringDebug(1.2, true, true)),
+                Instant.EPOCH);
+
+        String report = DebugTextFormatter.detailedStatus(Optional.of(snapshot), Optional.empty(), Instant.EPOCH);
+
+        assertTrue(report.contains("actionAllowed=true lateralError=1.20 clearance=warning"));
     }
 
     @Test
@@ -114,6 +127,10 @@ class NavigationDebugSnapshotTest {
     }
 
     private static NavigationControlFrame frame() {
+        return frame(NavigationSteeringDebug.none());
+    }
+
+    private static NavigationControlFrame frame(NavigationSteeringDebug steeringDebug) {
         MovementIntent intent = new MovementIntent(true, false, false, false, true, true);
         NavigationFramePlan plan = new NavigationFramePlan(
                 NavigationPhase.EXECUTE_ACTION,
@@ -125,7 +142,8 @@ class NavigationDebugSnapshotTest {
                 new SpeedIntent(1.0, true),
                 ToleranceProfile.standard(),
                 LocomotionExecutionState.start(),
-                false);
+                false,
+                steeringDebug);
         NavigationControllerState state =
                 new NavigationControllerState(new PathProgress(2), intent, LocomotionExecutionState.start());
         return new NavigationControlFrame(

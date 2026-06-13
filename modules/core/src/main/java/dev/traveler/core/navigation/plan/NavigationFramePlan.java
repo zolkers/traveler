@@ -16,7 +16,33 @@ public record NavigationFramePlan(
         SpeedIntent speedIntent,
         ToleranceProfile toleranceProfile,
         LocomotionExecutionState locomotionState,
-        boolean completed) {
+        boolean completed,
+        NavigationSteeringDebug steeringDebug) {
+    public NavigationFramePlan(
+            NavigationPhase phase,
+            PathProgress routeProgress,
+            MovementTarget movementTarget,
+            MovementVectorIntent movementVector,
+            CameraAngles cameraTarget,
+            ActionIntent actionIntent,
+            SpeedIntent speedIntent,
+            ToleranceProfile toleranceProfile,
+            LocomotionExecutionState locomotionState,
+            boolean completed) {
+        this(
+                phase,
+                routeProgress,
+                movementTarget,
+                movementVector,
+                cameraTarget,
+                actionIntent,
+                speedIntent,
+                toleranceProfile,
+                locomotionState,
+                completed,
+                NavigationSteeringDebug.none());
+    }
+
     public NavigationFramePlan {
         Objects.requireNonNull(phase, "phase");
         Objects.requireNonNull(routeProgress, "routeProgress");
@@ -27,5 +53,6 @@ public record NavigationFramePlan(
         Objects.requireNonNull(speedIntent, "speedIntent");
         Objects.requireNonNull(toleranceProfile, "toleranceProfile");
         Objects.requireNonNull(locomotionState, "locomotionState");
+        Objects.requireNonNull(steeringDebug, "steeringDebug");
     }
 }

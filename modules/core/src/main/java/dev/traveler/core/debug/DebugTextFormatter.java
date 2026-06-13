@@ -100,9 +100,12 @@ public final class DebugTextFormatter {
     private static String navigationVectorLine(NavigationDebugSnapshot debug) {
         return String.format(
                 Locale.ROOT,
-                "vector=%s vectorLength=%.2f",
+                "vector=%s vectorLength=%.2f actionAllowed=%s lateralError=%.2f clearance=%s",
                 vector(debug.movementVector()),
-                debug.movementVector().length());
+                debug.movementVector().length(),
+                debug.specialActionAllowed(),
+                debug.lateralError(),
+                clearanceState(debug));
     }
 
     private static String navigationInputLine(NavigationDebugSnapshot debug) {
@@ -131,6 +134,10 @@ public final class DebugTextFormatter {
         }
         String names = report.anomalies().stream().map(Enum::name).collect(Collectors.joining(","));
         return "anomalies=" + names;
+    }
+
+    private static String clearanceState(NavigationDebugSnapshot debug) {
+        return debug.clearanceWarning() ? "warning" : "ok";
     }
 
     public static String keys(MovementIntent intent) {

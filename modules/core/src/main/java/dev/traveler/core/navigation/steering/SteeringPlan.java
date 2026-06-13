@@ -12,7 +12,8 @@ public record SteeringPlan(
         HorizontalVector lateralCorrection,
         double lateralError,
         double distanceOnPath,
-        boolean outsideCorridor) {
+        boolean outsideCorridor,
+        boolean clearanceWarning) {
     public SteeringPlan {
         Objects.requireNonNull(steeringTarget, "steeringTarget");
         Objects.requireNonNull(pathTarget, "pathTarget");
@@ -26,7 +27,7 @@ public record SteeringPlan(
     public static SteeringPlan seek(NavigationPoint target) {
         NavigationPoint point = Objects.requireNonNull(target, "target");
         HorizontalVector zero = new HorizontalVector(0.0, 0.0);
-        return new SteeringPlan(point, point, point, zero, zero, 0.0, 0.0, false);
+        return new SteeringPlan(point, point, point, zero, zero, 0.0, 0.0, false, false);
     }
 
     public static SteeringPlan corridor(
@@ -38,6 +39,28 @@ public record SteeringPlan(
             double lateralError,
             double distanceOnPath,
             boolean outsideCorridor) {
+        return corridor(
+                steeringTarget,
+                pathTarget,
+                nearestPoint,
+                tangent,
+                lateralCorrection,
+                lateralError,
+                distanceOnPath,
+                outsideCorridor,
+                false);
+    }
+
+    public static SteeringPlan corridor(
+            NavigationPoint steeringTarget,
+            NavigationPoint pathTarget,
+            NavigationPoint nearestPoint,
+            HorizontalVector tangent,
+            HorizontalVector lateralCorrection,
+            double lateralError,
+            double distanceOnPath,
+            boolean outsideCorridor,
+            boolean clearanceWarning) {
         return new SteeringPlan(
                 steeringTarget,
                 pathTarget,
@@ -46,7 +69,8 @@ public record SteeringPlan(
                 lateralCorrection,
                 lateralError,
                 distanceOnPath,
-                outsideCorridor);
+                outsideCorridor,
+                clearanceWarning);
     }
 
     public HorizontalVector desiredVectorFrom(NavigationPoint position) {
