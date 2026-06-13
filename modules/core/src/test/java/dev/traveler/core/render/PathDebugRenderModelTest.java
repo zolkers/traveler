@@ -132,7 +132,7 @@ class PathDebugRenderModelTest {
     }
 
     @Test
-    void navigationDebugAddsTargetMovementAndCameraOverlay() {
+    void navigationDebugAddsOnlyTargetMarkerOverlay() {
         PathDebugRenderModel model = PathDebugRenderModel.defaultModel();
         PathfinderDebugState state = new PathfinderDebugState();
         state.updateNavigation(
@@ -144,10 +144,8 @@ class PathDebugRenderModelTest {
 
         DebugRenderFrame frame = model.frameFor(state);
 
-        assertEquals(3, frame.lines().size());
+        assertEquals(0, frame.lines().size());
         assertEquals(1, frame.boxes().size());
-        assertEquals(new RenderVertex(0.0, 65.2, 0.0), frame.lines().getFirst().from());
-        assertEquals(new RenderVertex(0.0, 65.2, 1.5), frame.lines().getFirst().to());
         assertEquals(new RenderVertex(0.75, 64.75, 2.75), frame.boxes().getFirst().min());
         assertEquals(new RenderVertex(1.25, 65.25, 3.25), frame.boxes().getFirst().max());
     }
