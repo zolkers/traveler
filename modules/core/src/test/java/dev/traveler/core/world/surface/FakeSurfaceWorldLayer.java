@@ -10,6 +10,7 @@ import dev.traveler.core.world.behavior.context.HorizontalFacing;
 import dev.traveler.core.world.behavior.special.FullBlockBehavior;
 import dev.traveler.core.world.behavior.special.SlabBlockBehavior;
 import dev.traveler.core.world.behavior.special.StairBlockBehavior;
+import dev.traveler.core.world.behavior.special.WaterloggedBlockBehavior;
 import dev.traveler.core.world.geometry.BlockShape;
 import dev.traveler.core.world.geometry.CollisionBox;
 import dev.traveler.core.world.movement.FluidHandling;
@@ -23,6 +24,10 @@ record FakeSurfaceWorldLayer(Map<BlockPosition, SurfaceBlock> blocks) implements
 
     static SurfaceBlock bottomSlab() {
         return surface(BlockShape.bottomSlab(), new SlabBlockBehavior());
+    }
+
+    static SurfaceBlock waterloggedBottomSlab() {
+        return surface(BlockShape.bottomSlab(), new WaterloggedBlockBehavior(new SlabBlockBehavior()));
     }
 
     static SurfaceBlock topSlab() {

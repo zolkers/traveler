@@ -4,6 +4,7 @@ import static dev.traveler.core.world.surface.FakeSurfaceWorldLayer.bottomSlab;
 import static dev.traveler.core.world.surface.FakeSurfaceWorldLayer.fullBlock;
 import static dev.traveler.core.world.surface.FakeSurfaceWorldLayer.northFacingBottomStair;
 import static dev.traveler.core.world.surface.FakeSurfaceWorldLayer.topSlab;
+import static dev.traveler.core.world.surface.FakeSurfaceWorldLayer.waterloggedBottomSlab;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -26,7 +27,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class SurfaceTraversalGraphTest {
     private static final MovementCapabilities PLAYER =
@@ -96,6 +101,23 @@ class SurfaceTraversalGraphTest {
 
         assertNotNull(connection);
         assertEquals(63.0, connection.to().floorY());
+    }
+
+    @ParameterizedTest
+    @MethodSource("specialDropSurfaces")
+    void oneBlockDropKeepsDestinationBehavior(
+            SurfaceBlock destinationBlock, SurfaceNode destination, double expectedFloorY) {
+        BlockPosition highBlock = new BlockPosition(0, 63, 0);
+        SurfaceNode start = new SurfaceNode(highBlock, 1, 1, 64.0);
+        FakeSurfaceWorldLayer world = new FakeSurfaceWorldLayer(Map.of(
+                highBlock, fullBlock(),
+                destination.blockPosition(), destinationBlock));
+        SurfaceTraversalGraph graph = new SurfaceTraversalGraph(world, start, destination, PLAYER, 8, 4);
+
+        Connection<SurfaceNode> connection = connectionTo(graph, start, destination);
+
+        assertNotNull(connection);
+        assertEquals(expectedFloorY, connection.to().floorY());
     }
 
     @Test
@@ -235,6 +257,14 @@ class SurfaceTraversalGraphTest {
 
     private static double distance(SurfaceNode from, SurfaceNode to) {
         return Math.hypot(from.centerX() - to.centerX(), from.centerZ() - to.centerZ());
+    }
+
+    private static Stream<Arguments> specialDropSurfaces() {
+        BlockPosition lowBlock = new BlockPosition(1, 62, 0);
+        return Stream.of(
+                Arguments.of(bottomSlab(), new SurfaceNode(lowBlock, 1, 1, 62.5), 62.5),
+                Arguments.of(northFacingBottomStair(), new SurfaceNode(lowBlock, 1, 1, 63.0), 63.0),
+                Arguments.of(waterloggedBottomSlab(), new SurfaceNode(lowBlock, 1, 1, 62.5), 62.5));
     }
 
     private static final class CountingSurfaceWorldLayer implements SurfaceWorldLayer {
