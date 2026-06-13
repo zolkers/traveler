@@ -8,9 +8,11 @@ import dev.traveler.core.world.surface.SurfaceNode;
 import java.util.Objects;
 
 public final class SurfaceLineOfWalk implements LineOfWalk<SurfaceNode> {
+    private static final double FLOOR_EPSILON = 0.001;
     private static final int[] SUPPORT_Y_OFFSETS = {0, -1, 1};
 
     private final SurfaceTraversalGraph graph;
+    private final SurfaceLineOfWalkSettings settings;
 
     public SurfaceLineOfWalk(
             SurfaceWorldLayer worldLayer,
@@ -19,13 +21,29 @@ public final class SurfaceLineOfWalk implements LineOfWalk<SurfaceNode> {
             MovementCapabilities capabilities,
             int horizontalMargin,
             int verticalMargin) {
+        this(
+                worldLayer,
+                boundsStart,
+                boundsGoal,
+                capabilities,
+                SurfaceLineOfWalkSettings.standard(horizontalMargin, verticalMargin));
+    }
+
+    public SurfaceLineOfWalk(
+            SurfaceWorldLayer worldLayer,
+            SurfaceNode boundsStart,
+            SurfaceNode boundsGoal,
+            MovementCapabilities capabilities,
+            SurfaceLineOfWalkSettings settings) {
+        SurfaceLineOfWalkSettings safeSettings = Objects.requireNonNull(settings, "settings");
+        this.settings = safeSettings;
         graph = new SurfaceTraversalGraph(
                 worldLayer,
                 boundsStart,
                 boundsGoal,
                 capabilities,
-                horizontalMargin,
-                verticalMargin);
+                safeSettings.horizontalMargin(),
+                safeSettings.verticalMargin());
     }
 
     @Override
@@ -40,12 +58,27 @@ public final class SurfaceLineOfWalk implements LineOfWalk<SurfaceNode> {
         SurfaceNode previous = from;
         for (int step = 1; step <= steps; step++) {
             SurfaceNode sample = sampleNode(graph, from, to, step, steps);
-            if (sample == null || !canWalkStep(graph, previous, sample)) {
+            if (!canUseSample(graph, previous, sample, step, steps)) {
                 return false;
             }
             previous = sample;
         }
         return previous.sameSubcell(to);
+    }
+
+    private boolean canUseSample(
+            SurfaceTraversalGraph graph,
+            SurfaceNode previous,
+            SurfaceNode sample,
+            int step,
+            int steps) {
+        if (sample == null || !canWalkStep(graph, previous, sample)) {
+            return false;
+        }
+        if (step == steps) {
+            return true;
+        }
+        return hasAdjacentClearance(graph, sample);
     }
 
     private SurfaceNode sampleNode(
@@ -94,6 +127,27 @@ public final class SurfaceLineOfWalk implements LineOfWalk<SurfaceNode> {
         return false;
     }
 
+    private boolean hasAdjacentClearance(SurfaceTraversalGraph graph, SurfaceNode sample) {
+        if (!settings.requiresAdjacentClearance()) {
+            return true;
+        }
+        for (HorizontalOffset direction : HorizontalDirections.CARDINAL) {
+            if (!hasClearanceAt(graph, sample, direction)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean hasClearanceAt(SurfaceTraversalGraph graph, SurfaceNode sample, HorizontalOffset direction) {
+        SurfaceNode adjacent = nearestSurface(
+                graph,
+                globalX(sample) + direction.x(),
+                globalZ(sample) + direction.z(),
+                sample.floorY());
+        return adjacent != null && sameFloor(sample, adjacent) && graph.canStandAt(adjacent);
+    }
+
     private static int horizontalSteps(SurfaceNode from, SurfaceNode to) {
         return Math.max(Math.abs(globalX(to) - globalX(from)), Math.abs(globalZ(to) - globalZ(from)));
     }
@@ -110,6 +164,10 @@ public final class SurfaceLineOfWalk implements LineOfWalk<SurfaceNode> {
 
     private static double floorDistance(SurfaceNode node, double floorY) {
         return Math.abs(node.floorY() - floorY);
+    }
+
+    private static boolean sameFloor(SurfaceNode first, SurfaceNode second) {
+        return floorDistance(first, second.floorY()) <= FLOOR_EPSILON;
     }
 
     private static int globalX(SurfaceNode node) {

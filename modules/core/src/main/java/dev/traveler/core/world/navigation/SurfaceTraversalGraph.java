@@ -159,6 +159,10 @@ public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
         return surfaceNode(globalX, blockY, globalZ);
     }
 
+    boolean canStandAt(SurfaceNode node) {
+        return canStandOn(node);
+    }
+
     private boolean canStandOn(SurfaceNode node) {
         SurfaceNode surface = surfaceNode(globalX(node), node.blockPosition().y(), globalZ(node));
         return surface != null && sameFloor(surface, node) && hasBodyClearance(node);

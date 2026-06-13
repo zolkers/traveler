@@ -14,6 +14,7 @@ import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.geometry.BlockShape;
 import dev.traveler.core.world.movement.MovementCapabilities;
 import dev.traveler.core.world.navigation.SurfaceLineOfWalk;
+import dev.traveler.core.world.navigation.SurfaceLineOfWalkSettings;
 import dev.traveler.core.world.navigation.SurfaceSmoothingPolicy;
 import dev.traveler.core.world.navigation.SurfaceTraversalGraph;
 import java.util.List;
@@ -83,8 +84,7 @@ public final class SurfaceTraversalGraphProfileWorkload {
                                 nodes.getFirst(),
                                 nodes.getLast(),
                                 PLAYER,
-                                56,
-                                4),
+                                SurfaceLineOfWalkSettings.smoothing(56, 4)),
                                 new SurfaceSmoothingPolicy(world))
                         .smooth(nodes);
         MutableGraphPath<SurfaceNode> path = new MutableGraphPath<>();

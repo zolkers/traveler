@@ -137,12 +137,7 @@ class TravelerCommandModuleTest {
     @Test
     void pathBlockStoresSmoothedSurfacePathWhenSurfaceLineIsClear() {
         BlockPosition startFeet = new BlockPosition(0, 64, 0);
-        TravelerCommandModule module = new TravelerCommandModule(new TestSurfaceWorldLayer(Map.of(
-                new BlockPosition(0, 63, 0), surfaceBlock(BlockShape.fullCube()),
-                new BlockPosition(1, 63, 0), surfaceBlock(BlockShape.fullCube()),
-                new BlockPosition(2, 63, 0), surfaceBlock(BlockShape.fullCube()),
-                new BlockPosition(3, 63, 0), surfaceBlock(BlockShape.fullCube()),
-                new BlockPosition(4, 63, 0), surfaceBlock(BlockShape.fullCube()))));
+        TravelerCommandModule module = new TravelerCommandModule(new TestSurfaceWorldLayer(flatSurface(0, 4, -1, 1)));
 
         module.framework().dispatch(new TestSource(startFeet), "traveler path block 4 63 0");
 
@@ -169,6 +164,18 @@ class TravelerCommandModuleTest {
         assertTrue(snapshot.surfaceNodes().size() > 2);
         assertTrue(snapshot.surfaceNodes().stream()
                 .anyMatch(node -> node.blockPosition().x() == 2 && node.blockPosition().y() == 64));
+    }
+
+    @Test
+    void smoothedSurfacePathKeepsDistanceFromAdjacentBlockedBodySpace() {
+        BlockPosition startFeet = new BlockPosition(0, 64, 0);
+        TravelerCommandModule module = new TravelerCommandModule(new TestSurfaceWorldLayer(walledSurface()));
+
+        module.framework().dispatch(new TestSource(startFeet), "traveler path block 4 63 0");
+
+        PathfinderDebugSnapshot snapshot = module.debugState().latestSnapshot().orElseThrow();
+        assertTrue(snapshot.hasSurfaceNodes());
+        assertTrue(snapshot.surfaceNodes().size() > 2);
     }
 
     private static void assertPathAvoids(GraphPath<BlockPosition> path, BlockPosition blocked) {
@@ -232,6 +239,28 @@ class TravelerCommandModuleTest {
 
     private static SurfaceBlock surfaceBlock(BlockShape shape) {
         return SurfaceBlock.solid(shape);
+    }
+
+    private static Map<BlockPosition, SurfaceBlock> walledSurface() {
+        Map<BlockPosition, SurfaceBlock> blocks = flatSurface(0, 4, 0, 1);
+        for (int x = 0; x <= 4; x++) {
+            blocks.put(new BlockPosition(x, 64, 1), surfaceBlock(BlockShape.fullCube()));
+        }
+        return blocks;
+    }
+
+    private static Map<BlockPosition, SurfaceBlock> flatSurface(int minX, int maxX, int minZ, int maxZ) {
+        Map<BlockPosition, SurfaceBlock> blocks = new java.util.HashMap<>();
+        for (int x = minX; x <= maxX; x++) {
+            addFlatRow(blocks, x, minZ, maxZ);
+        }
+        return blocks;
+    }
+
+    private static void addFlatRow(Map<BlockPosition, SurfaceBlock> blocks, int x, int minZ, int maxZ) {
+        for (int z = minZ; z <= maxZ; z++) {
+            blocks.put(new BlockPosition(x, 63, z), surfaceBlock(BlockShape.fullCube()));
+        }
     }
 
     private record TestSurfaceWorldLayer(Map<BlockPosition, SurfaceBlock> blocks) implements SurfaceWorldLayer {

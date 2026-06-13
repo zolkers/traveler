@@ -26,6 +26,28 @@ class SurfaceLineOfWalkTest {
     }
 
     @Test
+    void acceptsClearFlatSurfaceLinesWithAdjacentClearance() {
+        SurfaceLineOfWalk lineOfWalk = smoothLineOfWalk(flatWorld(0, 4, -1, 1));
+
+        boolean clear = lineOfWalk.hasLineOfWalk(nodeAt(0), nodeAt(4));
+
+        assertTrue(clear);
+    }
+
+    @Test
+    void rejectsSmoothSurfaceLinesTooCloseToAdjacentBlockedBodySpace() {
+        Map<BlockPosition, SurfaceBlock> blocks = flatBlocks(0, 4, 0, 1);
+        for (int x = 0; x <= 4; x++) {
+            blocks.put(new BlockPosition(x, 64, 1), SurfaceBlock.solid(BlockShape.fullCube()));
+        }
+        SurfaceLineOfWalk lineOfWalk = smoothLineOfWalk(new TestSurfaceWorldLayer(blocks));
+
+        boolean clear = lineOfWalk.hasLineOfWalk(nodeAt(0), nodeAt(4));
+
+        assertFalse(clear);
+    }
+
+    @Test
     void rejectsSurfaceLinesThroughBlockedBodySpace() {
         SurfaceWorldLayer world = new TestSurfaceWorldLayer(Map.of(
                 supportAt(0), SurfaceBlock.solid(BlockShape.fullCube()),
@@ -54,11 +76,25 @@ class SurfaceLineOfWalkTest {
     }
 
     private static SurfaceWorldLayer flatWorld(int minX, int maxX) {
+        return new TestSurfaceWorldLayer(flatBlocks(minX, maxX, 0, 0));
+    }
+
+    private static SurfaceWorldLayer flatWorld(int minX, int maxX, int minZ, int maxZ) {
+        return new TestSurfaceWorldLayer(flatBlocks(minX, maxX, minZ, maxZ));
+    }
+
+    private static Map<BlockPosition, SurfaceBlock> flatBlocks(int minX, int maxX, int minZ, int maxZ) {
         Map<BlockPosition, SurfaceBlock> blocks = new java.util.HashMap<>();
         for (int x = minX; x <= maxX; x++) {
-            blocks.put(supportAt(x), SurfaceBlock.solid(BlockShape.fullCube()));
+            addFlatRow(blocks, x, minZ, maxZ);
         }
-        return new TestSurfaceWorldLayer(blocks);
+        return blocks;
+    }
+
+    private static void addFlatRow(Map<BlockPosition, SurfaceBlock> blocks, int x, int minZ, int maxZ) {
+        for (int z = minZ; z <= maxZ; z++) {
+            blocks.put(supportAt(x, z), SurfaceBlock.solid(BlockShape.fullCube()));
+        }
     }
 
     private static SurfaceNode nodeAt(int x) {
@@ -69,8 +105,21 @@ class SurfaceLineOfWalkTest {
         return new SurfaceLineOfWalk(world, nodeAt(0), nodeAt(4), PLAYER, 8, 4);
     }
 
+    private static SurfaceLineOfWalk smoothLineOfWalk(SurfaceWorldLayer world) {
+        return new SurfaceLineOfWalk(
+                world,
+                nodeAt(0),
+                nodeAt(4),
+                PLAYER,
+                SurfaceLineOfWalkSettings.smoothing(8, 4));
+    }
+
     private static BlockPosition supportAt(int x) {
-        return new BlockPosition(x, 63, 0);
+        return supportAt(x, 0);
+    }
+
+    private static BlockPosition supportAt(int x, int z) {
+        return new BlockPosition(x, 63, z);
     }
 
     private record TestSurfaceWorldLayer(Map<BlockPosition, SurfaceBlock> blocks) implements SurfaceWorldLayer {

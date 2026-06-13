@@ -22,6 +22,7 @@ import dev.traveler.core.world.movement.MovementCapabilities;
 import dev.traveler.core.world.navigation.BlockLineOfWalk;
 import dev.traveler.core.world.navigation.BlockTraversalGraph;
 import dev.traveler.core.world.navigation.SurfaceLineOfWalk;
+import dev.traveler.core.world.navigation.SurfaceLineOfWalkSettings;
 import dev.traveler.core.world.navigation.SurfaceSmoothingPolicy;
 import dev.traveler.core.world.navigation.SurfaceTraversalGraph;
 import dev.traveler.core.world.surface.SurfaceNode;
@@ -202,8 +203,7 @@ public final class PathTravelerCommandFeature {
                         nodes.getFirst(),
                         nodes.getLast(),
                         CLIENT_CAPABILITIES,
-                        SEARCH_HORIZONTAL_MARGIN,
-                        SEARCH_VERTICAL_MARGIN),
+                        SurfaceLineOfWalkSettings.smoothing(SEARCH_HORIZONTAL_MARGIN, SEARCH_VERTICAL_MARGIN)),
                         new SurfaceSmoothingPolicy(worldLayer))
                 .smooth(nodes);
         return new PathfinderResult<>(result.status(), graphPath(smoothed, result.path().cost()));
