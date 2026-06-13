@@ -66,20 +66,11 @@ final class TravelerPathSearchService {
         if (rejection.isPresent()) {
             return TravelerPathSearchSubmission.immediate(rejection.orElseThrow());
         }
-        PreparedBlockSearch search = prepareBlockSearch(worldLayer, start, target);
-        PathJob<TravelerPathSearchResult> job = new PathJob<>(
-                purpose,
-                () -> searchBlockPath(search.worldLayer(), search.start(), search.target()),
-                TravelerPathSearchService::jobState);
-        return TravelerPathSearchSubmission.queued(job);
-    }
-
-    private PreparedBlockSearch prepareBlockSearch(
-            WorldLayer sourceWorldLayer,
-            BlockPosition start,
-            BlockPosition target) {
-        WorldLayer worldLayer = preparedWorldLayer(sourceWorldLayer, start, target);
-        return new PreparedBlockSearch(worldLayer, start, target);
+        if (worldLayer instanceof MinecraftWorldSnapshot minecraftWorldLayer) {
+            return TravelerPathSearchSubmission.snapshot(
+                    new SnapshotBlockSearch(minecraftWorldLayer, start, target, purpose));
+        }
+        return TravelerPathSearchSubmission.queued(pathJob(worldLayer, start, target, purpose));
     }
 
     private static Optional<TravelerPathSearchResult> oversizedMinecraftSnapshot(
@@ -106,12 +97,15 @@ final class TravelerPathSearchService {
         return new TravelerPathSearchResult(result, Optional.empty(), message);
     }
 
-    private static WorldLayer preparedWorldLayer(WorldLayer worldLayer, BlockPosition start, BlockPosition target) {
-        if (worldLayer instanceof MinecraftWorldSnapshot minecraftWorldLayer) {
-            return ImmutableMinecraftWorldSnapshot.capture(
-                    minecraftWorldLayer, start, target, SEARCH_HORIZONTAL_MARGIN, SEARCH_VERTICAL_MARGIN);
-        }
-        return worldLayer;
+    private static PathJob<TravelerPathSearchResult> pathJob(
+            WorldLayer worldLayer,
+            BlockPosition start,
+            BlockPosition target,
+            String purpose) {
+        return new PathJob<>(
+                purpose,
+                () -> searchBlockPath(worldLayer, start, target),
+                TravelerPathSearchService::jobState);
     }
 
     private static TravelerPathSearchResult searchBlockPath(
@@ -329,8 +323,6 @@ final class TravelerPathSearchService {
         return PathJobState.NOT_FOUND;
     }
 
-    private record PreparedBlockSearch(WorldLayer worldLayer, BlockPosition start, BlockPosition target) {}
-
     private record SearchVolume(long width, long height, long depth) {
         private static SearchVolume around(BlockPosition start, BlockPosition target) {
             long width = span(start.x(), target.x(), SEARCH_HORIZONTAL_MARGIN);
@@ -345,6 +337,48 @@ final class TravelerPathSearchService {
 
         private static long span(int first, int second, int margin) {
             return Math.abs((long) first - second) + margin * 2L + 1L;
+        }
+    }
+
+    static final class SnapshotBlockSearch {
+        private final ImmutableMinecraftWorldSnapshot.CaptureSession captureSession;
+        private final BlockPosition start;
+        private final BlockPosition target;
+        private final String purpose;
+
+        private SnapshotBlockSearch(
+                MinecraftWorldSnapshot worldLayer,
+                BlockPosition start,
+                BlockPosition target,
+                String purpose) {
+            this.captureSession = ImmutableMinecraftWorldSnapshot.captureSession(
+                    worldLayer,
+                    start,
+                    target,
+                    SEARCH_HORIZONTAL_MARGIN,
+                    SEARCH_VERTICAL_MARGIN);
+            this.start = Objects.requireNonNull(start, "start");
+            this.target = Objects.requireNonNull(target, "target");
+            this.purpose = Objects.requireNonNull(purpose, "purpose");
+        }
+
+        boolean captureNext(int blockBudget, long deadlineNanos) {
+            return captureSession.captureNext(blockBudget, deadlineNanos);
+        }
+
+        long blockCount() {
+            return captureSession.blockCount();
+        }
+
+        long capturedBlocks() {
+            return captureSession.capturedBlocks();
+        }
+
+        PathJob<TravelerPathSearchResult> pathJob() {
+            return new PathJob<>(
+                    purpose,
+                    () -> searchBlockPath(captureSession.snapshot(), start, target),
+                    TravelerPathSearchService::jobState);
         }
     }
 

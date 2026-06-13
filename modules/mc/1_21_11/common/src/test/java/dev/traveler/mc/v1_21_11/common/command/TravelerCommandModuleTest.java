@@ -249,6 +249,34 @@ class TravelerCommandModuleTest {
     }
 
     @Test
+    void pathBlockReturnsBeforeCapturingMinecraftSnapshot() {
+        CountingBlockGetter blockGetter = new CountingBlockGetter();
+        TravelerCommandModule module = new TravelerCommandModule(new PathfinderDebugState(), () -> blockGetter);
+        TestSource source = new TestSource(new BlockPosition(0, 64, 0));
+
+        CommandResult result = module.framework().dispatch(source, "traveler path block 2 63 0");
+
+        assertEquals(CommandResult.Status.SUCCESS, result.status());
+        assertTrue(result.reply().orElseThrow().contains("path queued id="));
+        assertEquals(0, blockGetter.blockReads);
+        assertTrue(module.debugState().latestResult().isEmpty());
+    }
+
+    @Test
+    void pathBlockCapturesMinecraftSnapshotIncrementally() {
+        CountingBlockGetter blockGetter = new CountingBlockGetter();
+        TravelerCommandModule module = new TravelerCommandModule(new PathfinderDebugState(), () -> blockGetter);
+        TestSource source = new TestSource(new BlockPosition(0, 64, 0));
+
+        module.framework().dispatch(source, "traveler path block 2 63 0");
+        module.drainPathJobs();
+
+        assertTrue(blockGetter.blockReads > 0);
+        assertTrue(blockGetter.blockReads <= 2_048);
+        assertTrue(module.debugState().latestResult().isEmpty());
+    }
+
+    @Test
     void pathBlockRejectsOversizedMinecraftSnapshotBeforeReadingWorld() {
         CountingBlockGetter blockGetter = new CountingBlockGetter();
         TravelerCommandModule module = new TravelerCommandModule(new PathfinderDebugState(), () -> blockGetter);
@@ -518,7 +546,7 @@ class TravelerCommandModuleTest {
 
         private static void requireSnapshotCapture() {
             boolean captureStack = StackWalker.getInstance().walk(frames -> frames.anyMatch(
-                    frame -> frame.getClassName().endsWith("ImmutableMinecraftWorldSnapshot")));
+                    frame -> frame.getClassName().contains("ImmutableMinecraftWorldSnapshot")));
             if (!captureStack) {
                 throw new AssertionError("live minecraft world read outside immutable path snapshot capture");
             }

@@ -12,6 +12,7 @@ import dev.traveler.core.navigation.TravelerNavigationState;
 import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.world.block.BlockPosition;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -19,12 +20,16 @@ import java.util.Optional;
 final class TravelerPathJobService implements AutoCloseable {
     private static final String PATH_PURPOSE = "path:block";
     private static final String NAVIGATE_PURPOSE = "navigate:block";
+    private static final int SNAPSHOT_CAPTURE_BLOCK_BUDGET = 2_048;
+    private static final long SNAPSHOT_CAPTURE_NANOS = 1_500_000L;
 
     private final PathfinderDebugState debugState;
     private final TravelerNavigationState navigationState;
     private final TravelerPathSearchService searchService;
     private final PathJobExecutor executor;
     private final List<PendingPathJob> pendingJobs = new ArrayList<>();
+    private final List<PendingSnapshotJob> pendingSnapshots = new ArrayList<>();
+    private long nextSnapshotId = 1L;
 
     TravelerPathJobService(
             PathfinderDebugState debugState,
@@ -52,7 +57,7 @@ final class TravelerPathJobService implements AutoCloseable {
             return TravelerCommandResult.success(result.message());
         }
         return TravelerCommandResult.success("path queued id="
-                + outcome.pendingJob().orElseThrow().id()
+                + outcome.queuedId().orElseThrow()
                 + " target="
                 + format(target));
     }
@@ -67,12 +72,13 @@ final class TravelerPathJobService implements AutoCloseable {
             return TravelerCommandResult.success(message);
         }
         return TravelerCommandResult.success("navigate queued id="
-                + outcome.pendingJob().orElseThrow().id()
+                + outcome.queuedId().orElseThrow()
                 + " target="
                 + format(target));
     }
 
     void drainCompleted() {
+        advanceSnapshotCaptures();
         completedJobs().forEach(PendingPathJob::complete);
     }
 
@@ -91,11 +97,14 @@ final class TravelerPathJobService implements AutoCloseable {
         if (submission.immediateResult().isPresent()) {
             return QueueOutcome.immediate(submission.immediateResult().orElseThrow());
         }
+        if (submission.snapshotSearch().isPresent()) {
+            return queueSnapshotSearch(context, purpose, completion, submission.snapshotSearch().orElseThrow());
+        }
         PathJobHandle<TravelerPathSearchResult> handle =
                 executor.submit(submission.job().orElseThrow());
         PendingPathJob pending = new PendingPathJob(handle, context.feedback(), completion);
         pendingJobs.add(pending);
-        return QueueOutcome.queued(pending);
+        return QueueOutcome.queued(pending.id());
     }
 
     private synchronized List<PendingPathJob> completedJobs() {
@@ -104,6 +113,48 @@ final class TravelerPathJobService implements AutoCloseable {
                 .toList();
         pendingJobs.removeAll(completed);
         return completed;
+    }
+
+    private synchronized QueueOutcome queueSnapshotSearch(
+            TravelerCommandContext context,
+            String purpose,
+            PathCompletion completion,
+            TravelerPathSearchService.SnapshotBlockSearch snapshotSearch) {
+        PendingSnapshotJob pending =
+                new PendingSnapshotJob(nextSnapshotId++, purpose, snapshotSearch, context.feedback(), completion);
+        pendingSnapshots.add(pending);
+        return QueueOutcome.queued(pending.id());
+    }
+
+    private synchronized void advanceSnapshotCaptures() {
+        for (PendingSnapshotJob pending : completedSnapshotCaptures()) {
+            pendingJobs.add(submitSnapshotSearch(pending));
+        }
+    }
+
+    private List<PendingSnapshotJob> completedSnapshotCaptures() {
+        List<PendingSnapshotJob> completed = new ArrayList<>();
+        Iterator<PendingSnapshotJob> iterator = pendingSnapshots.iterator();
+        while (iterator.hasNext()) {
+            PendingSnapshotJob pending = iterator.next();
+            if (!captureSnapshotBudget(pending)) {
+                continue;
+            }
+            iterator.remove();
+            completed.add(pending);
+        }
+        return completed;
+    }
+
+    private boolean captureSnapshotBudget(PendingSnapshotJob pending) {
+        long deadlineNanos = System.nanoTime() + SNAPSHOT_CAPTURE_NANOS;
+        return pending.captureNext(SNAPSHOT_CAPTURE_BLOCK_BUDGET, deadlineNanos);
+    }
+
+    private PendingPathJob submitSnapshotSearch(PendingSnapshotJob pending) {
+        pending.feedback().reply(pending.readyMessage());
+        PathJobHandle<TravelerPathSearchResult> handle = executor.submit(pending.pathJob());
+        return new PendingPathJob(handle, pending.feedback(), pending.completion());
     }
 
     private void completePath(TravelerPathSearchResult result, TravelerCommandFeedback feedback) {
@@ -141,6 +192,7 @@ final class TravelerPathJobService implements AutoCloseable {
 
     private void cancelActiveJob(String purpose) {
         activeHandle(purpose).ifPresent(PathJobHandle::cancel);
+        cancelActiveSnapshots(purpose);
     }
 
     private Optional<PathJobHandle<TravelerPathSearchResult>> activeHandle(String purpose) {
@@ -149,6 +201,14 @@ final class TravelerPathJobService implements AutoCloseable {
                 .filter(handle -> handle.purpose().equals(purpose))
                 .filter(handle -> !handle.isDone())
                 .findFirst();
+    }
+
+    private void cancelActiveSnapshots(String purpose) {
+        List<PendingSnapshotJob> cancelled = pendingSnapshots.stream()
+                .filter(snapshot -> snapshot.purpose().equals(purpose))
+                .toList();
+        cancelled.forEach(PendingSnapshotJob::cancel);
+        pendingSnapshots.removeAll(cancelled);
     }
 
     private static String format(BlockPosition position) {
@@ -200,22 +260,59 @@ final class TravelerPathJobService implements AutoCloseable {
     }
 
     private record QueueOutcome(
-            Optional<PendingPathJob> pendingJob,
+            Optional<Long> queuedId,
             Optional<TravelerPathSearchResult> immediateResult) {
         private QueueOutcome {
-            pendingJob = Objects.requireNonNull(pendingJob, "pendingJob");
+            queuedId = Objects.requireNonNull(queuedId, "queuedId");
             immediateResult = Objects.requireNonNull(immediateResult, "immediateResult");
-            if (pendingJob.isPresent() == immediateResult.isPresent()) {
+            if (queuedId.isPresent() == immediateResult.isPresent()) {
                 throw new IllegalArgumentException("Queue outcome must contain exactly one value.");
             }
         }
 
-        private static QueueOutcome queued(PendingPathJob pendingJob) {
-            return new QueueOutcome(Optional.of(Objects.requireNonNull(pendingJob, "pendingJob")), Optional.empty());
+        private static QueueOutcome queued(long queuedId) {
+            return new QueueOutcome(Optional.of(queuedId), Optional.empty());
         }
 
         private static QueueOutcome immediate(TravelerPathSearchResult result) {
             return new QueueOutcome(Optional.empty(), Optional.of(Objects.requireNonNull(result, "result")));
+        }
+    }
+
+    private record PendingSnapshotJob(
+            long id,
+            String purpose,
+            TravelerPathSearchService.SnapshotBlockSearch snapshotSearch,
+            TravelerCommandFeedback feedback,
+            PathCompletion completion) {
+        private PendingSnapshotJob {
+            Objects.requireNonNull(purpose, "purpose");
+            Objects.requireNonNull(snapshotSearch, "snapshotSearch");
+            Objects.requireNonNull(feedback, "feedback");
+            Objects.requireNonNull(completion, "completion");
+        }
+
+        private boolean captureNext(int blockBudget, long deadlineNanos) {
+            return snapshotSearch.captureNext(blockBudget, deadlineNanos);
+        }
+
+        private dev.traveler.core.job.PathJob<TravelerPathSearchResult> pathJob() {
+            return snapshotSearch.pathJob();
+        }
+
+        private String readyMessage() {
+            return purpose
+                    + " snapshot ready id="
+                    + id
+                    + " blocks="
+                    + snapshotSearch.capturedBlocks()
+                    + "/"
+                    + snapshotSearch.blockCount()
+                    + " | worker queued";
+        }
+
+        private void cancel() {
+            feedback.reply(purpose + " cancelled id=" + id);
         }
     }
 }
