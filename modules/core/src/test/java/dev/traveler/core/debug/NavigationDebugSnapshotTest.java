@@ -21,6 +21,10 @@ import dev.traveler.core.navigation.plan.SpeedIntent;
 import dev.traveler.core.navigation.plan.ToleranceProfile;
 import dev.traveler.core.navigation.spatial.HorizontalVector;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.graph.MutableGraphPath;
+import dev.traveler.core.path.PathfinderResult;
+import dev.traveler.core.path.PathfinderStatus;
+import dev.traveler.core.world.block.BlockPosition;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 
@@ -50,6 +54,22 @@ class NavigationDebugSnapshotTest {
         assertTrue(summary.contains("keys=Z+SPACE+SPRINT"));
         assertTrue(summary.contains("target=(1.00,65.00,3.00)"));
         assertTrue(summary.contains("yaw=0.0->12.0"));
+    }
+
+    @Test
+    void formatsPathSummaryForChat() {
+        MutableGraphPath<BlockPosition> path = new MutableGraphPath<>();
+        path.addNode(new BlockPosition(0, 64, 0));
+        path.addNode(new BlockPosition(1, 64, 0));
+        path.setCost(3.5);
+        PathfinderDebugSnapshot snapshot = new PathfinderDebugSnapshot(
+                new PathfinderResult<>(PathfinderStatus.FOUND, path),
+                "path",
+                Instant.EPOCH);
+
+        String summary = DebugTextFormatter.pathSummary(snapshot);
+
+        assertEquals("path status=FOUND nodes=2 cost=3.50", summary);
     }
 
     private static NavigationFrameInput frameInput() {

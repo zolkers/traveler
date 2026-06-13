@@ -3,6 +3,7 @@ package dev.traveler.core.debug;
 import dev.traveler.core.navigation.control.MovementIntent;
 import dev.traveler.core.navigation.spatial.HorizontalVector;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.path.PathfinderStatus;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -28,6 +29,15 @@ public final class DebugTextFormatter {
                 debug.outputCamera().yawDegrees(),
                 debug.speedIntent().scale(),
                 debug.completed());
+    }
+
+    public static String pathSummary(PathfinderDebugSnapshot snapshot) {
+        PathfinderDebugSnapshot debug = Objects.requireNonNull(snapshot, "snapshot");
+        PathfinderStatus status = debug.result().status();
+        int nodes = debug.result().path().nodeCount();
+        double cost = debug.result().path().cost();
+        String surface = debug.hasSurfaceNodes() ? " surfaceNodes=" + debug.surfaceNodes().size() : "";
+        return String.format(Locale.ROOT, "path status=%s nodes=%d cost=%.2f%s", status, nodes, cost, surface);
     }
 
     public static String keys(MovementIntent intent) {

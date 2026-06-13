@@ -14,7 +14,23 @@ import dev.traveler.core.layer.BlockClassification;
 import dev.traveler.core.layer.SurfaceBlock;
 import dev.traveler.core.layer.SurfaceWorldLayer;
 import dev.traveler.core.layer.WorldLayer;
+import dev.traveler.core.navigation.NavigationControlFrame;
+import dev.traveler.core.navigation.NavigationControllerState;
+import dev.traveler.core.navigation.NavigationFrameInput;
 import dev.traveler.core.navigation.NavigationSession;
+import dev.traveler.core.navigation.camera.CameraAngles;
+import dev.traveler.core.navigation.control.MovementIntent;
+import dev.traveler.core.navigation.follow.MovementTarget;
+import dev.traveler.core.navigation.follow.PathProgress;
+import dev.traveler.core.navigation.locomotion.LocomotionExecutionState;
+import dev.traveler.core.navigation.plan.ActionIntent;
+import dev.traveler.core.navigation.plan.MovementVectorIntent;
+import dev.traveler.core.navigation.plan.NavigationFramePlan;
+import dev.traveler.core.navigation.plan.NavigationPhase;
+import dev.traveler.core.navigation.plan.PlannedMovementMode;
+import dev.traveler.core.navigation.plan.SpeedIntent;
+import dev.traveler.core.navigation.plan.ToleranceProfile;
+import dev.traveler.core.navigation.spatial.HorizontalVector;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import dev.traveler.core.path.PathfinderResult;
 import dev.traveler.core.world.geometry.BlockShape;
@@ -34,11 +50,13 @@ class TravelerCommandModuleTest {
     void exposesModularCommandCatalog() {
         TravelerCommandModule module = new TravelerCommandModule();
 
-        assertEquals(4, module.catalog().routes().size());
+        assertEquals(6, module.catalog().routes().size());
         assertTrue(module.catalog().route("traveler path test").isPresent());
         assertTrue(module.catalog().route("traveler path block <x:int> <y:int> <z:int>").isPresent());
         assertTrue(module.catalog().route("traveler navigate block <x:int> <y:int> <z:int>").isPresent());
         assertTrue(module.catalog().route("traveler navigate stop").isPresent());
+        assertTrue(module.catalog().route("traveler debug status").isPresent());
+        assertTrue(module.catalog().route("traveler debug clear").isPresent());
     }
 
     @Test
@@ -90,6 +108,7 @@ class TravelerCommandModuleTest {
         assertEquals(new NavigationPoint(1.5, 2.0, 3.5), session.path().lastNode());
         assertTrue(module.debugState().latestResult().isPresent());
         assertTrue(result.reply().orElseThrow().contains("navigate block"));
+        assertTrue(result.reply().orElseThrow().contains("path status=FOUND"));
     }
 
     @Test
@@ -102,6 +121,7 @@ class TravelerCommandModuleTest {
         assertEquals(CommandResult.Status.SUCCESS, result.status());
         assertTrue(module.navigationState().activeSession().isEmpty());
         assertTrue(module.navigationState().latestMessage().orElseThrow().contains("stopped"));
+        assertTrue(result.reply().orElseThrow().contains("debug nav cleared"));
     }
 
     @Test
@@ -207,10 +227,73 @@ class TravelerCommandModuleTest {
         assertTrue(snapshot.surfaceNodes().size() > 2);
     }
 
+    @Test
+    void debugStatusPrintsNavigationAndPathStateToChat() {
+        PathfinderDebugState debugState = new PathfinderDebugState();
+        TravelerCommandModule module = new TravelerCommandModule(debugState, () -> null);
+        TestSource source = new TestSource();
+        module.framework().dispatch(source, "traveler path test");
+        debugState.updateNavigation(navigationInput(), navigationFrame());
+
+        CommandResult result = module.framework().dispatch(source, "traveler debug status");
+
+        assertEquals(CommandResult.Status.SUCCESS, result.status());
+        String reply = source.replies().getLast();
+        assertTrue(reply.contains("nav phase=APPROACH"));
+        assertTrue(reply.contains("path status=FOUND"));
+        assertTrue(result.reply().orElseThrow().contains("nav phase=APPROACH"));
+    }
+
+    @Test
+    void debugClearPrintsToChatAndClearsDebugState() {
+        PathfinderDebugState debugState = new PathfinderDebugState();
+        TravelerCommandModule module = new TravelerCommandModule(debugState, () -> null);
+        TestSource source = new TestSource();
+        module.framework().dispatch(source, "traveler path test");
+        debugState.updateNavigation(navigationInput(), navigationFrame());
+
+        CommandResult result = module.framework().dispatch(source, "traveler debug clear");
+
+        assertEquals(CommandResult.Status.SUCCESS, result.status());
+        assertTrue(result.reply().orElseThrow().contains("debug cleared"));
+        assertTrue(debugState.latestSnapshot().isEmpty());
+        assertTrue(debugState.latestNavigation().isEmpty());
+    }
+
     private static void assertPathAvoids(GraphPath<BlockPosition> path, BlockPosition blocked) {
         for (BlockPosition node : path) {
             assertTrue(!node.equals(blocked));
         }
+    }
+
+    private static NavigationFrameInput navigationInput() {
+        return new NavigationFrameInput(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new CameraAngles(0.0, 0.0),
+                0.016);
+    }
+
+    private static NavigationControlFrame navigationFrame() {
+        MovementIntent intent = new MovementIntent(true, false, false, false, false, true);
+        MovementTarget target = MovementTarget.follow(new NavigationPoint(0.0, 64.0, 4.0));
+        NavigationFramePlan plan = new NavigationFramePlan(
+                NavigationPhase.APPROACH,
+                PathProgress.start(),
+                target,
+                new MovementVectorIntent(new HorizontalVector(0.0, 1.0), PlannedMovementMode.DIRECT, true),
+                new CameraAngles(0.0, 0.0),
+                ActionIntent.none(),
+                new SpeedIntent(1.0, true),
+                ToleranceProfile.standard(),
+                LocomotionExecutionState.start(),
+                false);
+        return new NavigationControlFrame(
+                new NavigationControllerState(PathProgress.start(), intent, LocomotionExecutionState.start()),
+                intent,
+                new CameraAngles(0.0, 0.0),
+                target,
+                plan,
+                false);
     }
 
     private static final class TestSource implements CommandSource, TravelerCommandPosition {

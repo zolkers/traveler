@@ -4,6 +4,7 @@ import dev.traveler.core.command.TravelerCommand;
 import dev.traveler.core.command.TravelerCommandContext;
 import dev.traveler.core.command.TravelerCommandResult;
 import dev.traveler.core.command.TravelerSubcommand;
+import dev.traveler.core.debug.DebugTextFormatter;
 import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.navigation.TravelerNavigationState;
 import dev.traveler.core.navigation.follow.NavigationPath;
@@ -36,7 +37,7 @@ public final class NavigateTravelerCommandFeature {
         if (path.isEmpty()) {
             return navigationFailure(result);
         }
-        String message = result.message().replaceFirst("^path", "navigate");
+        String message = result.message().replaceFirst("^path", "navigate") + " | " + pathSummary();
         navigationState.start(path.orElseThrow(), message);
         return TravelerCommandResult.success(message);
     }
@@ -45,12 +46,19 @@ public final class NavigateTravelerCommandFeature {
     private TravelerCommandResult navigateStop(TravelerCommandContext context) {
         String message = "navigation stopped";
         navigationState.stop(message);
-        return TravelerCommandResult.success(message);
+        debugState.clearNavigation();
+        return TravelerCommandResult.success(message + " | debug nav cleared");
     }
 
     private TravelerCommandResult navigationFailure(TravelerPathSearchResult result) {
         String message = "navigation not started status=" + result.status();
         navigationState.stop(message);
         return TravelerCommandResult.failure(message);
+    }
+
+    private String pathSummary() {
+        return debugState.latestSnapshot()
+                .map(DebugTextFormatter::pathSummary)
+                .orElse("path=none");
     }
 }

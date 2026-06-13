@@ -56,9 +56,11 @@ public final class TravelerCommandModule {
         PathTravelerCommandFeature pathFeature = new PathTravelerCommandFeature(this.debugState, searchService);
         NavigateTravelerCommandFeature navigateFeature =
                 new NavigateTravelerCommandFeature(this.debugState, this.navigationState, searchService);
+        DebugTravelerCommandFeature debugFeature = new DebugTravelerCommandFeature(this.debugState);
         catalog = TravelerCommandCatalog.fromFeatures(
                 AnnotatedTravelerCommandFeature.from(pathFeature),
-                AnnotatedTravelerCommandFeature.from(navigateFeature));
+                AnnotatedTravelerCommandFeature.from(navigateFeature),
+                AnnotatedTravelerCommandFeature.from(debugFeature));
         framework = CommandFramework.builder().build();
         new BuildMyCommandCatalogAdapter(framework.registry()).register(catalog);
     }
