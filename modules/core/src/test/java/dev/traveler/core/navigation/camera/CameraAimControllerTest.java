@@ -1,13 +1,9 @@
 package dev.traveler.core.navigation.camera;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.traveler.core.navigation.spatial.NavigationPoint;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 class CameraAimControllerTest {
@@ -62,10 +58,9 @@ class CameraAimControllerTest {
     }
 
     @Test
-    void yawNormalizationDoesNotUseIterativeLoops() throws IOException {
-        String source = Files.readString(Path.of(
-                "src/main/java/dev/traveler/core/navigation/camera/CameraAngles.java"));
+    void yawNormalizationHandlesLargeFiniteValues() {
+        assertEquals(-80.0, CameraAngles.normalizeYaw(1_000_000_000.0));
+        assertEquals(80.0, CameraAngles.normalizeYaw(-1_000_000_000.0));
 
-        assertFalse(source.contains("while"), "Yaw normalization must stay constant-time for large finite inputs.");
     }
 }

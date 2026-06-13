@@ -5,6 +5,8 @@ import dev.traveler.core.navigation.spatial.NavigationPoint;
 import java.util.Objects;
 
 public final class MovementInputPlanner {
+    private static final double JUMP_HEIGHT_THRESHOLD = 0.25;
+
     private final MovementInputSettings settings;
 
     public MovementInputPlanner(MovementInputSettings settings) {
@@ -21,7 +23,7 @@ public final class MovementInputPlanner {
         MovementIntent previous = Objects.requireNonNull(previousIntent, "previousIntent");
         HorizontalVector desired = position.horizontalVectorTo(destination);
         if (desired.isZero()) {
-            return MovementIntent.idle();
+            return verticalIntent(position, destination);
         }
         return intentFor(desired, cameraYawDegrees, previous);
     }
@@ -41,5 +43,10 @@ public final class MovementInputPlanner {
     private boolean pressed(double amount, boolean wasPressed) {
         double threshold = wasPressed ? settings.releaseThreshold() : settings.pressThreshold();
         return amount >= threshold;
+    }
+
+    private static MovementIntent verticalIntent(NavigationPoint current, NavigationPoint target) {
+        boolean jump = target.y() - current.y() > JUMP_HEIGHT_THRESHOLD;
+        return new MovementIntent(false, false, false, false, jump, false);
     }
 }

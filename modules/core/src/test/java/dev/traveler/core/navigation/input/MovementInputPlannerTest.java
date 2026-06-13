@@ -59,4 +59,15 @@ class MovementInputPlannerTest {
 
         assertEquals(MovementIntent.idle(), intent);
     }
+
+    @Test
+    void jumpsWhenTargetIsAboveWithNoHorizontalDelta() {
+        MovementIntent intent = planner.plan(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(0.0, 65.0, 0.0),
+                0.0,
+                MovementIntent.idle());
+
+        assertEquals(new MovementIntent(false, false, false, false, true, false), intent);
+    }
 }

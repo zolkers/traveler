@@ -50,6 +50,9 @@ public final class PathFollowController {
         NavigationPoint cursor = position;
         for (int index = nextIndex; index < path.nodeCount(); index++) {
             NavigationPoint node = path.nodeAt(index);
+            if (isVerticalStep(cursor, node)) {
+                return node;
+            }
             double segmentDistance = cursor.horizontalDistanceTo(node);
             if (segmentDistance >= remainingDistance) {
                 return cursor.interpolate(node, remainingDistance / segmentDistance);
@@ -58,6 +61,10 @@ public final class PathFollowController {
             cursor = node;
         }
         return path.lastNode();
+    }
+
+    private static boolean isVerticalStep(NavigationPoint from, NavigationPoint to) {
+        return from.horizontalDistanceTo(to) <= 1.0E-6 && from.distanceTo(to) > 1.0E-6;
     }
 
     private double speedScale(double distanceToGoal) {

@@ -4,6 +4,7 @@ import dev.traveler.core.navigation.NavigationControlFrame;
 import dev.traveler.core.navigation.NavigationController;
 import dev.traveler.core.navigation.NavigationControllerState;
 import dev.traveler.core.navigation.NavigationFrameInput;
+import dev.traveler.core.navigation.NavigationSession;
 import dev.traveler.core.navigation.TravelerNavigationState;
 import java.util.Objects;
 import java.util.Optional;
@@ -16,6 +17,7 @@ public final class FabricNavigationRuntime {
     private final ClientNavigationAdapter adapter;
     private final NavigationController controller;
     private NavigationControllerState controllerState = NavigationControllerState.start();
+    private NavigationSession activeSession;
     private long previousNanos = -1L;
     private boolean released = true;
 
@@ -34,21 +36,24 @@ public final class FabricNavigationRuntime {
 
     public void update(long nowNanos) {
         double deltaSeconds = deltaSeconds(nowNanos);
-        if (navigationState.activeSession().isEmpty()) {
+        Optional<NavigationSession> session = navigationState.activeSession();
+        if (session.isEmpty()) {
+            activeSession = null;
             releaseIfNeeded();
             return;
         }
-        updateActiveSession(deltaSeconds);
+        updateActiveSession(session.orElseThrow(), deltaSeconds);
     }
 
-    private void updateActiveSession(double deltaSeconds) {
+    private void updateActiveSession(NavigationSession session, double deltaSeconds) {
+        resetProgressWhenSessionChanges(session);
         Optional<NavigationFrameInput> input = adapter.frameInput(deltaSeconds);
         if (input.isEmpty()) {
             releaseIfNeeded();
             return;
         }
         NavigationControlFrame frame = controller.update(
-                navigationState.activeSession().orElseThrow().path(),
+                session.path(),
                 input.orElseThrow(),
                 controllerState);
         controllerState = frame.state();
@@ -63,6 +68,14 @@ public final class FabricNavigationRuntime {
         }
         adapter.apply(frame);
         released = false;
+    }
+
+    private void resetProgressWhenSessionChanges(NavigationSession session) {
+        if (session == activeSession) {
+            return;
+        }
+        activeSession = session;
+        controllerState = NavigationControllerState.start();
     }
 
     private void releaseIfNeeded() {

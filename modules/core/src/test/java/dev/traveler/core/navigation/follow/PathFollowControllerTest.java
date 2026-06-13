@@ -87,6 +87,7 @@ class PathFollowControllerTest {
                 PathProgress.start());
 
         assertEquals(new PathProgress(1), frame.progress());
+        assertEquals(new NavigationPoint(0.0, 65.0, 0.0), frame.target());
     }
 
     private static NavigationPoint point(double x, double z) {

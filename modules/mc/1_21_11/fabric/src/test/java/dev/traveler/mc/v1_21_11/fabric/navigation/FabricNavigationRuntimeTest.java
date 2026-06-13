@@ -8,6 +8,7 @@ import dev.traveler.core.navigation.NavigationFrameInput;
 import dev.traveler.core.navigation.TravelerNavigationState;
 import dev.traveler.core.navigation.camera.CameraAngles;
 import dev.traveler.core.navigation.follow.NavigationPath;
+import dev.traveler.core.navigation.follow.PathProgress;
 import dev.traveler.core.navigation.input.MovementIntent;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import java.util.ArrayList;
@@ -49,8 +50,29 @@ class FabricNavigationRuntimeTest {
         assertTrue(adapter.released);
     }
 
+    @Test
+    void resetsPathProgressWhenCommandReplacesActiveSession() {
+        TravelerNavigationState navigationState = new TravelerNavigationState();
+        TestAdapter adapter = new TestAdapter(new NavigationPoint(0.0, 64.0, 0.0), new CameraAngles(0.0, 0.0));
+        FabricNavigationRuntime runtime = new FabricNavigationRuntime(navigationState, adapter);
+        navigationState.start(NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(0.1, 64.0, 0.0),
+                new NavigationPoint(8.0, 64.0, 0.0))), "first");
+
+        runtime.update(1_000_000_000L);
+        navigationState.start(NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(4.0, 64.0, 0.0),
+                new NavigationPoint(8.0, 64.0, 0.0))), "second");
+        runtime.update(1_016_000_000L);
+
+        assertEquals(new PathProgress(1), adapter.controlFrames.getLast().state().progress());
+    }
+
     private static final class TestAdapter implements ClientNavigationAdapter {
         private final List<NavigationFrameInput> frames = new ArrayList<>();
+        private final List<NavigationControlFrame> controlFrames = new ArrayList<>();
         private final List<MovementIntent> intents = new ArrayList<>();
         private final NavigationPoint position;
         private final CameraAngles cameraAngles;
@@ -70,6 +92,7 @@ class FabricNavigationRuntimeTest {
 
         @Override
         public void apply(NavigationControlFrame frame) {
+            controlFrames.add(frame);
             intents.add(frame.intent());
         }
 
