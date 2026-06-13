@@ -8,6 +8,7 @@ import dev.traveler.core.navigation.camera.CameraAngles;
 import dev.traveler.core.navigation.follow.MovementTarget;
 import dev.traveler.core.navigation.follow.PathProgress;
 import dev.traveler.core.navigation.locomotion.LocomotionAction;
+import dev.traveler.core.navigation.locomotion.LocomotionExecutionState;
 import dev.traveler.core.navigation.spatial.HorizontalVector;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import org.junit.jupiter.api.Test;
@@ -24,6 +25,7 @@ class NavigationFramePlanTest {
                 ActionIntent.jump(),
                 new SpeedIntent(1.0, true),
                 ToleranceProfile.standard(),
+                LocomotionExecutionState.start(),
                 false);
 
         assertEquals(NavigationPhase.EXECUTE_ACTION, plan.phase());

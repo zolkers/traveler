@@ -3,6 +3,7 @@ package dev.traveler.core.navigation.plan;
 import dev.traveler.core.navigation.camera.CameraAngles;
 import dev.traveler.core.navigation.follow.MovementTarget;
 import dev.traveler.core.navigation.follow.PathProgress;
+import dev.traveler.core.navigation.locomotion.LocomotionExecutionState;
 import java.util.Objects;
 
 public record NavigationFramePlan(
@@ -14,6 +15,7 @@ public record NavigationFramePlan(
         ActionIntent actionIntent,
         SpeedIntent speedIntent,
         ToleranceProfile toleranceProfile,
+        LocomotionExecutionState locomotionState,
         boolean completed) {
     public NavigationFramePlan {
         Objects.requireNonNull(phase, "phase");
@@ -24,5 +26,6 @@ public record NavigationFramePlan(
         Objects.requireNonNull(actionIntent, "actionIntent");
         Objects.requireNonNull(speedIntent, "speedIntent");
         Objects.requireNonNull(toleranceProfile, "toleranceProfile");
+        Objects.requireNonNull(locomotionState, "locomotionState");
     }
 }
