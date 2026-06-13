@@ -1,6 +1,5 @@
-package dev.traveler.core.navigation.steering;
+package dev.traveler.core.navigation.follow;
 
-import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.spatial.HorizontalVector;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import java.util.Objects;

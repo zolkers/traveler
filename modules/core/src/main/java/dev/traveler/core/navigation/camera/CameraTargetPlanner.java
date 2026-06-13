@@ -1,13 +1,13 @@
 package dev.traveler.core.navigation.camera;
 
 import dev.traveler.core.navigation.follow.NavigationPath;
+import dev.traveler.core.navigation.follow.PathCorridor;
 import dev.traveler.core.navigation.follow.PathProgress;
+import dev.traveler.core.navigation.follow.PathProjection;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import java.util.Objects;
 
 public final class CameraTargetPlanner {
-    private static final double MIN_SEGMENT_DISTANCE = 1.0E-6;
-
     private final CameraTargetSettings settings;
 
     public CameraTargetPlanner(CameraTargetSettings settings) {
@@ -38,23 +38,9 @@ public final class CameraTargetPlanner {
             NavigationPath path,
             NavigationPoint position,
             PathProgress progress) {
-        double remainingDistance = settings.lookAheadDistance();
-        NavigationPoint cursor = position;
-        int startIndex = Math.clamp(progress.nextNodeIndex(), 1, path.nodeCount() - 1);
-        for (int index = startIndex; index < path.nodeCount(); index++) {
-            NavigationPoint node = path.nodeAt(index);
-            double segmentDistance = cursor.horizontalDistanceTo(node);
-            if (segmentDistance <= MIN_SEGMENT_DISTANCE) {
-                cursor = node;
-                continue;
-            }
-            if (segmentDistance >= remainingDistance) {
-                return cursor.interpolate(node, remainingDistance / segmentDistance);
-            }
-            remainingDistance -= segmentDistance;
-            cursor = node;
-        }
-        return cursor;
+        PathCorridor corridor = PathCorridor.from(path, progress.nextNodeIndex() - 1);
+        PathProjection projection = corridor.project(position);
+        return corridor.targetAt(projection.distanceOnPath() + settings.lookAheadDistance());
     }
 
     private static NavigationPoint horizontalTarget(NavigationPoint position, NavigationPoint target) {

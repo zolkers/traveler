@@ -9,6 +9,7 @@ import java.util.Objects;
 public final class RouteProgressPolicy {
     private static final double PASSED_NODE_RADIUS_MULTIPLIER = 2.5;
     private static final double PASSED_NODE_HEIGHT_TOLERANCE = 0.65;
+    private static final double SKIPPED_NODE_CORRIDOR_MULTIPLIER = 3.0;
 
     private final double reachedDistance;
 
@@ -43,7 +44,7 @@ public final class RouteProgressPolicy {
         if (position.distanceTo(path.nodeAt(nextIndex)) <= reachedDistance) {
             return true;
         }
-        return hasPassedNodeGate(path, position, nextIndex);
+        return hasPassedNodeGate(path, position, nextIndex) || hasSkippedNodeOnCorridor(path, position, nextIndex);
     }
 
     private boolean hasPassedNodeGate(NavigationPath path, NavigationPoint position, int nextIndex) {
@@ -83,5 +84,60 @@ public final class RouteProgressPolicy {
             return false;
         }
         return node.horizontalVectorTo(position).dot(outgoing.normalized()) > 0.0;
+    }
+
+    private boolean hasSkippedNodeOnCorridor(NavigationPath path, NavigationPoint position, int nextIndex) {
+        NavigationPoint previous = path.nodeAt(nextIndex - 1);
+        NavigationPoint node = path.nodeAt(nextIndex);
+        NavigationPoint next = path.nodeAt(nextIndex + 1);
+        HorizontalVector incoming = previous.horizontalVectorTo(node);
+        HorizontalVector outgoing = node.horizontalVectorTo(next);
+        if (!hasCompatibleHeight(position, node, next)) {
+            return false;
+        }
+        if (incoming.isZero()) {
+            return hasAdvancedAlongOutgoing(position, node, outgoing);
+        }
+        return hasCrossedIncoming(position, node, incoming)
+                && hasAdvancedAlongOutgoing(position, node, outgoing);
+    }
+
+    private boolean hasAdvancedAlongOutgoing(
+            NavigationPoint position,
+            NavigationPoint node,
+            HorizontalVector outgoing) {
+        if (outgoing.isZero()) {
+            return false;
+        }
+        HorizontalVector offset = node.horizontalVectorTo(position);
+        return offset.dot(outgoing.normalized()) > 0.0
+                && lateralDistance(offset, outgoing) <= skippedNodeCorridorRadius();
+    }
+
+    private static boolean hasCrossedIncoming(
+            NavigationPoint position,
+            NavigationPoint node,
+            HorizontalVector incoming) {
+        return node.horizontalVectorTo(position).dot(incoming.normalized()) >= 0.0;
+    }
+
+    private boolean hasCompatibleHeight(
+            NavigationPoint position,
+            NavigationPoint node,
+            NavigationPoint next) {
+        double allowedHeight = Math.max(reachedDistance, PASSED_NODE_HEIGHT_TOLERANCE);
+        return Math.abs(position.y() - node.y()) <= allowedHeight
+                || Math.abs(position.y() - next.y()) <= allowedHeight;
+    }
+
+    private double skippedNodeCorridorRadius() {
+        return reachedDistance * SKIPPED_NODE_CORRIDOR_MULTIPLIER;
+    }
+
+    private static double lateralDistance(HorizontalVector offset, HorizontalVector direction) {
+        HorizontalVector unit = direction.normalized();
+        double along = offset.dot(unit);
+        double squared = offset.length() * offset.length() - along * along;
+        return Math.sqrt(Math.max(0.0, squared));
     }
 }

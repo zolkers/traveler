@@ -1,8 +1,7 @@
-package dev.traveler.core.navigation.steering;
+package dev.traveler.core.navigation.follow;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.spatial.HorizontalVector;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import java.util.List;

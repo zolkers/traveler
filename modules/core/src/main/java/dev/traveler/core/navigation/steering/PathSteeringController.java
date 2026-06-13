@@ -1,6 +1,8 @@
 package dev.traveler.core.navigation.steering;
 
 import dev.traveler.core.navigation.follow.NavigationPath;
+import dev.traveler.core.navigation.follow.PathCorridor;
+import dev.traveler.core.navigation.follow.PathProjection;
 import dev.traveler.core.navigation.locomotion.AgentMotionState;
 import dev.traveler.core.navigation.spatial.HorizontalVector;
 import dev.traveler.core.navigation.spatial.NavigationPoint;

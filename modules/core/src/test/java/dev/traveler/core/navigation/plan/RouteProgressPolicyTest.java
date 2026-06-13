@@ -25,6 +25,19 @@ class RouteProgressPolicyTest {
     }
 
     @Test
+    void advancesWhenAgentOvershootsNodeOutsideTheLocalGate() {
+        NavigationPath path = NavigationPath.of(List.of(
+                point(0.0, 64.0, 0.0),
+                point(0.0, 64.0, 2.0),
+                point(0.0, 64.0, 6.0)));
+        NavigationPoint overshotNode = point(0.9, 64.0, 4.0);
+
+        PathProgress progress = policy.progress(path, overshotNode, PathProgress.start());
+
+        assertEquals(2, progress.nextNodeIndex());
+    }
+
+    @Test
     void keepsCurrentNodeWhenAgentIsOnlyBesideItBeforeTheGate() {
         NavigationPath path = NavigationPath.of(List.of(
                 point(0.0, 64.0, 0.0),

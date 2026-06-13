@@ -93,6 +93,36 @@ class NavigationFramePlannerTest {
         assertFalse(plan.movementVector().specialActionAllowed());
     }
 
+    @Test
+    void skippedNodeKeepsPlannerLookingForwardOnTheCorridor() {
+        NavigationPath path = NavigationPath.of(List.of(
+                point(0.0, 64.0, 0.0),
+                point(0.0, 64.0, 2.0),
+                point(0.0, 64.0, 6.0)));
+        NavigationFrameInput input = frameInput(point(0.9, 64.0, 4.0), neutralCamera());
+
+        NavigationFramePlan plan = planner.plan(path, input, NavigationControllerState.start());
+
+        assertEquals(2, plan.routeProgress().nextNodeIndex());
+        assertTrue(plan.cameraTarget().yawDegrees() <= 45.0);
+        assertEquals(PlannedMovementMode.DIRECT, plan.movementVector().mode());
+    }
+
+    @Test
+    void skippedVerticalActionNodeDoesNotPullThePlayerBackToTheJumpPoint() {
+        NavigationPath path = NavigationPath.of(List.of(
+                point(0.0, 64.0, 0.0),
+                point(0.0, 65.0, 0.0),
+                point(0.0, 65.0, 4.0)));
+        NavigationFrameInput input = frameInput(point(0.2, 65.0, 2.0), neutralCamera());
+
+        NavigationFramePlan plan = planner.plan(path, input, NavigationControllerState.start());
+
+        assertEquals(2, plan.routeProgress().nextNodeIndex());
+        assertFalse(plan.actionIntent().jumpRequested());
+        assertEquals(PlannedMovementMode.DIRECT, plan.movementVector().mode());
+    }
+
     private static NavigationControllerState stateAfter(NavigationFramePlan plan) {
         return new NavigationControllerState(
                 plan.routeProgress(),
