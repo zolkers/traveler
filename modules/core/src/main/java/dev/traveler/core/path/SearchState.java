@@ -4,9 +4,6 @@ import dev.traveler.core.graph.Connection;
 import dev.traveler.core.graph.Graph;
 import dev.traveler.core.graph.Heuristic;
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
 import java.util.PriorityQueue;
 
 final class SearchState<N> {
@@ -15,12 +12,12 @@ final class SearchState<N> {
             .<SearchNode<N>>comparingDouble(SearchNode::estimatedTotalCost)
             .thenComparingDouble(SearchNode::heuristicCost)
             .thenComparingLong(SearchNode::sequence));
-    private final Map<N, Double> costs = new HashMap<>();
-    private final Map<N, Connection<N>> previousConnections = new HashMap<>();
+    private final SearchRecords<N> records;
     private long nextSequence;
 
     private SearchState(PathfinderRequest<N> request) {
         this.request = request;
+        this.records = SearchRecords.create(request.graph());
     }
 
     static <N> SearchState<N> create(PathfinderRequest<N> request) {
@@ -54,7 +51,11 @@ final class SearchState<N> {
     }
 
     boolean isGoal(N node) {
-        return Objects.equals(node, goal());
+        return records.isSame(node, goal());
+    }
+
+    boolean isStart(N node) {
+        return records.isSame(node, start());
     }
 
     boolean isStale(SearchNode<N> node) {
@@ -62,26 +63,24 @@ final class SearchState<N> {
     }
 
     double costOf(N node) {
-        return costs.getOrDefault(node, Double.POSITIVE_INFINITY);
+        return records.costOf(node);
     }
 
     Connection<N> previousConnection(N node) {
-        return previousConnections.get(node);
+        return records.previousConnection(node);
     }
 
     boolean hasBetterCost(N node, double cost) {
-        Double knownCost = costs.get(node);
-        return knownCost != null && knownCost <= cost;
+        return records.hasBetterCost(node, cost);
     }
 
     void update(Connection<N> connection, double cost) {
-        costs.put(connection.to(), cost);
-        previousConnections.put(connection.to(), connection);
+        records.put(connection.to(), cost, connection);
         open(connection.to(), cost, cost + heuristic().estimate(connection.to(), goal()));
     }
 
     private void addStartNode() {
-        costs.put(start(), 0.0);
+        records.put(start(), 0.0, null);
         open(start(), 0.0, heuristic().estimate(start(), goal()));
     }
 

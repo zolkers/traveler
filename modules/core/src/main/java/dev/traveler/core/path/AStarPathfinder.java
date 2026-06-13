@@ -89,7 +89,7 @@ public final class AStarPathfinder<N> implements Pathfinder<N> {
         List<N> nodes = new ArrayList<>();
         N current = goal;
         nodes.add(current);
-        while (!Objects.equals(current, state.start())) {
+        while (!state.isStart(current)) {
             Connection<N> connection = state.previousConnection(current);
             if (connection == null) {
                 return List.of();

@@ -9,16 +9,14 @@ import dev.traveler.core.world.movement.MovementProfile;
 import dev.traveler.core.world.movement.MovementProfiles;
 import dev.traveler.core.world.surface.SurfaceNode;
 import dev.traveler.core.graph.Connection;
-import dev.traveler.core.graph.Graph;
+import dev.traveler.core.graph.KeyedGraph;
 import dev.traveler.core.layer.SurfaceBlock;
 import dev.traveler.core.layer.SurfaceWorldLayer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
-public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
+public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode> {
     private static final double BODY_EPSILON = 0.0001;
     private static final double FLOOR_EPSILON = 0.001;
     private static final int[] SUPPORT_Y_OFFSETS = {0, 1, -1};
@@ -31,8 +29,11 @@ public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
     private final EntityDimensions dimensions;
     private final MovementCapabilities capabilities;
     private final SurfaceClearanceScorer clearanceScorer;
-    private final Map<SurfaceNode, Double> clearanceScores = new HashMap<>();
-    private final Map<SurfaceNode, Boolean> bodyClearance = new HashMap<>();
+    private final SurfaceNodeIndex nodeIndex;
+    private final double[] clearanceScores;
+    private final boolean[] clearanceScoreLoaded;
+    private final boolean[] bodyClearance;
+    private final boolean[] bodyClearanceLoaded;
     private final SurfaceBlockCache surfaceBlocks;
 
     public SurfaceTraversalGraph(
@@ -95,6 +96,11 @@ public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
         this.dimensions = profile.dimensions();
         this.capabilities = profile.capabilities();
         this.clearanceScorer = safeSettings.clearanceScorer();
+        this.nodeIndex = new SurfaceNodeIndex(searchBounds);
+        this.clearanceScores = new double[nodeIndex.size()];
+        this.clearanceScoreLoaded = new boolean[nodeIndex.size()];
+        this.bodyClearance = new boolean[nodeIndex.size()];
+        this.bodyClearanceLoaded = new boolean[nodeIndex.size()];
     }
 
     @Override
@@ -104,6 +110,11 @@ public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
             return List.of();
         }
         return connectionsFrom(node);
+    }
+
+    @Override
+    public long keyOf(SurfaceNode node) {
+        return nodeIndex.indexOf(node);
     }
 
     private List<Connection<SurfaceNode>> connectionsFrom(SurfaceNode node) {
@@ -311,12 +322,13 @@ public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
     }
 
     private boolean hasBodyClearance(SurfaceNode node) {
-        Boolean cached = bodyClearance.get(node);
-        if (cached != null) {
-            return cached;
+        int index = nodeIndex.indexOf(node);
+        if (bodyClearanceLoaded[index]) {
+            return bodyClearance[index];
         }
         boolean clear = computeBodyClearance(node);
-        bodyClearance.put(node, clear);
+        bodyClearance[index] = clear;
+        bodyClearanceLoaded[index] = true;
         return clear;
     }
 
@@ -385,12 +397,13 @@ public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
         if (!clearanceScorer.isEnabled()) {
             return 0.0;
         }
-        Double cached = clearanceScores.get(node);
-        if (cached != null) {
-            return cached;
+        int index = nodeIndex.indexOf(node);
+        if (clearanceScoreLoaded[index]) {
+            return clearanceScores[index];
         }
         double score = clearanceScorer.score(this, node);
-        clearanceScores.put(node, score);
+        clearanceScores[index] = score;
+        clearanceScoreLoaded[index] = true;
         return score;
     }
 
