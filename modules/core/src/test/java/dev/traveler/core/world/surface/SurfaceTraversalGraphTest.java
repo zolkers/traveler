@@ -144,21 +144,24 @@ class SurfaceTraversalGraphTest {
     }
 
     @Test
-    void jumpingOntoFullBlocksCostsMoreThanSteppingOntoStairs() {
+    void stairStepsRemainReachableWhenFullBlockSidesAreBlocked() {
         BlockPosition lowSlab = new BlockPosition(0, 63, 0);
         BlockPosition stair = new BlockPosition(0, 63, 1);
         BlockPosition fullBlock = new BlockPosition(1, 63, 0);
         SurfaceNode start = new SurfaceNode(lowSlab, 1, 1, 63.5);
-        FakeSurfaceWorldLayer world = new FakeSurfaceWorldLayer(Map.of(
-                lowSlab, bottomSlab(),
-                stair, northFacingBottomStair(),
-                fullBlock, fullBlock()));
-        SurfaceTraversalGraph graph = new SurfaceTraversalGraph(world, start, start, PLAYER, 8, 4);
+        FakeSurfaceWorldLayer stairWorld =
+                new FakeSurfaceWorldLayer(Map.of(lowSlab, bottomSlab(), stair, northFacingBottomStair()));
+        FakeSurfaceWorldLayer fullBlockWorld =
+                new FakeSurfaceWorldLayer(Map.of(lowSlab, bottomSlab(), fullBlock, fullBlock()));
+        SurfaceTraversalGraph stairGraph = new SurfaceTraversalGraph(stairWorld, start, start, PLAYER, 8, 4);
+        SurfaceTraversalGraph fullBlockGraph = new SurfaceTraversalGraph(fullBlockWorld, start, start, PLAYER, 8, 4);
 
-        double stairCost = connectionTo(graph, start, new SurfaceNode(stair, 1, 0, 63.5)).cost();
-        double fullBlockCost = connectionTo(graph, start, new SurfaceNode(fullBlock, 0, 1, 64.0)).cost();
+        Connection<SurfaceNode> stairConnection = connectionTo(stairGraph, start, new SurfaceNode(stair, 1, 0, 63.5));
+        List<Connection<SurfaceNode>> fullBlockConnections = connectionsFrom(fullBlockGraph, start);
 
-        assertTrue(stairCost < fullBlockCost);
+        assertNotNull(stairConnection);
+        assertTrue(fullBlockConnections.stream()
+                .noneMatch(connection -> connection.to().sameSubcell(new SurfaceNode(fullBlock, 0, 1, 64.0))));
     }
 
     @Test
@@ -211,7 +214,7 @@ class SurfaceTraversalGraphTest {
     }
 
     private static SurfaceNode nodeAt(int x, int z) {
-        return new SurfaceNode(new BlockPosition(x, 63, z), 1, 1, 64.0);
+        return new SurfaceNode(new BlockPosition(x, 63, z), 0, 0, 64.0);
     }
 
     private static double distance(SurfaceNode from, SurfaceNode to) {

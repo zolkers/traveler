@@ -82,13 +82,13 @@
 - Test: `modules/core/src/test/java/dev/traveler/core/world/navigation/SurfaceLineOfWalkTest.java`
 - Test: `modules/core/src/test/java/dev/traveler/core/world/navigation/SurfaceSmoothingPolicyTest.java`
 
-- [ ] Write failing tests for a corner block near the right side of a planned line: smoothing must reject the shortcut.
-- [ ] Write failing tests that nodes near diagonal/corner blocked cells receive higher cost than open nodes.
-- [ ] Make `SurfaceClearanceScorer` footprint-aware across cardinals and diagonals.
-- [ ] Add a smoothing safety margin so the line-of-walk checks a capsule wider than exact player width.
-- [ ] Preserve angular landmarks when a sharp turn is near blocked body space.
-- [ ] Run `./gradlew.bat :core:test --tests dev.traveler.core.world.navigation.*`.
-- [ ] Commit `fix(core): prefer comfortable surface clearance`.
+- [x] Write failing tests for a corner block near the right side of a planned line: smoothing must reject the shortcut.
+- [x] Write failing tests that nodes near diagonal/corner blocked cells receive higher cost than open nodes.
+- [x] Make `SurfaceClearanceScorer` footprint-aware across cardinals and diagonals.
+- [x] Add a smoothing safety margin so the line-of-walk checks a capsule wider than exact player width.
+- [x] Preserve angular landmarks when a sharp turn is near blocked body space.
+- [x] Run `./gradlew.bat :core:test --tests dev.traveler.core.world.navigation.*`.
+- [x] Commit `fix(core): prefer comfortable surface clearance`.
 
 ### Task 6: Anti-Wall Steering And Debug Signals
 

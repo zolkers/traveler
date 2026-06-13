@@ -229,22 +229,56 @@ public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
     private boolean hasBodyClearance(SurfaceNode node) {
         double minY = node.floorY() + BODY_EPSILON;
         double maxY = node.floorY() + dimensions.height();
+        SurfaceBodyFootprint footprint = SurfaceBodyFootprint.around(node, dimensions);
         for (int y = (int) Math.floor(minY); y <= (int) Math.floor(maxY); y++) {
-            if (collidesWithBody(node, y, minY, maxY)) {
+            if (collidesWithFootprint(node, footprint, y, minY, maxY)) {
                 return false;
             }
         }
         return true;
     }
 
-    private boolean collidesWithBody(SurfaceNode node, int blockY, double minY, double maxY) {
-        SurfaceBlock block = surfaceBlock(node.blockPosition().x(), blockY, node.blockPosition().z());
+    private boolean collidesWithFootprint(
+            SurfaceNode node, SurfaceBodyFootprint footprint, int blockY, double minY, double maxY) {
+        for (int globalX = footprint.minGlobalX(); globalX <= footprint.maxGlobalX(); globalX++) {
+            if (collidesWithFootprintColumn(node, footprint, globalX, blockY, minY, maxY)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean collidesWithFootprintColumn(
+            SurfaceNode node, SurfaceBodyFootprint footprint, int globalX, int blockY, double minY, double maxY) {
+        for (int globalZ = footprint.minGlobalZ(); globalZ <= footprint.maxGlobalZ(); globalZ++) {
+            if (collidesWithBodyCell(node, globalX, globalZ, blockY, minY, maxY)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean collidesWithBodyCell(
+            SurfaceNode node, int globalX, int globalZ, int blockY, double minY, double maxY) {
+        int blockX = blockCoordinate(globalX);
+        int blockZ = blockCoordinate(globalZ);
+        if (isOwnSupportBlock(node, blockX, blockY, blockZ)) {
+            return false;
+        }
+        SurfaceBlock block = surfaceBlock(blockX, blockY, blockZ);
         double localMinY = clamp(minY - blockY);
         double localMaxY = clamp(maxY - blockY);
         if (localMaxY <= 0.0 || localMinY >= 1.0) {
             return false;
         }
-        return block.shape().collidesWithCellBody(node.cellX(), node.cellZ(), localMinY, localMaxY);
+        return block.shape().collidesWithCellBody(
+                cellCoordinate(globalX), cellCoordinate(globalZ), localMinY, localMaxY);
+    }
+
+    private static boolean isOwnSupportBlock(SurfaceNode node, int blockX, int blockY, int blockZ) {
+        return blockX == node.blockPosition().x()
+                && blockY == node.blockPosition().y()
+                && blockZ == node.blockPosition().z();
     }
 
     private boolean insideBounds(SurfaceNode node) {

@@ -33,7 +33,7 @@ public record SurfaceClearanceScorer(int radiusCells, double blockedCellPenalty)
             return 0.0;
         }
         double score = 0.0;
-        for (HorizontalOffset direction : HorizontalDirections.CARDINAL) {
+        for (HorizontalOffset direction : HorizontalDirections.EIGHT_WAY) {
             score += directionPenalty(graph, node, direction);
         }
         return score;

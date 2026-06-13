@@ -4,6 +4,7 @@ import dev.traveler.core.layer.SurfaceBlock;
 import dev.traveler.core.layer.SurfaceWorldLayer;
 import dev.traveler.core.smooth.PathNodePreservation;
 import dev.traveler.core.world.behavior.BlockBehaviorKey;
+import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.surface.SurfaceNode;
 import java.util.Objects;
 
@@ -26,7 +27,8 @@ public final class SurfaceSmoothingPolicy implements PathNodePreservation<Surfac
         SurfaceBlock nextBlock = block(next);
         return hasActionTransition(previous, current, previousBlock, currentBlock)
                 || hasActionTransition(current, next, currentBlock, nextBlock)
-                || hasSpecialBehavior(currentBlock);
+                || hasSpecialBehavior(currentBlock)
+                || hasUnsafeHorizontalTurn(previous, current, next);
     }
 
     private static boolean hasActionTransition(
@@ -60,7 +62,43 @@ public final class SurfaceSmoothingPolicy implements PathNodePreservation<Surfac
         return block.behavior().key() != BlockBehaviorKey.FULL_BLOCK;
     }
 
+    private boolean hasUnsafeHorizontalTurn(SurfaceNode previous, SurfaceNode current, SurfaceNode next) {
+        return changesHorizontalDirection(previous, current, next) && hasNearbyBodyBlock(current);
+    }
+
+    private static boolean changesHorizontalDirection(SurfaceNode previous, SurfaceNode current, SurfaceNode next) {
+        int firstX = Integer.compare(globalX(current) - globalX(previous), 0);
+        int firstZ = Integer.compare(globalZ(current) - globalZ(previous), 0);
+        int secondX = Integer.compare(globalX(next) - globalX(current), 0);
+        int secondZ = Integer.compare(globalZ(next) - globalZ(current), 0);
+        return firstX != secondX || firstZ != secondZ;
+    }
+
+    private boolean hasNearbyBodyBlock(SurfaceNode node) {
+        int bodyY = (int) Math.floor(node.floorY() + FLOOR_EPSILON);
+        for (HorizontalOffset offset : HorizontalDirections.EIGHT_WAY) {
+            if (hasBodyBlockAt(node, offset, bodyY)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasBodyBlockAt(SurfaceNode node, HorizontalOffset offset, int bodyY) {
+        BlockPosition position =
+                new BlockPosition(node.blockPosition().x() + offset.x(), bodyY, node.blockPosition().z() + offset.z());
+        return !worldLayer.surfaceBlock(position).shape().isEmpty();
+    }
+
     private SurfaceBlock block(SurfaceNode node) {
         return worldLayer.surfaceBlock(node.blockPosition());
+    }
+
+    private static int globalX(SurfaceNode node) {
+        return SurfaceTraversalGraph.globalX(node);
+    }
+
+    private static int globalZ(SurfaceNode node) {
+        return SurfaceTraversalGraph.globalZ(node);
     }
 }

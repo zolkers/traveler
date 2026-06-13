@@ -50,6 +50,23 @@ class SurfaceSmoothingPolicyTest {
         assertFalse(required);
     }
 
+    @Test
+    void preservesHorizontalTurnsNearBlockedBodySpace() {
+        SurfaceWorldLayer world = new TestSurfaceWorldLayer(Map.of(
+                supportAt(0, 0), SurfaceBlock.solid(BlockShape.fullCube()),
+                supportAt(1, 0), SurfaceBlock.solid(BlockShape.fullCube()),
+                supportAt(1, 1), SurfaceBlock.solid(BlockShape.fullCube()),
+                new BlockPosition(1, 64, 1), SurfaceBlock.solid(BlockShape.fullCube())));
+        SurfaceSmoothingPolicy policy = new SurfaceSmoothingPolicy(world);
+
+        boolean required = policy.mustPreserve(
+                nodeAt(0, 0, 64.0),
+                nodeAt(1, 0, 64.0),
+                nodeAt(1, 1, 64.0));
+
+        assertTrue(required);
+    }
+
     private static SurfaceWorldLayer flatWorld() {
         return new TestSurfaceWorldLayer(Map.of(
                 supportAt(0), SurfaceBlock.solid(BlockShape.fullCube()),
@@ -61,8 +78,16 @@ class SurfaceSmoothingPolicyTest {
         return new SurfaceNode(supportAt(x), 1, 1, floorY);
     }
 
+    private static SurfaceNode nodeAt(int x, int z, double floorY) {
+        return new SurfaceNode(supportAt(x, z), 1, 1, floorY);
+    }
+
     private static BlockPosition supportAt(int x) {
-        return new BlockPosition(x, 63, 0);
+        return supportAt(x, 0);
+    }
+
+    private static BlockPosition supportAt(int x, int z) {
+        return new BlockPosition(x, 63, z);
     }
 
     private static SurfaceBlock slab() {

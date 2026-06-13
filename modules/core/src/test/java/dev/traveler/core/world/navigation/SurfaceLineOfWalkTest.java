@@ -53,6 +53,17 @@ class SurfaceLineOfWalkTest {
     }
 
     @Test
+    void rejectsSmoothSurfaceLinesWhenFinalEndpointBodyFootprintTouchesAdjacentWall() {
+        Map<BlockPosition, SurfaceBlock> blocks = flatBlocks(0, 4, -1, 1);
+        blocks.put(new BlockPosition(4, 64, 1), SurfaceBlock.solid(BlockShape.fullCube()));
+        SurfaceLineOfWalk lineOfWalk = smoothLineOfWalk(new TestSurfaceWorldLayer(blocks));
+
+        boolean clear = lineOfWalk.hasLineOfWalk(nodeAt(0), nodeAt(4));
+
+        assertFalse(clear);
+    }
+
+    @Test
     void rejectsSmoothSurfaceLinesWhenEntityWidthTouchesOuterBodySpace() {
         Map<BlockPosition, SurfaceBlock> blocks = flatBlocks(0, 4, -1, 1);
         blocks.put(
