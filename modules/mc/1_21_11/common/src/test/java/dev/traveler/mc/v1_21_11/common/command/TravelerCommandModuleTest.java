@@ -220,17 +220,17 @@ class TravelerCommandModuleTest {
 
     @Test
     void pathBlockStoresSurfacePathWhenLayerProvidesSurfaceGeometry() {
-        BlockPosition startFeet = new BlockPosition(0, 64, 0);
-        BlockPosition startSupport = new BlockPosition(0, 63, 0);
+        BlockPosition startFeet = new BlockPosition(0, 63, 0);
+        BlockPosition startSlab = new BlockPosition(0, 63, 0);
         BlockPosition goalSlab = new BlockPosition(1, 63, 0);
         TravelerCommandModule module = new TravelerCommandModule(new TestSurfaceWorldLayer(Map.of(
-                startSupport, surfaceBlock(BlockShape.fullCube()),
+                startSlab, surfaceBlock(BlockShape.bottomSlab()),
                 goalSlab, surfaceBlock(BlockShape.bottomSlab()))));
 
         dispatchAndDrain(module, new TestSource(startFeet), "traveler path block 1 63 0");
 
         PathfinderDebugSnapshot snapshot = module.debugState().latestSnapshot().orElseThrow();
-        assertTrue(snapshot.hasSurfaceNodes());
+        assertHasSurfaceNodes(snapshot);
         assertEquals(63.5, snapshot.surfaceNodes().getLast().floorY());
     }
 
@@ -245,7 +245,7 @@ class TravelerCommandModuleTest {
 
         assertEquals(CommandResult.Status.SUCCESS, result.status());
         assertTrue(blockGetter.readDuringCapture);
-        assertTrue(module.debugState().latestSnapshot().orElseThrow().hasSurfaceNodes());
+        assertHasSurfaceNodes(module.debugState().latestSnapshot().orElseThrow());
     }
 
     @Test
@@ -256,7 +256,7 @@ class TravelerCommandModuleTest {
         dispatchAndDrain(module, new TestSource(startFeet), "traveler path block 4 63 0");
 
         PathfinderDebugSnapshot snapshot = module.debugState().latestSnapshot().orElseThrow();
-        assertTrue(snapshot.hasSurfaceNodes());
+        assertHasSurfaceNodes(snapshot);
         assertEquals(2, snapshot.surfaceNodes().size());
         assertEquals(0.75, snapshot.surfaceNodes().getFirst().centerX());
         assertEquals(4.75, snapshot.surfaceNodes().getLast().centerX());
@@ -265,16 +265,12 @@ class TravelerCommandModuleTest {
     @Test
     void smoothedSurfacePathPreservesVerticalMovementLandmarks() {
         BlockPosition startFeet = new BlockPosition(0, 64, 0);
-        TravelerCommandModule module = new TravelerCommandModule(new TestSurfaceWorldLayer(Map.of(
-                new BlockPosition(0, 63, 0), surfaceBlock(BlockShape.fullCube()),
-                new BlockPosition(1, 63, 0), surfaceBlock(BlockShape.fullCube()),
-                new BlockPosition(2, 64, 0), surfaceBlock(BlockShape.fullCube()),
-                new BlockPosition(3, 64, 0), surfaceBlock(BlockShape.fullCube()))));
+        TravelerCommandModule module = new TravelerCommandModule(new TestSurfaceWorldLayer(verticalStepSurface()));
 
         dispatchAndDrain(module, new TestSource(startFeet), "traveler path block 3 64 0");
 
         PathfinderDebugSnapshot snapshot = module.debugState().latestSnapshot().orElseThrow();
-        assertTrue(snapshot.hasSurfaceNodes());
+        assertHasSurfaceNodes(snapshot);
         assertTrue(snapshot.surfaceNodes().size() > 2);
         assertTrue(snapshot.surfaceNodes().stream()
                 .anyMatch(node -> node.blockPosition().x() == 2 && node.blockPosition().y() == 64));
@@ -288,7 +284,7 @@ class TravelerCommandModuleTest {
         dispatchAndDrain(module, new TestSource(startFeet), "traveler path block 4 63 0");
 
         PathfinderDebugSnapshot snapshot = module.debugState().latestSnapshot().orElseThrow();
-        assertTrue(snapshot.hasSurfaceNodes());
+        assertHasSurfaceNodes(snapshot);
         assertTrue(snapshot.surfaceNodes().size() > 2);
     }
 
@@ -348,6 +344,15 @@ class TravelerCommandModuleTest {
             Thread.onSpinWait();
         }
         assertTrue(condition.getAsBoolean());
+    }
+
+    private static void assertHasSurfaceNodes(PathfinderDebugSnapshot snapshot) {
+        assertTrue(snapshot.hasSurfaceNodes(), () -> "status="
+                + snapshot.result().status()
+                + " nodes="
+                + snapshot.result().path().nodeCount()
+                + " message="
+                + snapshot.message());
     }
 
     private static NavigationFrameInput navigationInput() {
@@ -445,6 +450,14 @@ class TravelerCommandModuleTest {
         return blocks;
     }
 
+    private static Map<BlockPosition, SurfaceBlock> verticalStepSurface() {
+        Map<BlockPosition, SurfaceBlock> blocks = flatSurface(0, 1, -1, 1);
+        for (int x = 2; x <= 3; x++) {
+            addFlatRowAtY(blocks, x, 64, -1, 1);
+        }
+        return blocks;
+    }
+
     private static Map<BlockPosition, SurfaceBlock> flatSurface(int minX, int maxX, int minZ, int maxZ) {
         Map<BlockPosition, SurfaceBlock> blocks = new java.util.HashMap<>();
         for (int x = minX; x <= maxX; x++) {
@@ -454,8 +467,13 @@ class TravelerCommandModuleTest {
     }
 
     private static void addFlatRow(Map<BlockPosition, SurfaceBlock> blocks, int x, int minZ, int maxZ) {
+        addFlatRowAtY(blocks, x, 63, minZ, maxZ);
+    }
+
+    private static void addFlatRowAtY(
+            Map<BlockPosition, SurfaceBlock> blocks, int x, int y, int minZ, int maxZ) {
         for (int z = minZ; z <= maxZ; z++) {
-            blocks.put(new BlockPosition(x, 63, z), surfaceBlock(BlockShape.fullCube()));
+            blocks.put(new BlockPosition(x, y, z), surfaceBlock(BlockShape.fullCube()));
         }
     }
 

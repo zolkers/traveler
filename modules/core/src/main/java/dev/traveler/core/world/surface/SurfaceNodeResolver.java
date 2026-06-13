@@ -2,6 +2,8 @@ package dev.traveler.core.world.surface;
 
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.layer.SurfaceWorldLayer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -20,10 +22,23 @@ public final class SurfaceNodeResolver {
         return surfaceAt(supportPosition, CENTER_CELL, CENTER_CELL);
     }
 
+    public List<SurfaceNode> surfaces(BlockPosition supportPosition) {
+        List<SurfaceNode> nodes = new ArrayList<>(4);
+        for (int cellX = 0; cellX <= 1; cellX++) {
+            addSurfaceRow(nodes, supportPosition, cellX);
+        }
+        return List.copyOf(nodes);
+    }
+
     public Optional<SurfaceNode> standingSurface(BlockPosition feetPosition) {
-        Optional<SurfaceNode> feetSurface = standingCandidate(feetPosition, feetPosition);
-        Optional<SurfaceNode> belowSurface = standingCandidate(feetPosition, feetPosition.below());
-        return highestSurface(feetSurface, belowSurface);
+        return standingSurfaces(feetPosition).stream().findFirst();
+    }
+
+    public List<SurfaceNode> standingSurfaces(BlockPosition feetPosition) {
+        List<SurfaceNode> candidates = new ArrayList<>(8);
+        addStandingCandidates(candidates, feetPosition, feetPosition);
+        addStandingCandidates(candidates, feetPosition, feetPosition.below());
+        return highestSurfaces(candidates);
     }
 
     public Optional<SurfaceNode> surfaceAt(BlockPosition supportPosition, int cellX, int cellZ) {
@@ -35,25 +50,51 @@ public final class SurfaceNodeResolver {
         return Optional.of(new SurfaceNode(safePosition, cellX, cellZ, safePosition.y() + floor));
     }
 
-    private Optional<SurfaceNode> standingCandidate(BlockPosition feetPosition, BlockPosition supportPosition) {
-        return centeredSurface(supportPosition).filter(node -> isStandingSurface(feetPosition, node));
+    private void addSurfaceRow(List<SurfaceNode> nodes, BlockPosition supportPosition, int cellX) {
+        for (int cellZ = 0; cellZ <= 1; cellZ++) {
+            surfaceAt(supportPosition, cellX, cellZ).ifPresent(nodes::add);
+        }
     }
 
-    private static Optional<SurfaceNode> highestSurface(
-            Optional<SurfaceNode> first,
-            Optional<SurfaceNode> second) {
-        if (first.isEmpty()) {
-            return second;
+    private void addStandingCandidates(
+            List<SurfaceNode> candidates, BlockPosition feetPosition, BlockPosition supportPosition) {
+        for (SurfaceNode node : surfaces(supportPosition)) {
+            addStandingCandidate(candidates, feetPosition, node);
         }
-        if (second.isEmpty() || first.orElseThrow().floorY() >= second.orElseThrow().floorY()) {
-            return first;
+    }
+
+    private static void addStandingCandidate(
+            List<SurfaceNode> candidates, BlockPosition feetPosition, SurfaceNode node) {
+        if (isStandingSurface(feetPosition, node)) {
+            candidates.add(node);
         }
-        return second;
+    }
+
+    private static List<SurfaceNode> highestSurfaces(List<SurfaceNode> candidates) {
+        if (candidates.isEmpty()) {
+            return List.of();
+        }
+        double highest = highestFloor(candidates);
+        return candidates.stream()
+                .filter(node -> sameFloor(node.floorY(), highest))
+                .toList();
+    }
+
+    private static double highestFloor(List<SurfaceNode> candidates) {
+        double highest = Double.NEGATIVE_INFINITY;
+        for (SurfaceNode candidate : candidates) {
+            highest = Math.max(highest, candidate.floorY());
+        }
+        return highest;
     }
 
     private static boolean isStandingSurface(BlockPosition feetPosition, SurfaceNode node) {
         double minFloor = feetPosition.y() - FLOOR_EPSILON;
         double maxFloor = feetPosition.y() + STANDING_RANGE + FLOOR_EPSILON;
         return node.floorY() >= minFloor && node.floorY() <= maxFloor;
+    }
+
+    private static boolean sameFloor(double first, double second) {
+        return Math.abs(first - second) <= FLOOR_EPSILON;
     }
 }

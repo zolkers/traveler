@@ -33,9 +33,25 @@ class SurfaceNodeResolverTest {
     }
 
     @Test
+    void standingSurfacesExposeEverySupportedSubcellAtFeetHeight() {
+        BlockPosition support = new BlockPosition(0, 63, 0);
+        SurfaceNodeResolver resolver = new SurfaceNodeResolver(new FakeSurfaceWorldLayer(Map.of(support, fullBlock())));
+
+        assertEquals(4, resolver.standingSurfaces(new BlockPosition(0, 64, 0)).size());
+    }
+
+    @Test
     void centeredSurfaceIsEmptyWhenBlockHasNoSupport() {
         SurfaceNodeResolver resolver = new SurfaceNodeResolver(new FakeSurfaceWorldLayer(Map.of()));
 
         assertTrue(resolver.centeredSurface(new BlockPosition(0, 63, 0)).isEmpty());
+    }
+
+    @Test
+    void surfacesExposeEverySupportedSubcell() {
+        BlockPosition support = new BlockPosition(0, 63, 0);
+        SurfaceNodeResolver resolver = new SurfaceNodeResolver(new FakeSurfaceWorldLayer(Map.of(support, fullBlock())));
+
+        assertEquals(4, resolver.surfaces(support).size());
     }
 }

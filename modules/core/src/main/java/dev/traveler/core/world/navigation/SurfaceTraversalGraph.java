@@ -121,6 +121,7 @@ public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
         for (int yOffset : SUPPORT_Y_OFFSETS) {
             addConnectionForCandidateY(node, direction, connections, destinationX, destinationZ, yOffset);
         }
+        addJumpConnection(node, direction, connections);
     }
 
     private void addConnectionForCandidateY(
@@ -146,6 +147,46 @@ public final class SurfaceTraversalGraph implements Graph<SurfaceNode> {
                 && hasBodyClearance(to)
                 && destinationAllowsMovement(from, to, block, direction)
                 && canUseDirection(from, to, direction);
+    }
+
+    private void addJumpConnection(
+            SurfaceNode node, HorizontalOffset direction, List<Connection<SurfaceNode>> connections) {
+        if (!canAttemptJump(direction)) {
+            return;
+        }
+        SurfaceNode candidate = jumpSurfaceNode(node, direction);
+        if (candidate == null) {
+            return;
+        }
+        SurfaceBlock block = surfaceBlock(candidate.blockPosition());
+        if (!canReachJump(node, candidate, block, direction)) {
+            return;
+        }
+        connections.add(new Connection<>(node, candidate, movementCost(node, candidate)));
+    }
+
+    private boolean canAttemptJump(HorizontalOffset direction) {
+        return !direction.isDiagonal() && capabilities.maxJumpHeight() > capabilities.maxStepUp();
+    }
+
+    private SurfaceNode jumpSurfaceNode(SurfaceNode node, HorizontalOffset direction) {
+        int destinationX = globalX(node) + direction.x() * 2;
+        int destinationZ = globalZ(node) + direction.z() * 2;
+        return surfaceNode(destinationX, node.blockPosition().y() + 1, destinationZ);
+    }
+
+    private boolean canReachJump(
+            SurfaceNode from, SurfaceNode to, SurfaceBlock block, HorizontalOffset direction) {
+        return insideBounds(to)
+                && isJumpUp(from, to)
+                && hasBodyClearance(to)
+                && destinationAllowsMovement(from, to, block, direction);
+    }
+
+    private boolean isJumpUp(SurfaceNode from, SurfaceNode to) {
+        double delta = to.floorY() - from.floorY();
+        return delta > capabilities.maxStepUp() + FLOOR_EPSILON
+                && delta <= capabilities.maxJumpHeight() + FLOOR_EPSILON;
     }
 
     private boolean canUseDirection(SurfaceNode from, SurfaceNode to, HorizontalOffset direction) {

@@ -30,6 +30,7 @@ import dev.traveler.core.world.surface.SurfaceNode;
 import dev.traveler.core.world.surface.SurfaceNodeResolver;
 import dev.traveler.mc.v1_21_11.common.adapter.world.ImmutableMinecraftWorldSnapshot;
 import dev.traveler.mc.v1_21_11.common.adapter.world.MinecraftWorldSnapshot;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -138,12 +139,12 @@ final class TravelerPathSearchService {
     private static PathfinderResult<SurfaceNode> findSurfacePath(
             SurfaceWorldLayer worldLayer, BlockPosition start, BlockPosition target) {
         SurfaceNodeResolver resolver = new SurfaceNodeResolver(worldLayer);
-        Optional<SurfaceNode> startNode = resolver.standingSurface(start);
-        Optional<SurfaceNode> goalNode = surfaceGoal(resolver, target);
-        if (startNode.isEmpty() || goalNode.isEmpty()) {
+        List<SurfaceNode> startNodes = resolver.standingSurfaces(start);
+        List<SurfaceNode> goalNodes = surfaceGoals(resolver, target);
+        if (startNodes.isEmpty() || goalNodes.isEmpty()) {
             return surfaceNotFound();
         }
-        return searchSurfacePath(worldLayer, startNode.orElseThrow(), goalNode.orElseThrow());
+        return bestSurfacePath(worldLayer, startNodes, goalNodes);
     }
 
     private static PathfinderResult<SurfaceNode> searchSurfacePath(
@@ -168,12 +169,48 @@ final class TravelerPathSearchService {
                 worldLayer, start, goal, SEARCH_HORIZONTAL_MARGIN, SEARCH_VERTICAL_MARGIN);
     }
 
-    private static Optional<SurfaceNode> surfaceGoal(SurfaceNodeResolver resolver, BlockPosition target) {
-        Optional<SurfaceNode> centeredSurface = resolver.centeredSurface(target);
-        if (centeredSurface.isPresent()) {
-            return centeredSurface;
+    private static List<SurfaceNode> surfaceGoals(SurfaceNodeResolver resolver, BlockPosition target) {
+        List<SurfaceNode> targetSurfaces = resolver.surfaces(target);
+        if (!targetSurfaces.isEmpty()) {
+            return targetSurfaces;
         }
-        return resolver.standingSurface(target);
+        return resolver.standingSurface(target).map(List::of).orElseGet(List::of);
+    }
+
+    private static PathfinderResult<SurfaceNode> bestSurfacePath(
+            SurfaceWorldLayer worldLayer, List<SurfaceNode> starts, List<SurfaceNode> goals) {
+        List<PathfinderResult<SurfaceNode>> results = new ArrayList<>(starts.size() * goals.size());
+        for (SurfaceNode start : starts) {
+            addSurfacePathResults(worldLayer, start, goals, results);
+        }
+        return bestFoundSurfacePath(results);
+    }
+
+    private static void addSurfacePathResults(
+            SurfaceWorldLayer worldLayer,
+            SurfaceNode start,
+            List<SurfaceNode> goals,
+            List<PathfinderResult<SurfaceNode>> results) {
+        for (SurfaceNode goal : goals) {
+            results.add(searchSurfacePath(worldLayer, start, goal));
+        }
+    }
+
+    private static PathfinderResult<SurfaceNode> bestFoundSurfacePath(List<PathfinderResult<SurfaceNode>> results) {
+        return results.stream()
+                .filter(TravelerPathSearchService::isFound)
+                .min(TravelerPathSearchService::comparePathCost)
+                .orElseGet(TravelerPathSearchService::surfaceNotFound);
+    }
+
+    private static boolean isFound(PathfinderResult<SurfaceNode> result) {
+        return result.status() == PathfinderStatus.FOUND;
+    }
+
+    private static int comparePathCost(
+            PathfinderResult<SurfaceNode> first,
+            PathfinderResult<SurfaceNode> second) {
+        return Double.compare(first.path().cost(), second.path().cost());
     }
 
     private static PathfinderResult<SurfaceNode> surfaceNotFound() {
