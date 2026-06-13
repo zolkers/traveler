@@ -6,10 +6,9 @@ import dev.traveler.core.layer.BlockClassification;
 import dev.traveler.core.layer.SurfaceBlock;
 import dev.traveler.core.world.behavior.BlockBehavior;
 import dev.traveler.core.world.behavior.BlockBehaviorKey;
+import dev.traveler.core.world.behavior.BlockBehaviorClassificationPolicy;
 import dev.traveler.core.world.behavior.BlockBehaviorRegistry;
 import dev.traveler.core.world.behavior.context.HorizontalFacing;
-import dev.traveler.core.world.behavior.special.WaterloggedBlockBehavior;
-import dev.traveler.core.world.block.BlockPassability;
 import dev.traveler.core.world.geometry.BlockShape;
 import dev.traveler.core.world.geometry.CollisionBox;
 import java.util.ArrayList;
@@ -25,14 +24,23 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 public final class MinecraftSurfaceBlockAdapter {
     private final MinecraftBlockClassifier classifier;
     private final BlockBehaviorRegistry behaviorRegistry;
+    private final BlockBehaviorClassificationPolicy classificationPolicy;
 
     public MinecraftSurfaceBlockAdapter() {
-        this(new MinecraftBlockClassifier(), BlockBehaviorRegistry.defaults());
+        this(new MinecraftBlockClassifier(), BlockBehaviorRegistry.defaults(), new BlockBehaviorClassificationPolicy());
     }
 
     public MinecraftSurfaceBlockAdapter(MinecraftBlockClassifier classifier, BlockBehaviorRegistry behaviorRegistry) {
+        this(classifier, behaviorRegistry, new BlockBehaviorClassificationPolicy());
+    }
+
+    public MinecraftSurfaceBlockAdapter(
+            MinecraftBlockClassifier classifier,
+            BlockBehaviorRegistry behaviorRegistry,
+            BlockBehaviorClassificationPolicy classificationPolicy) {
         this.classifier = Objects.requireNonNull(classifier, "classifier");
         this.behaviorRegistry = Objects.requireNonNull(behaviorRegistry, "behaviorRegistry");
+        this.classificationPolicy = Objects.requireNonNull(classificationPolicy, "classificationPolicy");
     }
 
     public SurfaceBlock surfaceBlock(MinecraftBlockContext context) {
@@ -87,20 +95,7 @@ public final class MinecraftSurfaceBlockAdapter {
 
     private BlockClassification classificationFor(MinecraftBlockContext context, BlockBehavior behavior) {
         BlockClassification base = classifier.classify(context);
-        if (!isWalkableSurfaceBehavior(behavior)) {
-            return base;
-        }
-        return new BlockClassification(BlockPassability.WALKABLE, base.fluidHandling());
-    }
-
-    private boolean isWalkableSurfaceBehavior(BlockBehavior behavior) {
-        if (behavior.key() == BlockBehaviorKey.SLAB || behavior.key() == BlockBehaviorKey.STAIR) {
-            return true;
-        }
-        if (behavior instanceof WaterloggedBlockBehavior waterlogged) {
-            return isWalkableSurfaceBehavior(waterlogged.delegate());
-        }
-        return false;
+        return classificationPolicy.classify(base, behavior);
     }
 
     private static HorizontalFacing horizontalFacing(Direction direction) {

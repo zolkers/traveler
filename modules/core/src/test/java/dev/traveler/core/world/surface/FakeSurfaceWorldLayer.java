@@ -42,6 +42,14 @@ record FakeSurfaceWorldLayer(Map<BlockPosition, SurfaceBlock> blocks) implements
                 new StairBlockBehavior(HorizontalFacing.NORTH));
     }
 
+    static SurfaceBlock waterloggedNorthFacingBottomStair() {
+        return surface(
+                BlockShape.of(List.of(
+                        new CollisionBox(0.0, 0.0, 0.0, 1.0, 0.5, 1.0),
+                        new CollisionBox(0.0, 0.5, 0.5, 1.0, 1.0, 1.0))),
+                new WaterloggedBlockBehavior(new StairBlockBehavior(HorizontalFacing.NORTH)));
+    }
+
     static SurfaceBlock solid(BlockShape shape) {
         return surface(shape, new FullBlockBehavior());
     }

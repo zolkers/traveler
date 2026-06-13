@@ -5,6 +5,7 @@ import static dev.traveler.core.world.surface.FakeSurfaceWorldLayer.fullBlock;
 import static dev.traveler.core.world.surface.FakeSurfaceWorldLayer.northFacingBottomStair;
 import static dev.traveler.core.world.surface.FakeSurfaceWorldLayer.topSlab;
 import static dev.traveler.core.world.surface.FakeSurfaceWorldLayer.waterloggedBottomSlab;
+import static dev.traveler.core.world.surface.FakeSurfaceWorldLayer.waterloggedNorthFacingBottomStair;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -222,6 +223,20 @@ class SurfaceTraversalGraphTest {
         assertTrue(path.nodes().stream().anyMatch(node -> node.blockPosition().z() < 0));
     }
 
+    @ParameterizedTest
+    @MethodSource("specialWalkablePaths")
+    void pathfinderFindsSpecialWalkableBehaviorPath(
+            Map<BlockPosition, SurfaceBlock> blocks, SurfaceNode start, SurfaceNode goal) {
+        FakeSurfaceWorldLayer world = new FakeSurfaceWorldLayer(blocks);
+        SurfaceTraversalGraph graph = new SurfaceTraversalGraph(world, start, goal, PLAYER, 8, 4);
+
+        PathfinderResult<SurfaceNode> result = new AStarPathfinder<SurfaceNode>()
+                .search(new PathfinderRequest<>(graph, start, goal, SurfaceTraversalGraphTest::distance));
+
+        assertEquals(PathfinderStatus.FOUND, result.status());
+        assertTrue(result.path().nodes().getLast().sameSubcell(goal));
+    }
+
     private static Connection<SurfaceNode> connectionTo(
             SurfaceTraversalGraph graph, SurfaceNode start, SurfaceNode destination) {
         return connectionsFrom(graph, start).stream()
@@ -265,6 +280,31 @@ class SurfaceTraversalGraphTest {
                 Arguments.of(bottomSlab(), new SurfaceNode(lowBlock, 1, 1, 62.5), 62.5),
                 Arguments.of(northFacingBottomStair(), new SurfaceNode(lowBlock, 1, 1, 63.0), 63.0),
                 Arguments.of(waterloggedBottomSlab(), new SurfaceNode(lowBlock, 1, 1, 62.5), 62.5));
+    }
+
+    private static Stream<Arguments> specialWalkablePaths() {
+        BlockPosition first = new BlockPosition(0, 63, 0);
+        BlockPosition second = new BlockPosition(1, 63, 0);
+        BlockPosition stair = new BlockPosition(0, 63, 0);
+        return Stream.of(
+                adjacentPath(first, second, bottomSlab(), 63.5),
+                adjacentPath(first, second, topSlab(), 64.0),
+                adjacentPath(first, second, waterloggedBottomSlab(), 63.5),
+                stairPath(stair, northFacingBottomStair()),
+                stairPath(stair, waterloggedNorthFacingBottomStair()));
+    }
+
+    private static Arguments adjacentPath(
+            BlockPosition first, BlockPosition second, SurfaceBlock surface, double floorY) {
+        SurfaceNode start = new SurfaceNode(first, 1, 1, floorY);
+        SurfaceNode goal = new SurfaceNode(second, 0, 1, floorY);
+        return Arguments.of(Map.of(first, surface, second, surface), start, goal);
+    }
+
+    private static Arguments stairPath(BlockPosition stair, SurfaceBlock surface) {
+        SurfaceNode lowFront = new SurfaceNode(stair, 1, 0, 63.5);
+        SurfaceNode highBack = new SurfaceNode(stair, 1, 1, 64.0);
+        return Arguments.of(Map.of(stair, surface), lowFront, highBack);
     }
 
     private static final class CountingSurfaceWorldLayer implements SurfaceWorldLayer {

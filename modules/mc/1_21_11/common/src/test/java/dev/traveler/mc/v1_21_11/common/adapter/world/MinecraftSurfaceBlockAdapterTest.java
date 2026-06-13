@@ -27,6 +27,9 @@ import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.block.state.properties.StairsShape;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class MinecraftSurfaceBlockAdapterTest {
     @BeforeAll
@@ -94,18 +97,14 @@ class MinecraftSurfaceBlockAdapterTest {
         assertEquals(HorizontalFacing.WEST, behavior.facing());
     }
 
-    @Test
-    void specialBlocksExposeMovementBehaviorInsteadOfPenalty() {
-        SurfaceBlock drySlab = surfaceBlock(
-                Blocks.OAK_SLAB.defaultBlockState().setValue(SlabBlock.TYPE, SlabType.BOTTOM));
-        SurfaceBlock wetSlab = surfaceBlock(Blocks.OAK_SLAB
-                .defaultBlockState()
-                .setValue(SlabBlock.TYPE, SlabType.BOTTOM)
-                .setValue(BlockStateProperties.WATERLOGGED, true));
+    @ParameterizedTest
+    @MethodSource("surfaceClassifications")
+    void blockStatesExposeConsistentSurfaceClassification(
+            BlockState state, BlockBehaviorKey behaviorKey, BlockPassability passability) {
+        SurfaceBlock block = surfaceBlock(state);
 
-        assertEquals(BlockBehaviorKey.SLAB, drySlab.behavior().key());
-        assertEquals(BlockBehaviorKey.WATERLOGGED, wetSlab.behavior().key());
-        assertEquals(BlockPassability.WALKABLE, wetSlab.classification().passability());
+        assertEquals(behaviorKey, block.behavior().key());
+        assertEquals(passability, block.classification().passability());
     }
 
     @Test
@@ -121,5 +120,38 @@ class MinecraftSurfaceBlockAdapterTest {
     private static SurfaceBlock surfaceBlock(BlockState state) {
         MinecraftWorldSnapshot snapshot = new MinecraftWorldSnapshot(new SingleStateBlockGetter(state));
         return snapshot.surfaceBlock(new BlockPosition(0, 0, 0));
+    }
+
+    private static Stream<Arguments> surfaceClassifications() {
+        return Stream.of(
+                Arguments.of(Blocks.STONE.defaultBlockState(), BlockBehaviorKey.FULL_BLOCK, BlockPassability.SOLID),
+                Arguments.of(slab(SlabType.BOTTOM), BlockBehaviorKey.SLAB, BlockPassability.WALKABLE),
+                Arguments.of(slab(SlabType.TOP), BlockBehaviorKey.SLAB, BlockPassability.WALKABLE),
+                Arguments.of(slab(SlabType.DOUBLE), BlockBehaviorKey.SLAB, BlockPassability.WALKABLE),
+                Arguments.of(stair(), BlockBehaviorKey.STAIR, BlockPassability.WALKABLE),
+                Arguments.of(waterloggedSlab(), BlockBehaviorKey.WATERLOGGED, BlockPassability.WALKABLE),
+                Arguments.of(waterloggedStair(), BlockBehaviorKey.WATERLOGGED, BlockPassability.WALKABLE),
+                Arguments.of(Blocks.WATER.defaultBlockState(), BlockBehaviorKey.FLUID, BlockPassability.PASSABLE),
+                Arguments.of(Blocks.AIR.defaultBlockState(), BlockBehaviorKey.AIR, BlockPassability.PASSABLE));
+    }
+
+    private static BlockState slab(SlabType type) {
+        return Blocks.OAK_SLAB.defaultBlockState().setValue(SlabBlock.TYPE, type);
+    }
+
+    private static BlockState waterloggedSlab() {
+        return slab(SlabType.BOTTOM).setValue(BlockStateProperties.WATERLOGGED, true);
+    }
+
+    private static BlockState stair() {
+        return Blocks.OAK_STAIRS
+                .defaultBlockState()
+                .setValue(StairBlock.FACING, Direction.NORTH)
+                .setValue(StairBlock.HALF, Half.BOTTOM)
+                .setValue(StairBlock.SHAPE, StairsShape.STRAIGHT);
+    }
+
+    private static BlockState waterloggedStair() {
+        return stair().setValue(BlockStateProperties.WATERLOGGED, true);
     }
 }
