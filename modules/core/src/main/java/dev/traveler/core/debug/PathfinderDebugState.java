@@ -2,6 +2,8 @@ package dev.traveler.core.debug;
 
 import dev.traveler.core.graph.MutableGraphPath;
 import dev.traveler.core.path.PathfinderResult;
+import dev.traveler.core.navigation.NavigationControlFrame;
+import dev.traveler.core.navigation.NavigationFrameInput;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.surface.SurfaceNode;
 import java.time.Instant;
@@ -11,6 +13,7 @@ import java.util.Optional;
 
 public final class PathfinderDebugState {
     private PathfinderDebugSnapshot latestSnapshot;
+    private NavigationDebugSnapshot latestNavigation;
 
     public synchronized void update(PathfinderResult<BlockPosition> result) {
         update(result, null);
@@ -33,6 +36,15 @@ public final class PathfinderDebugState {
 
     public synchronized void clear() {
         latestSnapshot = null;
+        latestNavigation = null;
+    }
+
+    public synchronized void updateNavigation(NavigationFrameInput input, NavigationControlFrame frame) {
+        latestNavigation = NavigationDebugSnapshot.from(input, frame, Instant.now());
+    }
+
+    public synchronized void clearNavigation() {
+        latestNavigation = null;
     }
 
     public synchronized Optional<PathfinderDebugSnapshot> latestSnapshot() {
@@ -53,6 +65,14 @@ public final class PathfinderDebugState {
 
     public synchronized Optional<Instant> updatedAt() {
         return latestSnapshot().map(PathfinderDebugSnapshot::updatedAt);
+    }
+
+    public synchronized Optional<NavigationDebugSnapshot> latestNavigation() {
+        return Optional.ofNullable(latestNavigation);
+    }
+
+    public synchronized Optional<String> navigationSummary() {
+        return latestNavigation().map(DebugTextFormatter::navigationSummary);
     }
 
     private static PathfinderResult<BlockPosition> copyResult(PathfinderResult<BlockPosition> result) {

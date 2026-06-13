@@ -8,6 +8,23 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import dev.traveler.core.graph.MutableGraphPath;
 import dev.traveler.core.path.PathfinderResult;
 import dev.traveler.core.path.PathfinderStatus;
+import dev.traveler.core.navigation.NavigationControlFrame;
+import dev.traveler.core.navigation.NavigationControllerState;
+import dev.traveler.core.navigation.NavigationFrameInput;
+import dev.traveler.core.navigation.camera.CameraAngles;
+import dev.traveler.core.navigation.control.MovementIntent;
+import dev.traveler.core.navigation.follow.MovementTarget;
+import dev.traveler.core.navigation.follow.PathProgress;
+import dev.traveler.core.navigation.locomotion.LocomotionExecutionState;
+import dev.traveler.core.navigation.plan.ActionIntent;
+import dev.traveler.core.navigation.plan.MovementVectorIntent;
+import dev.traveler.core.navigation.plan.NavigationFramePlan;
+import dev.traveler.core.navigation.plan.NavigationPhase;
+import dev.traveler.core.navigation.plan.PlannedMovementMode;
+import dev.traveler.core.navigation.plan.SpeedIntent;
+import dev.traveler.core.navigation.plan.ToleranceProfile;
+import dev.traveler.core.navigation.spatial.HorizontalVector;
+import dev.traveler.core.navigation.spatial.NavigationPoint;
 import dev.traveler.core.world.block.BlockPosition;
 import org.junit.jupiter.api.Test;
 
@@ -63,10 +80,56 @@ class PathfinderDebugStateTest {
         assertThrows(UnsupportedOperationException.class, () -> stored.path().nodes().add(origin));
     }
 
+    @Test
+    void storesLatestNavigationSnapshotAndClearsItWithDebugState() {
+        PathfinderDebugState state = new PathfinderDebugState();
+
+        state.updateNavigation(frameInput(), frame());
+
+        NavigationDebugSnapshot snapshot = state.latestNavigation().orElseThrow();
+        assertEquals(NavigationPhase.APPROACH, snapshot.phase());
+        assertEquals("nav phase=APPROACH", state.navigationSummary().orElseThrow().substring(0, 18));
+
+        state.clearNavigation();
+        assertFalse(state.latestNavigation().isPresent());
+    }
+
     private static void assertEmpty(PathfinderDebugState state) {
         assertFalse(state.latestResult().isPresent());
         assertFalse(state.latestMessage().isPresent());
         assertFalse(state.latestSnapshot().isPresent());
+        assertFalse(state.latestNavigation().isPresent());
         assertFalse(state.updatedAt().isPresent());
+    }
+
+    private static NavigationFrameInput frameInput() {
+        return new NavigationFrameInput(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new CameraAngles(0.0, 0.0),
+                0.016);
+    }
+
+    private static NavigationControlFrame frame() {
+        MovementIntent intent = new MovementIntent(true, false, false, false, false, true);
+        NavigationFramePlan plan = new NavigationFramePlan(
+                NavigationPhase.APPROACH,
+                PathProgress.start(),
+                MovementTarget.follow(new NavigationPoint(0.0, 64.0, 4.0)),
+                new MovementVectorIntent(new HorizontalVector(0.0, 1.0), PlannedMovementMode.DIRECT, true),
+                new CameraAngles(0.0, 0.0),
+                ActionIntent.none(),
+                new SpeedIntent(1.0, true),
+                ToleranceProfile.standard(),
+                LocomotionExecutionState.start(),
+                false);
+        NavigationControllerState controllerState =
+                new NavigationControllerState(PathProgress.start(), intent, LocomotionExecutionState.start());
+        return new NavigationControlFrame(
+                controllerState,
+                intent,
+                new CameraAngles(0.0, 0.0),
+                MovementTarget.follow(new NavigationPoint(0.0, 64.0, 4.0)),
+                plan,
+                false);
     }
 }
