@@ -8,6 +8,7 @@ import dev.traveler.core.graph.Connection;
 import dev.traveler.core.graph.Graph;
 import dev.traveler.core.layer.SurfaceBlock;
 import dev.traveler.core.layer.SurfaceWorldLayer;
+import dev.traveler.core.navigation.spatial.NavigationPoint;
 import dev.traveler.core.path.PathfinderStatus;
 import dev.traveler.core.world.behavior.BlockBehavior;
 import dev.traveler.core.world.behavior.context.HorizontalFacing;
@@ -163,6 +164,22 @@ class RouteSearchServiceTest {
 
         assertEquals(PathfinderStatus.FOUND, result.status());
         assertTrue(result.route().orElseThrow().actions().contains(MovementAction.CLIMB));
+    }
+
+    @Test
+    void climbRouteTargetsTheClimbableFaceInsteadOfTheLandingCenter() {
+        TestSurfaceWorldLayer world =
+                new TestSurfaceWorldLayer(climbColumn(new LadderBlockBehavior(HorizontalFacing.EAST)));
+        RouteSearchService service = new RouteSearchService(RouteSearchSettings.standardClient());
+
+        RouteSearchResult result =
+                service.search(world, new BlockPosition(0, 64, 0), new BlockPosition(1, 65, 1));
+
+        RoutePath route = result.route().orElseThrow();
+        int climbIndex = route.actions().indexOf(MovementAction.CLIMB);
+        NavigationPoint climbTarget = route.points().get(climbIndex + 1);
+        assertEquals(0.7, climbTarget.x(), 0.001);
+        assertEquals(0.5, climbTarget.z(), 0.001);
     }
 
     @Test

@@ -11,7 +11,11 @@ public interface BlockBehavior {
 
     MovementDecision evaluateMovement(SurfaceMovementContext context);
 
+    default boolean allowsRouteSmoothing(MovementCapabilities capabilities) {
+        return true;
+    }
+
     default boolean preservesRouteGeometry(MovementCapabilities capabilities) {
-        return false;
+        return !allowsRouteSmoothing(capabilities);
     }
 }

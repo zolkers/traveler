@@ -25,8 +25,8 @@ public abstract class ClimbableBlockBehavior implements BlockBehavior {
     }
 
     @Override
-    public final boolean preservesRouteGeometry(MovementCapabilities capabilities) {
-        return supportsClimbing(capabilities);
+    public final boolean allowsRouteSmoothing(MovementCapabilities capabilities) {
+        return !supportsClimbing(capabilities);
     }
 
     @Override

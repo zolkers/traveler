@@ -35,6 +35,7 @@ class SpecialBlockBehaviorTest {
         LadderBlockBehavior behavior = new LadderBlockBehavior(HorizontalFacing.SOUTH);
 
         assertFalse(behavior.supportsStanding(PLAYER));
+        assertFalse(behavior.allowsRouteSmoothing(PLAYER));
         assertTrue(behavior.preservesRouteGeometry(PLAYER));
         assertEquals(Set.of(HorizontalFacing.NORTH), behavior.climbableFaces());
         assertEquals(HorizontalFacing.SOUTH, behavior.facing());
@@ -65,6 +66,7 @@ class SpecialBlockBehaviorTest {
                 new VineBlockBehavior(Set.of(HorizontalFacing.NORTH, HorizontalFacing.EAST), true);
 
         assertFalse(behavior.supportsStanding(PLAYER));
+        assertFalse(behavior.allowsRouteSmoothing(PLAYER));
         assertTrue(behavior.preservesRouteGeometry(PLAYER));
         assertEquals(Set.of(HorizontalFacing.SOUTH, HorizontalFacing.WEST), behavior.climbableFaces());
         assertEquals(Set.of(HorizontalFacing.NORTH, HorizontalFacing.EAST), behavior.attachedFaces());
