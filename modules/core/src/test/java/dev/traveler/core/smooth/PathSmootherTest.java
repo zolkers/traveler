@@ -1,6 +1,7 @@
 package dev.traveler.core.smooth;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -34,6 +35,39 @@ class PathSmootherTest {
                 new GridPoint(3, 0));
 
         assertEquals(List.of(new GridPoint(0, 0), new GridPoint(1, 0), new GridPoint(3, 0)), smoother.smooth(path));
+    }
+
+    @Test
+    void delegatesReachableNodeSelectionToStrategy() {
+        PathSmoother<GridPoint> smoother = new PathSmoother<>(
+                (from, to) -> true,
+                PathNodePreservation.none(),
+                (path, anchor, limit, lineOfWalk) -> anchor + 1);
+        List<GridPoint> path = List.of(new GridPoint(0, 0), new GridPoint(1, 0), new GridPoint(2, 0));
+
+        assertEquals(path, smoother.smooth(path));
+    }
+
+    @Test
+    void rejectsSelectionOutsideCurrentSmoothingWindow() {
+        PathSmoother<GridPoint> smoother = new PathSmoother<>(
+                (from, to) -> true,
+                PathNodePreservation.none(),
+                (path, anchor, limit, lineOfWalk) -> limit + 1);
+        List<GridPoint> path = List.of(new GridPoint(0, 0), new GridPoint(1, 0), new GridPoint(2, 0));
+
+        assertThrows(IllegalStateException.class, () -> smoother.smooth(path));
+    }
+
+    @Test
+    void rejectsSelectionThatSkipsUnreachableNodes() {
+        PathSmoother<GridPoint> smoother = new PathSmoother<>(
+                (from, to) -> false,
+                PathNodePreservation.none(),
+                (path, anchor, limit, lineOfWalk) -> limit);
+        List<GridPoint> path = List.of(new GridPoint(0, 0), new GridPoint(1, 0), new GridPoint(2, 0));
+
+        assertThrows(IllegalStateException.class, () -> smoother.smooth(path));
     }
 
     @Test
