@@ -25,6 +25,15 @@ class SurfaceMovementEvaluatorTest {
     }
 
     @Test
+    void classifiesSmallDownwardStepAsWalk() {
+        SurfaceMovementEvaluator evaluator = new SurfaceMovementEvaluator(PLAYER);
+        MovementDecision decision =
+                evaluator.decision(node(0, 64.0), node(1, 63.5), SurfaceBlock.solid(BlockShape.fullCube()));
+
+        assertEquals(MovementAction.WALK, decision.action());
+    }
+
+    @Test
     void keepsFlatMovementAsWalk() {
         SurfaceMovementEvaluator evaluator = new SurfaceMovementEvaluator(PLAYER);
         MovementDecision decision =

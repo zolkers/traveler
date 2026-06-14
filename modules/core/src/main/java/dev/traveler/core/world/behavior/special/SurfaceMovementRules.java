@@ -44,7 +44,11 @@ final class SurfaceMovementRules {
     }
 
     private static MovementDecision safeFallDecision(MovementCapabilities capabilities, double delta) {
-        if (-delta > capabilities.maxSafeFallDistance()) {
+        double descent = -delta;
+        if (descent <= capabilities.maxStepUp()) {
+            return MovementDecision.walk();
+        }
+        if (descent > capabilities.maxSafeFallDistance()) {
             return MovementDecision.blocked();
         }
         if (delta < 0.0) {

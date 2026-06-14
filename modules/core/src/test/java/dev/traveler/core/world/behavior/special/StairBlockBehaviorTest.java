@@ -32,6 +32,17 @@ class StairBlockBehaviorTest {
     }
 
     @Test
+    void frontDescentWalksDownNorthFacingStairWithoutDropAction() {
+        StairBlockBehavior behavior = new StairBlockBehavior(HorizontalFacing.NORTH);
+
+        MovementDecision decision = behavior.evaluateMovement(context(
+                node(1, 1, 64.0), node(1, 0, 63.5), MovementDirection.north(), PLAYER));
+
+        assertTrue(decision.allowed());
+        assertEquals(MovementAction.WALK, decision.action());
+    }
+
+    @Test
     void sideApproachRequiresJumpOntoRaisedStairSurface() {
         StairBlockBehavior behavior = new StairBlockBehavior(HorizontalFacing.NORTH);
 
