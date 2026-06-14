@@ -59,6 +59,24 @@ class LocomotionSequencerTest {
     }
 
     @Test
+    void holdsInitialJumpWhenNextRenderFrameTemporarilyRequestsWalk() {
+        LocomotionDecision first = sequencer.update(
+                LocomotionExecutionState.start(),
+                LocomotionPlan.jump(),
+                AgentMotionState.groundedStill(),
+                MovementIntent.idle());
+
+        LocomotionDecision second = sequencer.update(
+                first.state(),
+                LocomotionPlan.walk(),
+                AgentMotionState.groundedStill(),
+                new MovementIntent(true, false, false, false, true, true));
+
+        assertEquals(LocomotionAction.JUMP, first.plan().action());
+        assertEquals(LocomotionAction.JUMP, second.plan().action());
+    }
+
+    @Test
     void delaysAnySpecialActionAfterDropUntilStableGroundContact() {
         LocomotionDecision drop = sequencer.update(
                 LocomotionExecutionState.start(),

@@ -92,6 +92,24 @@ class ControlProjectorTest {
     }
 
     @Test
+    void honorsLatchedJumpIntentEvenWhenMovementVectorIsRecentered() {
+        NavigationFramePlan plan = plan(
+                new MovementVectorIntent(
+                        new HorizontalVector(-1.0, 0.0),
+                        PlannedMovementMode.SIDESTEP_RECENTER,
+                        false),
+                ActionIntent.jump(),
+                new NavigationPoint(0.0, 65.0, 1.0));
+
+        ControlProjectionFrame frame = projector.project(
+                plan,
+                frameInput(new CameraAngles(0.0, 0.0)),
+                new MovementIntent(true, false, false, false, true, true));
+
+        assertTrue(frame.intent().jump());
+    }
+
+    @Test
     void projectsKeysAgainstTheCameraThatWillBeAppliedThisFrame() {
         ControlProjector fastProjector = ControlProjector.standard(
                 new CameraAimSettings(10_000.0, 10_000.0, 100.0, 0.0, 180.0));

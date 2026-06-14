@@ -33,7 +33,8 @@ class NavigationFramePlannerTest {
         assertEquals(LocomotionAction.JUMP, plan.actionIntent().action());
         assertTrue(plan.actionIntent().jumpRequested());
         assertEquals(point(0.0, 65.0, 0.0), plan.movementTarget().point());
-        assertEquals(0.0, plan.cameraTarget().pitchDegrees());
+        assertTrue(plan.cameraTarget().pitchDegrees() < 0.0);
+        assertTrue(plan.cameraTarget().pitchDegrees() > -18.0);
         assertEquals(PlannedMovementMode.DIRECT, plan.movementVector().mode());
     }
 

@@ -57,8 +57,7 @@ public final class ControlProjector {
         boolean back = back(plan.movementVector().mode(), forwardAmount, previous);
         boolean left = left(plan.movementVector().mode(), rightAmount, previous);
         boolean right = right(plan.movementVector().mode(), rightAmount, previous);
-        boolean jump = plan.actionIntent().jumpRequested()
-                && plan.movementVector().specialActionAllowed();
+        boolean jump = plan.actionIntent().jumpRequested();
         boolean sprint = plan.speedIntent().sprintRequested() && forward && !back;
         return new MovementIntent(forward, back, left, right, jump, sprint);
     }

@@ -9,11 +9,21 @@ import java.util.Objects;
 import java.util.Optional;
 
 public record RouteSearchResult(
+        RouteGoal goal,
         PathfinderResult<BlockPosition> blockResult,
         Optional<PathfinderResult<SurfaceNode>> surfaceResult,
         Optional<RoutePath> route,
         RouteSearchDiagnostics diagnostics) {
+    public RouteSearchResult(
+            PathfinderResult<BlockPosition> blockResult,
+            Optional<PathfinderResult<SurfaceNode>> surfaceResult,
+            Optional<RoutePath> route,
+            RouteSearchDiagnostics diagnostics) {
+        this(RouteGoal.unspecified(), blockResult, surfaceResult, route, diagnostics);
+    }
+
     public RouteSearchResult {
+        Objects.requireNonNull(goal, "goal");
         Objects.requireNonNull(blockResult, "blockResult");
         surfaceResult = Objects.requireNonNull(surfaceResult, "surfaceResult");
         route = Objects.requireNonNull(route, "route");
@@ -28,6 +38,7 @@ public record RouteSearchResult(
         PathfinderResult<BlockPosition> result =
                 new PathfinderResult<>(PathfinderStatus.NOT_FOUND, new MutableGraphPath<>());
         return new RouteSearchResult(
+                RouteGoal.unspecified(),
                 result,
                 Optional.empty(),
                 Optional.empty(),

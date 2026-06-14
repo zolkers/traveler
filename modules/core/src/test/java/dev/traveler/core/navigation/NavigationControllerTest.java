@@ -110,7 +110,7 @@ class NavigationControllerTest {
     }
 
     @Test
-    void keepsCameraPitchNeutralDuringJumpLookahead() {
+    void aimsCameraSlightlyUpDuringJumpLookahead() {
         NavigationPath path = NavigationPath.of(List.of(
                 new NavigationPoint(0.0, 64.0, 0.0),
                 new NavigationPoint(0.0, 65.0, 0.0),
@@ -123,7 +123,8 @@ class NavigationControllerTest {
         NavigationControlFrame frame =
                 controller.update(path, input, NavigationControllerState.start());
 
-        assertEquals(0.0, frame.cameraAngles().pitchDegrees());
+        assertTrue(frame.cameraAngles().pitchDegrees() < 0.0);
+        assertTrue(frame.cameraAngles().pitchDegrees() > -4.0);
     }
 
     @Test
@@ -157,6 +158,32 @@ class NavigationControllerTest {
         NavigationControlFrame second = controller.update(path, input, first.state());
 
         assertTrue(first.intent().jump());
+        assertTrue(second.intent().jump());
+    }
+
+    @Test
+    void keepsLatchedJumpPressedThroughTemporaryRecenterFrame() {
+        NavigationPath path = NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(0.0, 65.0, 1.0)));
+        NavigationFrameInput initial = new NavigationFrameInput(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new CameraAngles(0.0, 0.0),
+                0.004,
+                AgentMotionState.groundedStill());
+        NavigationControlFrame first =
+                controller.update(path, initial, NavigationControllerState.start());
+        NavigationFrameInput recenter = new NavigationFrameInput(
+                new NavigationPoint(2.0, 64.0, 0.1),
+                new CameraAngles(0.0, 0.0),
+                0.004,
+                AgentMotionState.groundedStill());
+
+        NavigationControlFrame second = controller.update(path, recenter, first.state());
+
+        assertTrue(first.intent().jump());
+        assertFalse(second.plan().movementVector().specialActionAllowed());
+        assertTrue(second.plan().actionIntent().jumpRequested());
         assertTrue(second.intent().jump());
     }
 

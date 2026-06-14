@@ -42,6 +42,19 @@ class RouteSearchServiceTest {
     }
 
     @Test
+    void acceptsExplicitRouteGoalWhileKeepingBlockTargetCompatibility() {
+        TestSurfaceWorldLayer world = new TestSurfaceWorldLayer(flatSurface(0, 2));
+        RouteSearchService service = new RouteSearchService(RouteSearchSettings.standardClient());
+        RouteGoal goal = RouteGoal.blockTarget(new BlockPosition(2, 63, 0));
+
+        RouteSearchResult result = service.search(world, new BlockPosition(0, 64, 0), goal);
+
+        assertEquals(PathfinderStatus.FOUND, result.status());
+        assertEquals(goal, result.goal());
+        assertEquals(RouteSearchFailureReason.NONE, result.diagnostics().reason());
+    }
+
+    @Test
     void reportsMissingStartSurface() {
         Map<BlockPosition, SurfaceBlock> blocks = flatSurface(2, 2);
         RouteSearchService service = new RouteSearchService(RouteSearchSettings.standardClient());

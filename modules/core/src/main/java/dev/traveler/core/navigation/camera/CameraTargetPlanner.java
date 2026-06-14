@@ -31,7 +31,10 @@ public final class CameraTargetPlanner {
         if (currentPosition.horizontalDistanceTo(target) < settings.minimumHorizontalDistance()) {
             return new CameraAngles(current.yawDegrees(), settings.neutralPitchDegrees());
         }
-        return CameraAimController.targetAngles(currentPosition, horizontalTarget(currentPosition, target));
+        CameraAngles targetAngles = CameraAimController.targetAngles(
+                currentPosition,
+                smartVerticalTarget(currentPosition, target));
+        return new CameraAngles(targetAngles.yawDegrees(), clampedPitch(targetAngles.pitchDegrees()));
     }
 
     private NavigationPoint lookAheadTarget(
@@ -43,7 +46,15 @@ public final class CameraTargetPlanner {
         return corridor.targetAt(projection.distanceOnPath() + settings.lookAheadDistance());
     }
 
-    private static NavigationPoint horizontalTarget(NavigationPoint position, NavigationPoint target) {
-        return new NavigationPoint(target.x(), position.y(), target.z());
+    private NavigationPoint smartVerticalTarget(NavigationPoint position, NavigationPoint target) {
+        double targetY = position.y() + (target.y() - position.y()) * settings.verticalAimScale();
+        return new NavigationPoint(target.x(), targetY, target.z());
+    }
+
+    private double clampedPitch(double pitchDegrees) {
+        return Math.clamp(
+                pitchDegrees,
+                -settings.maxPitchDegrees(),
+                settings.maxPitchDegrees());
     }
 }

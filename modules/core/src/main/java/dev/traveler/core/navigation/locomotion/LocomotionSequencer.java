@@ -26,24 +26,27 @@ public final class LocomotionSequencer {
         if (requested.action() == LocomotionAction.RECOVER) {
             return new LocomotionDecision(requested, LocomotionExecutionState.settling());
         }
-        if (shouldHoldAction(currentState, requested, motion)) {
-            return new LocomotionDecision(requested, currentState.decrementActionHold());
+        if (shouldHoldAction(currentState, motion)) {
+            return new LocomotionDecision(
+                    LocomotionPlan.fromAction(currentState.heldAction()),
+                    currentState.decrementActionHold());
         }
         LocomotionExecutionState advanced = advance(currentState, motion, previous);
         if (isSpecial(requested) && advanced.settlingAfterAction()) {
             return new LocomotionDecision(LocomotionPlan.walk(), advanced);
         }
         if (isSpecial(requested)) {
-            return new LocomotionDecision(requested, LocomotionExecutionState.settling(settings.actionHoldFrames()));
+            return new LocomotionDecision(
+                    requested,
+                    LocomotionExecutionState.settling(settings.actionHoldFrames(), requested.action()));
         }
         return new LocomotionDecision(requested, advanced);
     }
 
     private static boolean shouldHoldAction(
             LocomotionExecutionState state,
-            LocomotionPlan requested,
             AgentMotionState motion) {
-        return isSpecial(requested)
+        return isSpecial(state.heldAction())
                 && state.actionHoldFrames() > 0
                 && motion.onGround();
     }
@@ -59,7 +62,7 @@ public final class LocomotionSequencer {
         if (stableFrames >= settings.requiredStableGroundFrames()) {
             return LocomotionExecutionState.start();
         }
-        return new LocomotionExecutionState(true, stableFrames);
+        return new LocomotionExecutionState(true, stableFrames, 0, LocomotionAction.WALK);
     }
 
     private int stableFrames(
@@ -80,7 +83,10 @@ public final class LocomotionSequencer {
     }
 
     private static boolean isSpecial(LocomotionPlan plan) {
-        LocomotionAction action = plan.action();
+        return isSpecial(plan.action());
+    }
+
+    private static boolean isSpecial(LocomotionAction action) {
         return action == LocomotionAction.JUMP
                 || action == LocomotionAction.STEP_UP
                 || action == LocomotionAction.DROP;

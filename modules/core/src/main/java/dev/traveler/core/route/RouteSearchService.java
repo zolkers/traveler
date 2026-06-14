@@ -11,7 +11,6 @@ import dev.traveler.core.path.PathfinderStatus;
 import dev.traveler.core.smooth.PathNodePreservation;
 import dev.traveler.core.smooth.PathSmoother;
 import dev.traveler.core.world.behavior.decision.MovementDecision;
-import dev.traveler.core.world.block.BlockPassability;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.navigation.BlockLineOfWalk;
 import dev.traveler.core.world.navigation.SurfaceLineOfWalk;
@@ -45,50 +44,59 @@ public final class RouteSearchService {
             BlockPosition target) {
         BlockPosition safeStart = Objects.requireNonNull(start, "start");
         BlockPosition safeTarget = Objects.requireNonNull(target, "target");
+        return search(worldLayer, safeStart, RouteGoal.blockTarget(safeTarget));
+    }
+
+    public RouteSearchResult search(
+            WorldLayer worldLayer,
+            BlockPosition start,
+            RouteGoal goal) {
+        BlockPosition safeStart = Objects.requireNonNull(start, "start");
+        RouteGoal safeGoal = Objects.requireNonNull(goal, "goal");
         if (worldLayer instanceof SurfaceWorldLayer surfaceWorldLayer) {
-            return surfaceSearch(surfaceWorldLayer, safeStart, safeTarget);
+            return surfaceSearch(surfaceWorldLayer, safeStart, safeGoal);
         }
-        return blockSearch(worldLayer, safeStart, safeTarget);
+        return blockSearch(worldLayer, safeStart, safeGoal);
     }
 
     private RouteSearchResult surfaceSearch(
             SurfaceWorldLayer worldLayer,
             BlockPosition start,
-            BlockPosition target) {
+            RouteGoal goal) {
         SurfaceNodeResolver resolver = new SurfaceNodeResolver(worldLayer);
         List<SurfaceNode> startNodes = resolver.standingSurfaces(start);
-        List<SurfaceNode> goalNodes = surfaceGoals(resolver, target);
+        List<SurfaceNode> goalNodes = goal.surfaceGoals(resolver);
         if (startNodes.isEmpty()) {
-            return surfaceRejected(goalNodes.size(), RouteSearchDiagnostics::noStartSurface);
+            return surfaceRejected(goal, goalNodes.size(), RouteSearchDiagnostics::noStartSurface);
         }
         if (goalNodes.isEmpty()) {
-            return surfaceRejected(startNodes.size(), RouteSearchDiagnostics::noGoalSurface);
+            return surfaceRejected(goal, startNodes.size(), RouteSearchDiagnostics::noGoalSurface);
         }
-        return surfaceSearch(worldLayer, start, target, startNodes, goalNodes);
+        return surfaceSearch(worldLayer, start, goal, startNodes, goalNodes);
     }
 
     private RouteSearchResult surfaceSearch(
             SurfaceWorldLayer worldLayer,
             BlockPosition start,
-            BlockPosition target,
+            RouteGoal goal,
             List<SurfaceNode> startNodes,
             List<SurfaceNode> goalNodes) {
         PathfinderResult<SurfaceNode> surfaceResult =
-                findSurfacePath(worldLayer, start, target, startNodes, goalNodes);
+                findSurfacePath(worldLayer, start, goal, startNodes, goalNodes);
         PathfinderResult<BlockPosition> blockResult = surfaceResultToBlockResult(surfaceResult);
         RouteSearchDiagnostics diagnostics = surfaceDiagnostics(
                 surfaceResult,
                 startNodes.size(),
                 goalNodes.size());
         Optional<RoutePath> route = routeFromSurfaceResult(worldLayer, surfaceResult);
-        return new RouteSearchResult(blockResult, Optional.of(surfaceResult), route, diagnostics);
+        return new RouteSearchResult(goal, blockResult, Optional.of(surfaceResult), route, diagnostics);
     }
 
-    private RouteSearchResult blockSearch(WorldLayer worldLayer, BlockPosition start, BlockPosition target) {
-        BlockPosition goal = goalPosition(worldLayer, target);
-        PathfinderResult<BlockPosition> result = findPath(worldLayer, start, goal);
+    private RouteSearchResult blockSearch(WorldLayer worldLayer, BlockPosition start, RouteGoal goal) {
+        BlockPosition blockGoal = goal.blockGoal(worldLayer);
+        PathfinderResult<BlockPosition> result = findPath(worldLayer, start, blockGoal);
         RouteSearchDiagnostics diagnostics = blockDiagnostics(worldLayer, result);
-        return new RouteSearchResult(result, Optional.empty(), Optional.empty(), diagnostics);
+        return new RouteSearchResult(goal, result, Optional.empty(), Optional.empty(), diagnostics);
     }
 
     private PathfinderResult<BlockPosition> findPath(
@@ -105,11 +113,11 @@ public final class RouteSearchService {
     private PathfinderResult<SurfaceNode> findSurfacePath(
             SurfaceWorldLayer worldLayer,
             BlockPosition start,
-            BlockPosition target,
+            RouteGoal goal,
             List<SurfaceNode> starts,
             List<SurfaceNode> goals) {
         Optional<PathfinderResult<SurfaceNode>> preferred =
-                preferredSurfacePath(worldLayer, start, target, starts, goals);
+                preferredSurfacePath(worldLayer, start, goal, starts, goals);
         if (preferred.isPresent()) {
             return preferred.orElseThrow();
         }
@@ -119,13 +127,13 @@ public final class RouteSearchService {
     private Optional<PathfinderResult<SurfaceNode>> preferredSurfacePath(
             SurfaceWorldLayer worldLayer,
             BlockPosition start,
-            BlockPosition target,
+            RouteGoal goal,
             List<SurfaceNode> starts,
             List<SurfaceNode> goals) {
         PathfinderResult<SurfaceNode> result = searchSurfacePath(
                 worldLayer,
                 nearestSurface(starts, start),
-                nearestSurface(goals, target));
+                nearestSurface(goals, goal.preferredPosition(start)));
         if (result.status() != PathfinderStatus.FOUND) {
             return Optional.empty();
         }
@@ -194,12 +202,13 @@ public final class RouteSearchService {
     }
 
     private RouteSearchResult surfaceRejected(
+            RouteGoal goal,
             int knownSurfaceCount,
             SurfaceDiagnosticsFactory diagnosticsFactory) {
         PathfinderResult<SurfaceNode> surfaceResult = surfaceNotFound();
         PathfinderResult<BlockPosition> blockResult = surfaceResultToBlockResult(surfaceResult);
         RouteSearchDiagnostics diagnostics = diagnosticsFactory.create(knownSurfaceCount);
-        return new RouteSearchResult(blockResult, Optional.of(surfaceResult), Optional.empty(), diagnostics);
+        return new RouteSearchResult(goal, blockResult, Optional.of(surfaceResult), Optional.empty(), diagnostics);
     }
 
     private RouteSearchDiagnostics surfaceDiagnostics(
@@ -226,14 +235,6 @@ public final class RouteSearchService {
 
     private Graph<BlockPosition> graphFor(WorldLayer worldLayer, BlockPosition start, BlockPosition goal) {
         return components.blockGraphFactory().create(worldLayer, start, goal, settings);
-    }
-
-    private static List<SurfaceNode> surfaceGoals(SurfaceNodeResolver resolver, BlockPosition target) {
-        List<SurfaceNode> targetSurfaces = resolver.surfaces(target);
-        if (!targetSurfaces.isEmpty()) {
-            return targetSurfaces;
-        }
-        return resolver.standingSurface(target).map(List::of).orElseGet(List::of);
     }
 
     private static SurfaceNode nearestSurface(List<SurfaceNode> nodes, BlockPosition position) {
@@ -264,16 +265,6 @@ public final class RouteSearchService {
 
     private static PathfinderResult<SurfaceNode> surfaceNotFound() {
         return new PathfinderResult<>(PathfinderStatus.NOT_FOUND, new MutableGraphPath<>());
-    }
-
-    private static BlockPosition goalPosition(WorldLayer worldLayer, BlockPosition target) {
-        if (worldLayer == null) {
-            return target;
-        }
-        if (worldLayer.classify(target).passability() == BlockPassability.SOLID) {
-            return target.above();
-        }
-        return target;
     }
 
     private static PathfinderResult<BlockPosition> surfaceResultToBlockResult(
