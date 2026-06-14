@@ -155,7 +155,7 @@ class RouteSearchServiceTest {
     @Test
     void findsRouteThatClimbsLadderColumn() {
         TestSurfaceWorldLayer world =
-                new TestSurfaceWorldLayer(climbColumn(new LadderBlockBehavior(HorizontalFacing.WEST)));
+                new TestSurfaceWorldLayer(climbColumn(new LadderBlockBehavior(HorizontalFacing.EAST)));
         RouteSearchService service = new RouteSearchService(RouteSearchSettings.standardClient());
 
         RouteSearchResult result =
@@ -168,7 +168,7 @@ class RouteSearchServiceTest {
     @Test
     void doesNotClimbLadderFromNonFacingSide() {
         TestSurfaceWorldLayer world =
-                new TestSurfaceWorldLayer(nonFacingLadderColumn(new LadderBlockBehavior(HorizontalFacing.WEST)));
+                new TestSurfaceWorldLayer(nonFacingLadderColumn(new LadderBlockBehavior(HorizontalFacing.EAST)));
         RouteSearchService service = new RouteSearchService(RouteSearchSettings.standardClient());
 
         RouteSearchResult result =
@@ -180,7 +180,7 @@ class RouteSearchServiceTest {
     @Test
     void descendsLadderColumnAsClimbInsteadOfDrop() {
         TestSurfaceWorldLayer world =
-                new TestSurfaceWorldLayer(climbColumn(new LadderBlockBehavior(HorizontalFacing.WEST)));
+                new TestSurfaceWorldLayer(climbColumn(new LadderBlockBehavior(HorizontalFacing.EAST)));
         RouteSearchService service = new RouteSearchService(RouteSearchSettings.standardClient());
 
         RouteSearchResult result =
@@ -195,7 +195,7 @@ class RouteSearchServiceTest {
     @Test
     void findsRouteThatClimbsVineColumn() {
         TestSurfaceWorldLayer world =
-                new TestSurfaceWorldLayer(climbColumn(new VineBlockBehavior(Set.of(HorizontalFacing.WEST), false)));
+                new TestSurfaceWorldLayer(climbColumn(new VineBlockBehavior(Set.of(HorizontalFacing.EAST), false)));
         RouteSearchService service = new RouteSearchService(RouteSearchSettings.standardClient());
 
         RouteSearchResult result =

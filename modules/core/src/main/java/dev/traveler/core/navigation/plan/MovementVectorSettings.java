@@ -5,7 +5,8 @@ public record MovementVectorSettings(
         double centeringCorrectionThreshold,
         double turnStrafeThreshold,
         double forwardArcMinimumForward,
-        double backpedalMaximumDistance) {
+        double backpedalMaximumDistance,
+        double specialActionLateralTolerance) {
     public MovementVectorSettings {
         requireThreshold(pressThreshold, "pressThreshold");
         requireThreshold(turnStrafeThreshold, "turnStrafeThreshold");
@@ -16,10 +17,13 @@ public record MovementVectorSettings(
         if (!Double.isFinite(backpedalMaximumDistance) || backpedalMaximumDistance < 0.0) {
             throw new IllegalArgumentException("backpedalMaximumDistance must be non-negative.");
         }
+        if (!Double.isFinite(specialActionLateralTolerance) || specialActionLateralTolerance < 0.0) {
+            throw new IllegalArgumentException("specialActionLateralTolerance must be non-negative.");
+        }
     }
 
     public static MovementVectorSettings standard() {
-        return new MovementVectorSettings(0.32, 0.5, 0.32, 0.35, 0.8);
+        return new MovementVectorSettings(0.32, 0.5, 0.32, 0.35, 0.8, 1.0);
     }
 
     private static void requireThreshold(double value, String name) {

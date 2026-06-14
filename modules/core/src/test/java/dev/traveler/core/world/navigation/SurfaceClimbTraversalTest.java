@@ -23,8 +23,8 @@ class SurfaceClimbTraversalTest {
     @Test
     void acceptsLadderClimbFromFacingSide() {
         Map<BlockPosition, SurfaceBlock> blocks = Map.of(
-                new BlockPosition(1, 64, 0), ladder(HorizontalFacing.WEST),
-                new BlockPosition(1, 65, 0), ladder(HorizontalFacing.WEST));
+                new BlockPosition(1, 64, 0), ladder(HorizontalFacing.EAST),
+                new BlockPosition(1, 65, 0), ladder(HorizontalFacing.EAST));
 
         boolean climb = SurfaceClimbTraversal.canClimbWithLookup(
                 position -> blocks.getOrDefault(position, SurfaceBlock.empty()),
@@ -38,8 +38,8 @@ class SurfaceClimbTraversalTest {
     @Test
     void rejectsLadderClimbFromNonFacingSide() {
         Map<BlockPosition, SurfaceBlock> blocks = Map.of(
-                new BlockPosition(1, 64, 0), ladder(HorizontalFacing.WEST),
-                new BlockPosition(1, 65, 0), ladder(HorizontalFacing.WEST));
+                new BlockPosition(1, 64, 0), ladder(HorizontalFacing.EAST),
+                new BlockPosition(1, 65, 0), ladder(HorizontalFacing.EAST));
 
         boolean climb = SurfaceClimbTraversal.canClimbWithLookup(
                 position -> blocks.getOrDefault(position, SurfaceBlock.empty()),

@@ -29,14 +29,17 @@ public final class MovementVectorPolicy {
         SteeringPlan steeringPlan = Objects.requireNonNull(steering, "steering");
         CameraAngles camera = Objects.requireNonNull(cameraAngles, "cameraAngles");
         LocomotionPlan action = Objects.requireNonNull(actionPlan, "actionPlan");
-        MovementVectorDecision decision = vectorDecision(currentPosition, steeringPlan);
+        MovementVectorDecision decision = vectorDecision(currentPosition, steeringPlan, action);
         PlannedMovementMode mode = modeFor(decision, camera);
-        boolean actionAllowed = allowsSpecialAction(action, decision);
+        boolean actionAllowed = allowsSpecialAction(action, steeringPlan, decision);
         return new MovementVectorIntent(decision.desiredVector(), mode, actionAllowed);
     }
 
-    private MovementVectorDecision vectorDecision(NavigationPoint position, SteeringPlan steering) {
-        if (shouldRecenter(steering)) {
+    private MovementVectorDecision vectorDecision(
+            NavigationPoint position,
+            SteeringPlan steering,
+            LocomotionPlan action) {
+        if (shouldRecenter(steering, action)) {
             return new MovementVectorDecision(steering.lateralCorrection(), false, true);
         }
         if (!steering.tangent().isZero()) {
@@ -45,8 +48,9 @@ public final class MovementVectorPolicy {
         return new MovementVectorDecision(position.horizontalVectorTo(steering.steeringTarget()), true, false);
     }
 
-    private boolean shouldRecenter(SteeringPlan steering) {
+    private boolean shouldRecenter(SteeringPlan steering, LocomotionPlan action) {
         return steering.outsideCorridor()
+                && !nearEnoughForSpecialAction(action, steering)
                 && steering.lateralCorrection().length() >= settings.centeringCorrectionThreshold();
     }
 
@@ -91,8 +95,18 @@ public final class MovementVectorPolicy {
                 && distance <= settings.backpedalMaximumDistance();
     }
 
-    private static boolean allowsSpecialAction(LocomotionPlan action, MovementVectorDecision decision) {
-        return action.action() == LocomotionAction.WALK || decision.specialActionAllowed();
+    private boolean allowsSpecialAction(
+            LocomotionPlan action,
+            SteeringPlan steering,
+            MovementVectorDecision decision) {
+        return action.action() == LocomotionAction.WALK
+                || decision.specialActionAllowed()
+                || nearEnoughForSpecialAction(action, steering);
+    }
+
+    private boolean nearEnoughForSpecialAction(LocomotionPlan action, SteeringPlan steering) {
+        return action.action() != LocomotionAction.WALK
+                && steering.lateralError() <= settings.specialActionLateralTolerance();
     }
 
     private record MovementVectorDecision(

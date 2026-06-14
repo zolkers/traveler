@@ -36,7 +36,7 @@ class SpecialBlockBehaviorTest {
 
         assertFalse(behavior.supportsStanding(PLAYER));
         assertTrue(behavior.preservesRouteGeometry(PLAYER));
-        assertEquals(Set.of(HorizontalFacing.SOUTH), behavior.climbableFaces());
+        assertEquals(Set.of(HorizontalFacing.NORTH), behavior.climbableFaces());
         assertEquals(HorizontalFacing.SOUTH, behavior.facing());
 
         MovementDecision decision =
@@ -66,7 +66,7 @@ class SpecialBlockBehaviorTest {
 
         assertFalse(behavior.supportsStanding(PLAYER));
         assertTrue(behavior.preservesRouteGeometry(PLAYER));
-        assertEquals(Set.of(HorizontalFacing.NORTH, HorizontalFacing.EAST), behavior.climbableFaces());
+        assertEquals(Set.of(HorizontalFacing.SOUTH, HorizontalFacing.WEST), behavior.climbableFaces());
         assertEquals(Set.of(HorizontalFacing.NORTH, HorizontalFacing.EAST), behavior.attachedFaces());
         assertTrue(behavior.ceilingAttached());
 

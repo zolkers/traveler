@@ -26,7 +26,7 @@ public final class LocomotionSequencer {
         if (requested.action() == LocomotionAction.RECOVER) {
             return new LocomotionDecision(requested, LocomotionExecutionState.settling());
         }
-        if (shouldHoldAction(currentState, motion)) {
+        if (shouldHoldAction(currentState)) {
             return new LocomotionDecision(
                     LocomotionPlan.fromAction(currentState.heldAction()),
                     currentState.decrementActionHold());
@@ -43,12 +43,9 @@ public final class LocomotionSequencer {
         return new LocomotionDecision(requested, advanced);
     }
 
-    private static boolean shouldHoldAction(
-            LocomotionExecutionState state,
-            AgentMotionState motion) {
-        return isSpecial(state.heldAction())
-                && state.actionHoldFrames() > 0
-                && motion.onGround();
+    private static boolean shouldHoldAction(LocomotionExecutionState state) {
+        return state.heldAction() == LocomotionAction.JUMP
+                && state.actionHoldFrames() > 0;
     }
 
     private LocomotionExecutionState advance(

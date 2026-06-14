@@ -23,6 +23,6 @@ public final class LadderBlockBehavior extends ClimbableBlockBehavior {
 
     @Override
     public Set<HorizontalFacing> climbableFaces() {
-        return Set.of(facing);
+        return Set.of(facing.opposite());
     }
 }

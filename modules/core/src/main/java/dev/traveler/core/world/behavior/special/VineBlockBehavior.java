@@ -41,6 +41,8 @@ public final class VineBlockBehavior extends ClimbableBlockBehavior {
         if (attachedFaces.isEmpty()) {
             return CEILING_FACES;
         }
-        return attachedFaces;
+        return attachedFaces.stream()
+                .map(HorizontalFacing::opposite)
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
     }
 }

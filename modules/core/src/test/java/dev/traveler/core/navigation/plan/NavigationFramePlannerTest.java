@@ -111,6 +111,20 @@ class NavigationFramePlannerTest {
     }
 
     @Test
+    void jumpActionHasForgivenessNearTheCorridorBeforeRecentering() {
+        NavigationPath path = NavigationPath.of(List.of(
+                point(0.0, 64.0, 0.0),
+                point(0.0, 65.0, 4.0)));
+        NavigationFrameInput input = frameInput(point(0.9, 64.0, 1.0), neutralCamera());
+
+        NavigationFramePlan plan = planner.plan(path, input, NavigationControllerState.start());
+
+        assertEquals(NavigationPhase.EXECUTE_ACTION, plan.phase());
+        assertTrue(plan.actionIntent().jumpRequested());
+        assertTrue(plan.movementVector().specialActionAllowed());
+    }
+
+    @Test
     void skippedNodeKeepsPlannerLookingForwardOnTheCorridor() {
         NavigationPath path = NavigationPath.of(List.of(
                 point(0.0, 64.0, 0.0),

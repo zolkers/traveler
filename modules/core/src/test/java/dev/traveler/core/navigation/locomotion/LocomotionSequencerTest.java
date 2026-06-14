@@ -23,21 +23,39 @@ class LocomotionSequencerTest {
                 LocomotionPlan.jump(),
                 airborne(),
                 new MovementIntent(true, false, false, false, true, true));
-        LocomotionDecision firstGroundFrame = sequencer.update(
+        LocomotionDecision heldGroundFrame = sequencer.update(
                 airborne.state(),
                 LocomotionPlan.jump(),
                 AgentMotionState.groundedStill(),
+                previousJumpIntent());
+        LocomotionDecision heldGroundFrame2 = sequencer.update(
+                heldGroundFrame.state(),
+                LocomotionPlan.jump(),
+                AgentMotionState.groundedStill(),
+                previousJumpIntent());
+        LocomotionDecision heldGroundFrame3 = sequencer.update(
+                heldGroundFrame2.state(),
+                LocomotionPlan.jump(),
+                AgentMotionState.groundedStill(),
+                previousJumpIntent());
+        LocomotionDecision settlingGroundFrame = sequencer.update(
+                heldGroundFrame3.state(),
+                LocomotionPlan.jump(),
+                AgentMotionState.groundedStill(),
                 MovementIntent.idle());
-        LocomotionDecision secondGroundFrame = sequencer.update(
-                firstGroundFrame.state(),
+        LocomotionDecision stableGroundFrame = sequencer.update(
+                settlingGroundFrame.state(),
                 LocomotionPlan.jump(),
                 AgentMotionState.groundedStill(),
                 MovementIntent.idle());
 
         assertEquals(LocomotionAction.JUMP, first.plan().action());
-        assertEquals(LocomotionAction.WALK, airborne.plan().action());
-        assertEquals(LocomotionAction.WALK, firstGroundFrame.plan().action());
-        assertEquals(LocomotionAction.JUMP, secondGroundFrame.plan().action());
+        assertEquals(LocomotionAction.JUMP, airborne.plan().action());
+        assertEquals(LocomotionAction.JUMP, heldGroundFrame.plan().action());
+        assertEquals(LocomotionAction.JUMP, heldGroundFrame2.plan().action());
+        assertEquals(LocomotionAction.JUMP, heldGroundFrame3.plan().action());
+        assertEquals(LocomotionAction.WALK, settlingGroundFrame.plan().action());
+        assertEquals(LocomotionAction.JUMP, stableGroundFrame.plan().action());
     }
 
     @Test
@@ -52,6 +70,24 @@ class LocomotionSequencerTest {
                 first.state(),
                 LocomotionPlan.jump(),
                 AgentMotionState.groundedStill(),
+                new MovementIntent(true, false, false, false, true, true));
+
+        assertEquals(LocomotionAction.JUMP, first.plan().action());
+        assertEquals(LocomotionAction.JUMP, second.plan().action());
+    }
+
+    @Test
+    void holdsInitialJumpForAShortAirborneWindow() {
+        LocomotionDecision first = sequencer.update(
+                LocomotionExecutionState.start(),
+                LocomotionPlan.jump(),
+                AgentMotionState.groundedStill(),
+                MovementIntent.idle());
+
+        LocomotionDecision second = sequencer.update(
+                first.state(),
+                LocomotionPlan.walk(),
+                airborne(),
                 new MovementIntent(true, false, false, false, true, true));
 
         assertEquals(LocomotionAction.JUMP, first.plan().action());
@@ -108,5 +144,9 @@ class LocomotionSequencerTest {
 
     private static AgentMotionState airborne() {
         return new AgentMotionState(false, false, new HorizontalVector(0.0, 0.1), -0.2);
+    }
+
+    private static MovementIntent previousJumpIntent() {
+        return new MovementIntent(true, false, false, false, true, true);
     }
 }
