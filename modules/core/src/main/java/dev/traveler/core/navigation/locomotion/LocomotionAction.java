@@ -5,5 +5,6 @@ public enum LocomotionAction {
     STEP_UP,
     JUMP,
     DROP,
+    CLIMB,
     RECOVER
 }

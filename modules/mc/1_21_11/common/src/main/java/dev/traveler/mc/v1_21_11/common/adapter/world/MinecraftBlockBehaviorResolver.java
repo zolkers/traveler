@@ -16,6 +16,10 @@ public interface MinecraftBlockBehaviorResolver {
 
     static List<MinecraftBlockBehaviorResolver> defaults() {
         return List.of(
+                new BarrierBlockBehaviorResolver(),
+                new CarpetBlockBehaviorResolver(),
+                new LadderBlockBehaviorResolver(),
+                new VineBlockBehaviorResolver(),
                 new AirBlockBehaviorResolver(),
                 new SlabBlockBehaviorResolver(),
                 new StairBlockBehaviorResolver(),

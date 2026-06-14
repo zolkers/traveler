@@ -5,5 +5,6 @@ public enum NavigationSegmentAction {
     WALK,
     STEP_UP,
     JUMP,
-    DROP
+    DROP,
+    CLIMB
 }

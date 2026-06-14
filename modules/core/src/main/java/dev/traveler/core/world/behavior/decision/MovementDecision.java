@@ -9,6 +9,7 @@ public record MovementDecision(boolean allowed, MovementAction action) {
     private static final MovementDecision DROP = new MovementDecision(true, MovementAction.DROP);
     private static final MovementDecision JUMP = new MovementDecision(true, MovementAction.JUMP);
     private static final MovementDecision SWIM = new MovementDecision(true, MovementAction.SWIM);
+    private static final MovementDecision CLIMB = new MovementDecision(true, MovementAction.CLIMB);
 
     public MovementDecision {
         Objects.requireNonNull(action, "action");
@@ -39,5 +40,9 @@ public record MovementDecision(boolean allowed, MovementAction action) {
 
     public static MovementDecision swim() {
         return SWIM;
+    }
+
+    public static MovementDecision climb() {
+        return CLIMB;
     }
 }

@@ -27,6 +27,10 @@ public record ActionIntent(
         return new ActionIntent(LocomotionAction.DROP, false, false);
     }
 
+    public static ActionIntent climb() {
+        return new ActionIntent(LocomotionAction.CLIMB, false, false);
+    }
+
     public static ActionIntent recover() {
         return new ActionIntent(LocomotionAction.RECOVER, false, true);
     }
@@ -37,6 +41,7 @@ public record ActionIntent(
             case JUMP -> jump();
             case STEP_UP -> stepUp();
             case DROP -> drop();
+            case CLIMB -> climb();
             case RECOVER -> recover();
             case WALK -> none();
         };

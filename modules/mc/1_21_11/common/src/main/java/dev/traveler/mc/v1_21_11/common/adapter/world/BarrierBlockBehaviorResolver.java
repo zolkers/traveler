@@ -1,23 +1,22 @@
 package dev.traveler.mc.v1_21_11.common.adapter.world;
 
 import dev.traveler.core.world.behavior.BlockBehavior;
+import dev.traveler.core.world.behavior.BlockBehaviorKey;
 import dev.traveler.core.world.behavior.BlockBehaviorRegistry;
 import dev.traveler.core.world.geometry.BlockShape;
 import dev.traveler.mc.v1_21_11.common.adapter.block.MinecraftBlockContext;
 import java.util.Optional;
-import net.minecraft.core.Direction;
-import net.minecraft.world.level.block.StairBlock;
+import net.minecraft.world.level.block.Blocks;
 
-final class StairBlockBehaviorResolver implements MinecraftBlockBehaviorResolver {
+final class BarrierBlockBehaviorResolver implements MinecraftBlockBehaviorResolver {
     @Override
     public Optional<BlockBehavior> resolve(
             MinecraftBlockContext context,
             BlockShape shape,
             BlockBehaviorRegistry behaviorRegistry) {
-        if (!StairBlock.isStairs(context.state())) {
+        if (!context.state().is(Blocks.BARRIER)) {
             return Optional.empty();
         }
-        Direction direction = context.state().getValue(StairBlock.FACING);
-        return Optional.of(behaviorRegistry.stair(MinecraftHorizontalFacing.from(direction)));
+        return Optional.of(behaviorRegistry.behavior(BlockBehaviorKey.BARRIER));
     }
 }

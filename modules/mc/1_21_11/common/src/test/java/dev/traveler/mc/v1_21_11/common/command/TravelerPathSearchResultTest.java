@@ -37,6 +37,24 @@ class TravelerPathSearchResultTest {
         assertEquals(NavigationSegmentAction.JUMP, path.actionBeforeNode(1));
     }
 
+    @Test
+    void navigationPathKeepsClimbRouteSegmentAction() {
+        SurfaceNode start = node(0);
+        SurfaceNode goal = node(1);
+        RoutePath route = RoutePath.of(List.of(new RouteStep(start, goal, MovementAction.CLIMB, 1.0)));
+        TravelerPathSearchResult result = new TravelerPathSearchResult(
+                new RouteSearchResult(
+                        blockResult(start, goal),
+                        Optional.empty(),
+                        Optional.of(route),
+                        RouteSearchDiagnostics.none(1, 1)),
+                "path");
+
+        NavigationPath path = result.navigationPath().orElseThrow();
+
+        assertEquals(NavigationSegmentAction.CLIMB, path.actionBeforeNode(1));
+    }
+
     private static PathfinderResult<BlockPosition> blockResult(SurfaceNode start, SurfaceNode goal) {
         MutableGraphPath<BlockPosition> path = new MutableGraphPath<>();
         path.addNode(start.renderBlockPosition());

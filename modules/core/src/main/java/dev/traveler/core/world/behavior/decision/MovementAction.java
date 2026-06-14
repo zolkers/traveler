@@ -6,5 +6,6 @@ public enum MovementAction {
     STEP_UP,
     DROP,
     JUMP,
-    SWIM
+    SWIM,
+    CLIMB
 }

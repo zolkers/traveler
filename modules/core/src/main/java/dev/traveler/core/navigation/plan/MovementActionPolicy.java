@@ -42,6 +42,7 @@ public final class MovementActionPolicy {
             case STEP_UP -> LocomotionPlan.stepUp();
             case JUMP -> LocomotionPlan.jump();
             case DROP -> LocomotionPlan.drop();
+            case CLIMB -> LocomotionPlan.climb();
         };
     }
 

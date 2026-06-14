@@ -88,6 +88,7 @@ record TravelerPathSearchResult(
             case STEP_UP -> NavigationSegmentAction.STEP_UP;
             case JUMP -> NavigationSegmentAction.JUMP;
             case DROP -> NavigationSegmentAction.DROP;
+            case CLIMB -> NavigationSegmentAction.CLIMB;
             case SWIM -> NavigationSegmentAction.WALK;
             case BLOCKED -> NavigationSegmentAction.INFER;
         };
