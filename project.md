@@ -55,6 +55,57 @@ It should not own pathfinding rules, smoothing logic, or block behavior policy.
 - Keep debug models in core and rendering implementation in the loader module.
 - Use conventional commits.
 
+## Engineering Quality Standard
+
+Traveler should be treated like a long-lived engine, not a quick mod script. Every change should protect readability, extension, and runtime cost.
+
+SOLID expectations:
+
+- Single Responsibility: one class should have one reason to change.
+- Open/Closed: new block behaviors, smoothing policies, render layers, or navigation strategies should be added through extension points when possible.
+- Liskov Substitution: strategy interfaces must be safe to replace without hidden assumptions.
+- Interface Segregation: prefer small contracts such as behavior resolver, connection provider, scorer, smoother, and renderer over one large service.
+- Dependency Inversion: Minecraft and Fabric code depend on core contracts; core never depends on Minecraft or loader APIs.
+
+Clean code expectations:
+
+- names should describe domain intent, not implementation accidents;
+- methods should stay small enough that the control flow is obvious;
+- duplicated rules should be extracted before they diverge;
+- comments should explain non-obvious decisions, not repeat the code;
+- public APIs should be boring, stable, and hard to misuse;
+- debug and telemetry should be explicit outputs, not hidden side effects.
+
+Maintainability rule: if a feature requires editing many unrelated classes, the architecture is probably missing an extension point.
+
+## Conventional Commits
+
+Use conventional commits for every meaningful change:
+
+```text
+feat(core): add clearance-aware smoothing selector
+fix(path): preserve jump nodes during smoothing
+refactor(mc): resolve block behaviors through chain
+test(route): cover slab and stair enclosure escape
+docs: summarize traveler project conventions
+perf(path): reduce surface snapshot reads
+```
+
+Common scopes:
+
+- `core`;
+- `path`;
+- `route`;
+- `navigation`;
+- `render`;
+- `commands`;
+- `mc`;
+- `fabric`;
+- `architecture`;
+- `quality`.
+
+Commit small enough that a regression can be bisected cleanly. A commit should usually contain one conceptual change plus its tests/docs.
+
 ## Pathfinder Architecture
 
 The pure graph layer exposes:
@@ -197,6 +248,31 @@ found=25 searches=25 mode=smooth millis=1522 blockReads=1079330
 ```
 
 Performance regressions should be treated as bugs, especially when snapshot capture, special block handling, smoothing, or clearance scoring changes.
+
+## Profiling And Flamegraphs
+
+Pathfinding, smoothing, snapshot capture, block classification, and navigation input generation are performance-sensitive. They should be profiled when behavior changes touch search breadth, block reads, allocation patterns, or per-frame logic.
+
+Profiling expectations:
+
+- run a small repeatable scenario before and after the change;
+- keep the same start, goal, radius, smoothing mode, and world area;
+- record search count, found count, elapsed time, block reads, node count, route cost, and failure reasons;
+- inspect flamegraph/JFR hotspots before optimizing;
+- fix algorithmic waste before micro-optimizing;
+- treat unexpected allocations in hot loops as suspicious;
+- never move expensive path search back onto the render/client tick path.
+
+Typical red flags:
+
+- snapshot capture dominates every run;
+- smoothing repeatedly re-checks the same segment without caching or short-circuiting;
+- behavior resolution allocates per block read;
+- render debug rebuilds heavy geometry every frame;
+- navigation performs route search instead of consuming an existing route;
+- a special block fix adds broad checks to every normal block path.
+
+Flamegraph results should be summarized in commits or PR notes when they motivated the change. Include the command/scenario, the before/after numbers, and the hotspot that was removed.
 
 ## Recent Work
 
