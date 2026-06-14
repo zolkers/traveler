@@ -2,29 +2,14 @@ package dev.traveler.core.layer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.traveler.core.world.block.BlockPassability;
 import dev.traveler.core.world.block.BlockPosition;
-import dev.traveler.core.world.movement.EntityDimensions;
 import dev.traveler.core.world.movement.FluidHandling;
-import dev.traveler.core.world.movement.MovementCapabilities;
-import dev.traveler.core.world.movement.MovementProfile;
-import dev.traveler.core.world.movement.TraversalCost;
-import dev.traveler.core.world.movement.TraversalRules;
 import java.util.Map;
-import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 class CoreLayerContractsTest {
-    @Test
-    void blockClassificationExposesTraversalMeaning() {
-        BlockClassification classification =
-                new BlockClassification(BlockPassability.WALKABLE, FluidHandling.ALLOW);
-
-        assertTrue(classification.isWalkable());
-    }
-
     @Test
     void worldLayerClassifiesBlockPositionsWithoutMinecraftTypes() {
         BlockClassification stone = new BlockClassification(BlockPassability.SOLID, FluidHandling.AVOID);
@@ -34,25 +19,9 @@ class CoreLayerContractsTest {
     }
 
     @Test
-    void classifierRejectsNullContextAndClassificationValues() {
-        BlockClassifier<String> classifier =
-                context -> new BlockClassification(BlockPassability.WALKABLE, FluidHandling.ALLOW);
-
-        assertThrows(NullPointerException.class, () -> classifier.classify(null));
+    void blockClassificationRejectsNullValues() {
         assertThrows(NullPointerException.class, () -> new BlockClassification(null, FluidHandling.ALLOW));
         assertThrows(NullPointerException.class, () -> new BlockClassification(BlockPassability.WALKABLE, null));
-    }
-
-    @Test
-    void movementLayerReturnsCoreMovementProfile() {
-        MovementProfile profile = new MovementProfile(
-                new EntityDimensions(0.6, 1.8),
-                new MovementCapabilities(true, false, false, true, 0.6, 1.25, 3.0),
-                new TraversalRules(
-                        true, true, FluidHandling.ALLOW, new TraversalCost(1.0), Set.of(BlockPassability.WALKABLE)));
-        MovementLayer layer = () -> profile;
-
-        assertEquals(profile, layer.movementProfile());
     }
 
     private record MapWorldLayer(Map<BlockPosition, BlockClassification> blocks) implements WorldLayer {

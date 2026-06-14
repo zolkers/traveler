@@ -1,7 +1,6 @@
 package dev.traveler.mc.v1_21_11.common.adapter.block;
 
 import dev.traveler.core.layer.BlockClassification;
-import dev.traveler.core.layer.BlockClassifier;
 import dev.traveler.core.world.block.BlockPassability;
 import dev.traveler.core.world.movement.FluidHandling;
 import java.util.Objects;
@@ -10,9 +9,8 @@ import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
 
-public final class MinecraftBlockClassifier implements BlockClassifier<MinecraftBlockContext> {
-    @Override
-    public BlockClassification classifyContext(MinecraftBlockContext context) {
+public final class MinecraftBlockClassifier {
+    public BlockClassification classify(MinecraftBlockContext context) {
         Objects.requireNonNull(context, "context");
         return new BlockClassification(
                 classify(context.state(), context.blockGetter(), context.position()),

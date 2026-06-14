@@ -9,8 +9,4 @@ public record BlockClassification(BlockPassability passability, FluidHandling fl
         Objects.requireNonNull(passability, "passability");
         Objects.requireNonNull(fluidHandling, "fluidHandling");
     }
-
-    public boolean isWalkable() {
-        return passability == BlockPassability.WALKABLE || passability == BlockPassability.PASSABLE;
-    }
 }
