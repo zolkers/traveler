@@ -15,13 +15,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode> {
+public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, SurfaceTraversalContext {
     private static final double BODY_EPSILON = 0.0001;
     private static final double FLOOR_EPSILON = 0.001;
-    private static final int[] SUPPORT_Y_OFFSETS = {0, 1, -1};
     private static final int SPECIAL_CONNECTIONS_PER_NODE = 8;
     private static final int MAX_CONNECTIONS_PER_NODE =
-            HorizontalDirections.EIGHT_WAY.length * SUPPORT_Y_OFFSETS.length + SPECIAL_CONNECTIONS_PER_NODE;
+            SurfaceConnectionDirections.EIGHT_WAY.size() * SurfaceSearchOffsets.SUPPORT_Y.length
+                    + SPECIAL_CONNECTIONS_PER_NODE;
 
     private final SurfaceWorldLayer worldLayer;
     private final SearchBounds bounds;
@@ -30,6 +30,7 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode> {
     private final SurfaceClearanceScorer clearanceScorer;
     private final SurfaceBodyClearanceMode bodyClearanceMode;
     private final SurfaceMovementEvaluator movementEvaluator;
+    private final List<SurfaceConnectionProvider> connectionProviders;
     private final SurfaceNodeIndex nodeIndex;
     private final double[] clearanceScores;
     private final boolean[] clearanceScoreLoaded;
@@ -101,6 +102,7 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode> {
         this.clearanceScorer = safeSettings.clearanceScorer();
         this.bodyClearanceMode = safeSettings.bodyClearanceMode();
         this.movementEvaluator = new SurfaceMovementEvaluator(capabilities);
+        this.connectionProviders = safeSettings.connectionProviders();
         this.nodeIndex = new SurfaceNodeIndex(searchBounds);
         this.clearanceScores = new double[nodeIndex.size()];
         this.clearanceScoreLoaded = new boolean[nodeIndex.size()];
@@ -126,78 +128,24 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode> {
 
     private List<Connection<SurfaceNode>> connectionsFrom(SurfaceNode node) {
         List<Connection<SurfaceNode>> connections = new ArrayList<>(MAX_CONNECTIONS_PER_NODE);
-        for (HorizontalOffset direction : HorizontalDirections.EIGHT_WAY) {
-            addDirectionConnections(node, direction, connections);
+        for (SurfaceConnectionProvider provider : connectionProviders) {
+            provider.addConnections(this, node, connections);
         }
         return connections;
     }
 
-    private void addDirectionConnections(
-            SurfaceNode node,
-            HorizontalOffset direction,
-            List<Connection<SurfaceNode>> connections) {
-        int destinationX = globalX(node) + direction.x();
-        int destinationZ = globalZ(node) + direction.z();
-        for (int yOffset : SUPPORT_Y_OFFSETS) {
-            addConnectionForCandidateY(node, direction, connections, destinationX, destinationZ, yOffset);
-        }
-        addDropConnection(node, direction, connections);
-        addJumpConnection(node, direction, connections);
-    }
-
-    private void addConnectionForCandidateY(
-            SurfaceNode node,
-            HorizontalOffset direction,
-            List<Connection<SurfaceNode>> connections,
-            int destinationX,
-            int destinationZ,
-            int yOffset) {
-        SurfaceNode candidate = surfaceNode(destinationX, node.blockPosition().y() + yOffset, destinationZ);
-        if (candidate == null) {
-            return;
-        }
-        SurfaceBlock block = surfaceBlock(candidate.blockPosition());
-        if (!canReach(node, candidate, block, direction)) {
-            return;
-        }
-        connections.add(new Connection<>(node, candidate, movementCost(node, candidate)));
-    }
-
-    private boolean canReach(SurfaceNode from, SurfaceNode to, SurfaceBlock block, HorizontalOffset direction) {
+    @Override
+    public boolean canReach(SurfaceNode from, SurfaceNode to, MovementDirection direction) {
+        SurfaceBlock block = surfaceBlock(to.blockPosition());
         return insideBounds(to)
                 && hasBodyClearance(to)
                 && destinationAllowsMovement(from, to, block, direction)
                 && canUseDirection(from, to, direction);
     }
 
-    private void addDropConnection(
-            SurfaceNode node, HorizontalOffset direction, List<Connection<SurfaceNode>> connections) {
-        if (!canAttemptDrop(direction)) {
-            return;
-        }
-        SurfaceNode candidate = dropSurfaceNode(node, direction);
-        if (candidate == null) {
-            return;
-        }
-        SurfaceBlock block = surfaceBlock(candidate.blockPosition());
-        if (!canReachDrop(node, candidate, block, direction)) {
-            return;
-        }
-        connections.add(new Connection<>(node, candidate, movementCost(node, candidate)));
-    }
-
-    private boolean canAttemptDrop(HorizontalOffset direction) {
-        return !direction.isDiagonal() && capabilities.maxSafeFallDistance() > capabilities.maxStepUp();
-    }
-
-    private SurfaceNode dropSurfaceNode(SurfaceNode node, HorizontalOffset direction) {
-        int destinationX = globalX(node) + direction.x() * 2;
-        int destinationZ = globalZ(node) + direction.z() * 2;
-        return surfaceNode(destinationX, node.blockPosition().y() - 1, destinationZ);
-    }
-
-    private boolean canReachDrop(
-            SurfaceNode from, SurfaceNode to, SurfaceBlock block, HorizontalOffset direction) {
+    @Override
+    public boolean canReachDrop(SurfaceNode from, SurfaceNode to, MovementDirection direction) {
+        SurfaceBlock block = surfaceBlock(to.blockPosition());
         return insideBounds(to)
                 && isDropDown(from, to)
                 && hasBodyClearance(to)
@@ -210,34 +158,9 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode> {
                 && delta <= capabilities.maxSafeFallDistance() + FLOOR_EPSILON;
     }
 
-    private void addJumpConnection(
-            SurfaceNode node, HorizontalOffset direction, List<Connection<SurfaceNode>> connections) {
-        if (!canAttemptJump(direction)) {
-            return;
-        }
-        SurfaceNode candidate = jumpSurfaceNode(node, direction);
-        if (candidate == null) {
-            return;
-        }
-        SurfaceBlock block = surfaceBlock(candidate.blockPosition());
-        if (!canReachJump(node, candidate, block, direction)) {
-            return;
-        }
-        connections.add(new Connection<>(node, candidate, movementCost(node, candidate)));
-    }
-
-    private boolean canAttemptJump(HorizontalOffset direction) {
-        return !direction.isDiagonal() && capabilities.maxJumpHeight() > capabilities.maxStepUp();
-    }
-
-    private SurfaceNode jumpSurfaceNode(SurfaceNode node, HorizontalOffset direction) {
-        int destinationX = globalX(node) + direction.x() * 2;
-        int destinationZ = globalZ(node) + direction.z() * 2;
-        return surfaceNode(destinationX, node.blockPosition().y() + 1, destinationZ);
-    }
-
-    private boolean canReachJump(
-            SurfaceNode from, SurfaceNode to, SurfaceBlock block, HorizontalOffset direction) {
+    @Override
+    public boolean canReachJump(SurfaceNode from, SurfaceNode to, MovementDirection direction) {
+        SurfaceBlock block = surfaceBlock(to.blockPosition());
         return insideBounds(to)
                 && isJumpUp(from, to)
                 && hasBodyClearance(to)
@@ -250,14 +173,14 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode> {
                 && delta <= capabilities.maxJumpHeight() + FLOOR_EPSILON;
     }
 
-    private boolean canUseDirection(SurfaceNode from, SurfaceNode to, HorizontalOffset direction) {
+    private boolean canUseDirection(SurfaceNode from, SurfaceNode to, MovementDirection direction) {
         if (!direction.isDiagonal()) {
             return true;
         }
         return canMoveDiagonally(from, to, direction);
     }
 
-    private boolean canMoveDiagonally(SurfaceNode from, SurfaceNode to, HorizontalOffset direction) {
+    private boolean canMoveDiagonally(SurfaceNode from, SurfaceNode to, MovementDirection direction) {
         int originX = globalX(from);
         int originZ = globalZ(from);
         return hasReachableSide(from, originX + direction.x(), originZ, to.floorY())
@@ -265,7 +188,7 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode> {
     }
 
     private boolean hasReachableSide(SurfaceNode from, int globalX, int globalZ, double targetFloorY) {
-        for (int yOffset : SUPPORT_Y_OFFSETS) {
+        for (int yOffset : SurfaceSearchOffsets.SUPPORT_Y) {
             if (canUseAsDiagonalSideAtY(from, globalX, globalZ, targetFloorY, yOffset)) {
                 return true;
             }
@@ -306,14 +229,15 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode> {
         return new SurfaceNode(position, cellX, cellZ, blockY + floorHeight);
     }
 
-    SurfaceNode surfaceNodeAt(int globalX, int blockY, int globalZ) {
+    @Override
+    public SurfaceNode surfaceNodeAt(int globalX, int blockY, int globalZ) {
         return surfaceNode(globalX, blockY, globalZ);
     }
 
     SurfaceNode nearestSurfaceAt(int globalX, int globalZ, double floorY) {
         int baseY = (int) Math.floor(floorY);
         SurfaceNode nearest = null;
-        for (int yOffset : SUPPORT_Y_OFFSETS) {
+        for (int yOffset : SurfaceSearchOffsets.SUPPORT_Y) {
             nearest = nearestOf(nearest, surfaceNodeAt(globalX, baseY + yOffset, globalZ), floorY);
         }
         return nearest;
@@ -416,7 +340,8 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode> {
         return bounds.contains(node.blockPosition());
     }
 
-    private double movementCost(SurfaceNode from, SurfaceNode to) {
+    @Override
+    public double movementCost(SurfaceNode from, SurfaceNode to) {
         double horizontalCost = horizontalCost(from, to);
         double climbCost = climbCost(to.floorY() - from.floorY());
         double clearanceCost = clearanceCost(to);
@@ -457,14 +382,6 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode> {
             SurfaceNode from,
             SurfaceNode to,
             SurfaceBlock block,
-            HorizontalOffset direction) {
-        return destinationAllowsMovement(from, to, block, MovementDirection.fromOffset(direction.x(), direction.z()));
-    }
-
-    private boolean destinationAllowsMovement(
-            SurfaceNode from,
-            SurfaceNode to,
-            SurfaceBlock block,
             MovementDirection direction) {
         return movementEvaluator.decision(from, to, block, direction).allowed();
     }
@@ -477,6 +394,21 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode> {
         int xOffset = Double.compare(to.centerX(), from.centerX());
         int zOffset = Double.compare(to.centerZ(), from.centerZ());
         return MovementDirection.fromOffset(xOffset, zOffset);
+    }
+
+    @Override
+    public MovementCapabilities capabilities() {
+        return capabilities;
+    }
+
+    @Override
+    public int globalXOf(SurfaceNode node) {
+        return globalX(node);
+    }
+
+    @Override
+    public int globalZOf(SurfaceNode node) {
+        return globalZ(node);
     }
 
     private static boolean sameFloor(SurfaceNode first, SurfaceNode second) {

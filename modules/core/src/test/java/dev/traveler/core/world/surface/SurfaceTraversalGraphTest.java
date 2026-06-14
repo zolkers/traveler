@@ -22,6 +22,7 @@ import dev.traveler.core.world.behavior.special.AirBlockBehavior;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.geometry.BlockShape;
 import dev.traveler.core.world.movement.MovementCapabilities;
+import dev.traveler.core.world.navigation.SurfaceConnectionProvider;
 import dev.traveler.core.world.navigation.SurfaceTraversalGraphSettings;
 import dev.traveler.core.world.navigation.SurfaceTraversalGraph;
 import java.util.ArrayList;
@@ -226,6 +227,28 @@ class SurfaceTraversalGraphTest {
 
         assertEquals(PathfinderStatus.FOUND, result.status());
         assertTrue(path.nodes().stream().anyMatch(node -> node.blockPosition().z() < 0));
+    }
+
+    @Test
+    void customConnectionProviderCanExtendSurfaceExpansion() {
+        BlockPosition startBlock = new BlockPosition(0, 63, 0);
+        BlockPosition destinationBlock = new BlockPosition(2, 63, 0);
+        SurfaceNode start = new SurfaceNode(startBlock, 1, 1, 64.0);
+        SurfaceNode destination = new SurfaceNode(destinationBlock, 1, 1, 64.0);
+        FakeSurfaceWorldLayer world =
+                new FakeSurfaceWorldLayer(Map.of(startBlock, fullBlock(), destinationBlock, fullBlock()));
+        SurfaceConnectionProvider shortcut =
+                (context, node, connections) -> connections.add(new Connection<>(node, destination, 0.25));
+        SurfaceTraversalGraph graph = new SurfaceTraversalGraph(
+                world,
+                start,
+                destination,
+                PLAYER,
+                SurfaceTraversalGraphSettings.basic(8, 4).withConnectionProviders(List.of(shortcut)));
+
+        Connection<SurfaceNode> connection = connectionTo(graph, start, destination);
+
+        assertEquals(0.25, connection.cost());
     }
 
     @ParameterizedTest
