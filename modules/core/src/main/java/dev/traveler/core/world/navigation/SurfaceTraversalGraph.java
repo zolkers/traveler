@@ -18,7 +18,7 @@ import java.util.Objects;
 public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, SurfaceTraversalContext {
     private static final double BODY_EPSILON = 0.0001;
     private static final double FLOOR_EPSILON = 0.001;
-    private static final int SPECIAL_CONNECTIONS_PER_NODE = 8;
+    private static final int SPECIAL_CONNECTIONS_PER_NODE = 64;
     private static final int MAX_CONNECTIONS_PER_NODE =
             SurfaceConnectionDirections.EIGHT_WAY.size() * SurfaceSearchOffsets.SUPPORT_Y.length
                     + SPECIAL_CONNECTIONS_PER_NODE;
@@ -167,6 +167,19 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
                 && destinationAllowsMovement(from, to, block, direction);
     }
 
+    @Override
+    public boolean canReachClimb(SurfaceNode from, SurfaceNode to) {
+        return insideBounds(to)
+                && hasBodyClearance(to)
+                && SurfaceClimbTraversal.canClimbWithLookup(surfaceBlocks::get, from, to, capabilities);
+    }
+
+    @Override
+    public boolean hasClimbableAtGlobalCell(int globalX, int blockY, int globalZ) {
+        SurfaceBlock block = surfaceBlock(blockCoordinate(globalX), blockY, blockCoordinate(globalZ));
+        return SurfaceClimbTraversal.isClimbable(block, capabilities);
+    }
+
     private boolean isJumpUp(SurfaceNode from, SurfaceNode to) {
         double delta = to.floorY() - from.floorY();
         return delta > capabilities.maxStepUp() + FLOOR_EPSILON
@@ -283,7 +296,7 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
         double minY = node.floorY() + BODY_EPSILON;
         double maxY = node.floorY() + dimensions.height();
         SurfaceBodyFootprint footprint = bodyFootprint(node, mode);
-        for (int y = (int) Math.floor(minY); y <= (int) Math.floor(maxY); y++) {
+        for (int y = (int) Math.floor(minY) - 1; y <= (int) Math.floor(maxY); y++) {
             if (collidesWithFootprint(node, footprint, y, minY, maxY)) {
                 return false;
             }
@@ -327,9 +340,9 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
             return false;
         }
         SurfaceBlock block = surfaceBlock(blockX, blockY, blockZ);
-        double localMinY = clamp(minY - blockY);
-        double localMaxY = clamp(maxY - blockY);
-        if (localMaxY <= 0.0 || localMinY >= 1.0) {
+        double localMinY = minY - blockY;
+        double localMaxY = maxY - blockY;
+        if (localMaxY <= 0.0) {
             return false;
         }
         return block.shape().collidesWithCellBody(
@@ -411,6 +424,16 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
         return globalZ(node);
     }
 
+    @Override
+    public int minBlockY() {
+        return bounds.minY();
+    }
+
+    @Override
+    public int maxBlockY() {
+        return bounds.maxY();
+    }
+
     private static boolean sameFloor(SurfaceNode first, SurfaceNode second) {
         return Math.abs(first.floorY() - second.floorY()) <= FLOOR_EPSILON;
     }
@@ -427,10 +450,6 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
 
     private static double floorDistance(SurfaceNode node, double floorY) {
         return Math.abs(node.floorY() - floorY);
-    }
-
-    private static double clamp(double value) {
-        return Math.max(0.0, Math.min(1.0, value));
     }
 
     private SurfaceBlock surfaceBlock(BlockPosition position) {

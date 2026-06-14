@@ -2,12 +2,12 @@ package dev.traveler.core.world.geometry;
 
 public record CollisionBox(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
     public CollisionBox {
-        requireUnitRange(minX, "minX");
-        requireUnitRange(minY, "minY");
-        requireUnitRange(minZ, "minZ");
-        requireUnitRange(maxX, "maxX");
-        requireUnitRange(maxY, "maxY");
-        requireUnitRange(maxZ, "maxZ");
+        requireHorizontalRange(minX, "minX");
+        requireVerticalRange(minY, "minY");
+        requireHorizontalRange(minZ, "minZ");
+        requireHorizontalRange(maxX, "maxX");
+        requireVerticalRange(maxY, "maxY");
+        requireHorizontalRange(maxZ, "maxZ");
         if (maxX <= minX || maxY <= minY || maxZ <= minZ) {
             throw new IllegalArgumentException("Collision box max bounds must be greater than min bounds.");
         }
@@ -21,9 +21,15 @@ public record CollisionBox(double minX, double minY, double minZ, double maxX, d
         return maxY > this.minY && minY < this.maxY;
     }
 
-    private static void requireUnitRange(double value, String name) {
+    private static void requireHorizontalRange(double value, String name) {
         if (!Double.isFinite(value) || value < 0.0 || value > 1.0) {
             throw new IllegalArgumentException(name + " must be finite and inside 0..1.");
+        }
+    }
+
+    private static void requireVerticalRange(double value, String name) {
+        if (!Double.isFinite(value) || value < 0.0) {
+            throw new IllegalArgumentException(name + " must be finite and non-negative.");
         }
     }
 }

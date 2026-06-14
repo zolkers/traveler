@@ -17,7 +17,15 @@ public interface SurfaceTraversalContext {
 
     boolean canReachJump(SurfaceNode from, SurfaceNode to, MovementDirection direction);
 
+    boolean canReachClimb(SurfaceNode from, SurfaceNode to);
+
+    boolean hasClimbableAtGlobalCell(int globalX, int blockY, int globalZ);
+
     MovementCapabilities capabilities();
 
     double movementCost(SurfaceNode from, SurfaceNode to);
+
+    int minBlockY();
+
+    int maxBlockY();
 }

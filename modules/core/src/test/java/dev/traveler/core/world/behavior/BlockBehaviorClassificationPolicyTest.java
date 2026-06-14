@@ -17,6 +17,8 @@ class BlockBehaviorClassificationPolicyTest {
     @Test
     void keepsNonPartialBehaviorsOnTheirBaseClassification() {
         assertEquals(BlockPassability.SOLID, classify(solid(), BEHAVIORS.behavior(BlockBehaviorKey.FULL_BLOCK)));
+        assertEquals(BlockPassability.SOLID, classify(solid(), BEHAVIORS.behavior(BlockBehaviorKey.FENCE)));
+        assertEquals(BlockPassability.SOLID, classify(solid(), BEHAVIORS.behavior(BlockBehaviorKey.WALL)));
         assertEquals(BlockPassability.PASSABLE, classify(passable(), BEHAVIORS.behavior(BlockBehaviorKey.AIR)));
         assertEquals(BlockPassability.PASSABLE, classify(passable(), BEHAVIORS.behavior(BlockBehaviorKey.FLUID)));
     }

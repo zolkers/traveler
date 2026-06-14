@@ -7,8 +7,9 @@ public enum BlockBehaviorKey {
     STAIR,
     FLUID,
     WATERLOGGED,
-    BARRIER,
     CARPET,
     LADDER,
-    VINE
+    VINE,
+    FENCE,
+    WALL
 }

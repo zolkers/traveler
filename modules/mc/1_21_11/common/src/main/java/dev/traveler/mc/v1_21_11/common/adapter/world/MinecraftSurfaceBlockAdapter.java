@@ -35,7 +35,7 @@ public final class MinecraftSurfaceBlockAdapter {
             MinecraftBlockClassifier classifier,
             BlockBehaviorRegistry behaviorRegistry,
             BlockBehaviorClassificationPolicy classificationPolicy) {
-        this(classifier, behaviorRegistry, classificationPolicy, MinecraftBlockBehaviorResolver.defaults());
+        this(classifier, behaviorRegistry, classificationPolicy, MinecraftBlockBehaviorCatalog.defaultResolvers());
     }
 
     public MinecraftSurfaceBlockAdapter(
@@ -108,20 +108,24 @@ public final class MinecraftSurfaceBlockAdapter {
         static BoxBounds clamped(AABB box) {
             Objects.requireNonNull(box, "box");
             return new BoxBounds(
-                    clamp(box.minX),
-                    clamp(box.minY),
-                    clamp(box.minZ),
-                    clamp(box.maxX),
-                    clamp(box.maxY),
-                    clamp(box.maxZ));
+                    clampHorizontal(box.minX),
+                    clampVerticalFloor(box.minY),
+                    clampHorizontal(box.minZ),
+                    clampHorizontal(box.maxX),
+                    clampVerticalFloor(box.maxY),
+                    clampHorizontal(box.maxZ));
         }
 
         boolean isValid() {
             return maxX > minX && maxY > minY && maxZ > minZ;
         }
 
-        private static double clamp(double value) {
+        private static double clampHorizontal(double value) {
             return Math.max(0.0, Math.min(1.0, value));
+        }
+
+        private static double clampVerticalFloor(double value) {
+            return Math.max(0.0, value);
         }
     }
 }

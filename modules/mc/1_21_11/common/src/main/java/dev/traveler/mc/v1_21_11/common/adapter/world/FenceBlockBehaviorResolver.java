@@ -6,17 +6,17 @@ import dev.traveler.core.world.behavior.BlockBehaviorRegistry;
 import dev.traveler.core.world.geometry.BlockShape;
 import dev.traveler.mc.v1_21_11.common.adapter.block.MinecraftBlockContext;
 import java.util.Optional;
-import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.FenceBlock;
 
-final class BarrierBlockBehaviorResolver implements MinecraftBlockBehaviorResolver {
+final class FenceBlockBehaviorResolver implements MinecraftBlockBehaviorResolver {
     @Override
     public Optional<BlockBehavior> resolve(
             MinecraftBlockContext context,
             BlockShape shape,
             BlockBehaviorRegistry behaviorRegistry) {
-        if (!context.state().is(Blocks.BARRIER)) {
+        if (!(context.state().getBlock() instanceof FenceBlock)) {
             return Optional.empty();
         }
-        return Optional.of(behaviorRegistry.behavior(BlockBehaviorKey.BARRIER));
+        return Optional.of(behaviorRegistry.behavior(BlockBehaviorKey.FENCE));
     }
 }

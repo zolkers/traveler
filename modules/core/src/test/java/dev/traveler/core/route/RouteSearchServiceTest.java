@@ -12,8 +12,10 @@ import dev.traveler.core.path.PathfinderStatus;
 import dev.traveler.core.world.behavior.BlockBehavior;
 import dev.traveler.core.world.behavior.context.HorizontalFacing;
 import dev.traveler.core.world.behavior.special.FullBlockBehavior;
+import dev.traveler.core.world.behavior.special.LadderBlockBehavior;
 import dev.traveler.core.world.behavior.special.SlabBlockBehavior;
 import dev.traveler.core.world.behavior.special.StairBlockBehavior;
+import dev.traveler.core.world.behavior.special.VineBlockBehavior;
 import dev.traveler.core.world.block.BlockPassability;
 import dev.traveler.core.world.behavior.decision.MovementAction;
 import dev.traveler.core.world.block.BlockPosition;
@@ -24,6 +26,7 @@ import dev.traveler.core.world.surface.SurfaceNode;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 class RouteSearchServiceTest {
@@ -149,6 +152,32 @@ class RouteSearchServiceTest {
         assertTrue(result.route().orElseThrow().nodes().size() > 2);
     }
 
+    @Test
+    void findsRouteThatClimbsLadderColumn() {
+        TestSurfaceWorldLayer world =
+                new TestSurfaceWorldLayer(climbColumn(new LadderBlockBehavior(HorizontalFacing.WEST)));
+        RouteSearchService service = new RouteSearchService(RouteSearchSettings.standardClient());
+
+        RouteSearchResult result =
+                service.search(world, new BlockPosition(0, 64, 0), new BlockPosition(1, 65, 1));
+
+        assertEquals(PathfinderStatus.FOUND, result.status());
+        assertTrue(result.route().orElseThrow().actions().contains(MovementAction.CLIMB));
+    }
+
+    @Test
+    void findsRouteThatClimbsVineColumn() {
+        TestSurfaceWorldLayer world =
+                new TestSurfaceWorldLayer(climbColumn(new VineBlockBehavior(Set.of(HorizontalFacing.WEST), false)));
+        RouteSearchService service = new RouteSearchService(RouteSearchSettings.standardClient());
+
+        RouteSearchResult result =
+                service.search(world, new BlockPosition(0, 64, 0), new BlockPosition(1, 65, 1));
+
+        assertEquals(PathfinderStatus.FOUND, result.status());
+        assertTrue(result.route().orElseThrow().actions().contains(MovementAction.CLIMB));
+    }
+
     private static Graph<SurfaceNode> directSurfaceGraph(SurfaceNode goal) {
         return node -> node.sameSubcell(goal) ? List.of() : List.of(new Connection<>(node, goal, 0.25));
     }
@@ -218,9 +247,25 @@ class RouteSearchServiceTest {
         return surface(stairShape(), new StairBlockBehavior(facing));
     }
 
+    private static Map<BlockPosition, SurfaceBlock> climbColumn(BlockBehavior climbable) {
+        Map<BlockPosition, SurfaceBlock> blocks = new HashMap<>();
+        blocks.put(new BlockPosition(0, 63, 0), fullBlock());
+        blocks.put(new BlockPosition(1, 64, 0), passable(BlockShape.empty(), climbable));
+        blocks.put(new BlockPosition(1, 65, 0), passable(BlockShape.empty(), climbable));
+        blocks.put(new BlockPosition(1, 65, 1), fullBlock());
+        return blocks;
+    }
+
     private static SurfaceBlock surface(BlockShape shape, BlockBehavior behavior) {
         return new SurfaceBlock(
                 new dev.traveler.core.layer.BlockClassification(BlockPassability.SOLID, FluidHandling.AVOID),
+                shape,
+                behavior);
+    }
+
+    private static SurfaceBlock passable(BlockShape shape, BlockBehavior behavior) {
+        return new SurfaceBlock(
+                new dev.traveler.core.layer.BlockClassification(BlockPassability.PASSABLE, FluidHandling.AVOID),
                 shape,
                 behavior);
     }

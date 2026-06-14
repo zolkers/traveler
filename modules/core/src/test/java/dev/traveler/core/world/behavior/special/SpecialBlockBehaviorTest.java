@@ -22,15 +22,6 @@ class SpecialBlockBehaviorTest {
             new MovementCapabilities(false, true, false, false, 0.0, 0.0, 0.0);
 
     @Test
-    void barrierUsesFullSolidWalkingRules() {
-        MovementDecision decision = new BarrierBlockBehavior()
-                .evaluateMovement(context(node(63.0), node(64.0), MovementDirection.east(), PLAYER));
-
-        assertTrue(decision.allowed());
-        assertEquals(MovementAction.JUMP, decision.action());
-    }
-
-    @Test
     void carpetUsesThinSurfaceWalkingRules() {
         MovementDecision decision = new CarpetBlockBehavior()
                 .evaluateMovement(context(node(64.0), node(64.0625), MovementDirection.north(), PLAYER));
@@ -51,6 +42,19 @@ class SpecialBlockBehaviorTest {
 
         assertTrue(decision.allowed());
         assertEquals(MovementAction.CLIMB, decision.action());
+    }
+
+    @Test
+    void fenceAndWallAreTallObstaclesInsteadOfWalkableSurfaces() {
+        FenceBlockBehavior fence = new FenceBlockBehavior();
+        WallBlockBehavior wall = new WallBlockBehavior();
+
+        assertFalse(fence.supportsStanding(PLAYER));
+        assertFalse(wall.supportsStanding(PLAYER));
+        assertEquals(MovementAction.BLOCKED,
+                fence.evaluateMovement(context(node(64.0), node(65.5), MovementDirection.east(), PLAYER)).action());
+        assertEquals(MovementAction.BLOCKED,
+                wall.evaluateMovement(context(node(64.0), node(65.5), MovementDirection.east(), PLAYER)).action());
     }
 
     @Test

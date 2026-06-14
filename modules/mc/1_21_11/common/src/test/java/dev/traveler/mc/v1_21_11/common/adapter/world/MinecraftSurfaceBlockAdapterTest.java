@@ -108,12 +108,30 @@ class MinecraftSurfaceBlockAdapterTest {
     }
 
     @Test
-    void barrierResolvesDedicatedSolidBehavior() {
+    void barrierFallsBackToFullBlockBehavior() {
         SurfaceBlock barrier = surfaceBlock(Blocks.BARRIER.defaultBlockState());
 
-        assertEquals(BlockBehaviorKey.BARRIER, barrier.behavior().key());
+        assertEquals(BlockBehaviorKey.FULL_BLOCK, barrier.behavior().key());
         assertEquals(BlockPassability.SOLID, barrier.classification().passability());
         assertEquals(1.0, barrier.shape().floorHeightForCell(1, 1).orElseThrow());
+    }
+
+    @Test
+    void fencesResolveTallObstacleBehaviorWithOverHeightCollision() {
+        SurfaceBlock fence = surfaceBlock(Blocks.OAK_FENCE.defaultBlockState());
+
+        assertEquals(BlockBehaviorKey.FENCE, fence.behavior().key());
+        assertEquals(BlockPassability.SOLID, fence.classification().passability());
+        assertEquals(1.5, fence.shape().floorHeightForCell(1, 1).orElseThrow());
+    }
+
+    @Test
+    void wallsResolveTallObstacleBehaviorWithOverHeightCollision() {
+        SurfaceBlock wall = surfaceBlock(Blocks.COBBLESTONE_WALL.defaultBlockState());
+
+        assertEquals(BlockBehaviorKey.WALL, wall.behavior().key());
+        assertEquals(BlockPassability.SOLID, wall.classification().passability());
+        assertEquals(1.5, wall.shape().floorHeightForCell(1, 1).orElseThrow());
     }
 
     @Test
@@ -217,7 +235,10 @@ class MinecraftSurfaceBlockAdapterTest {
                 Arguments.of(slab(SlabType.TOP), BlockBehaviorKey.SLAB, BlockPassability.WALKABLE),
                 Arguments.of(slab(SlabType.DOUBLE), BlockBehaviorKey.SLAB, BlockPassability.WALKABLE),
                 Arguments.of(stair(), BlockBehaviorKey.STAIR, BlockPassability.WALKABLE),
-                Arguments.of(Blocks.BARRIER.defaultBlockState(), BlockBehaviorKey.BARRIER, BlockPassability.SOLID),
+                Arguments.of(Blocks.BARRIER.defaultBlockState(), BlockBehaviorKey.FULL_BLOCK, BlockPassability.SOLID),
+                Arguments.of(Blocks.OAK_FENCE.defaultBlockState(), BlockBehaviorKey.FENCE, BlockPassability.SOLID),
+                Arguments.of(
+                        Blocks.COBBLESTONE_WALL.defaultBlockState(), BlockBehaviorKey.WALL, BlockPassability.SOLID),
                 Arguments.of(
                         Blocks.WHITE_CARPET.defaultBlockState(), BlockBehaviorKey.CARPET, BlockPassability.WALKABLE),
                 Arguments.of(ladder(), BlockBehaviorKey.LADDER, BlockPassability.PASSABLE),

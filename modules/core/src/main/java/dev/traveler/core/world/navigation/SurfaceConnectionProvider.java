@@ -15,6 +15,7 @@ public interface SurfaceConnectionProvider {
         return List.of(
                 new AdjacentSurfaceConnectionProvider(),
                 new DropSurfaceConnectionProvider(),
-                new JumpSurfaceConnectionProvider());
+                new JumpSurfaceConnectionProvider(),
+                new ClimbSurfaceConnectionProvider());
     }
 }

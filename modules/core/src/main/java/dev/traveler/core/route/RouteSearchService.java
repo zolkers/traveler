@@ -2,7 +2,6 @@ package dev.traveler.core.route;
 
 import dev.traveler.core.graph.Graph;
 import dev.traveler.core.graph.MutableGraphPath;
-import dev.traveler.core.layer.SurfaceBlock;
 import dev.traveler.core.layer.SurfaceWorldLayer;
 import dev.traveler.core.layer.WorldLayer;
 import dev.traveler.core.path.PathfinderRequest;
@@ -15,8 +14,8 @@ import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.navigation.BlockLineOfWalk;
 import dev.traveler.core.world.navigation.SurfaceLineOfWalk;
 import dev.traveler.core.world.navigation.SurfaceLineOfWalkSettings;
-import dev.traveler.core.world.navigation.SurfaceMovementEvaluator;
 import dev.traveler.core.world.navigation.SurfaceSmoothingPolicy;
+import dev.traveler.core.world.navigation.SurfaceTransitionEvaluator;
 import dev.traveler.core.world.surface.SurfaceNode;
 import dev.traveler.core.world.surface.SurfaceNodeResolver;
 import java.util.ArrayList;
@@ -183,8 +182,8 @@ public final class RouteSearchService {
 
     private RoutePath routeFromNodes(SurfaceWorldLayer worldLayer, List<SurfaceNode> nodes) {
         List<RouteStep> steps = new ArrayList<>(nodes.size() - 1);
-        SurfaceMovementEvaluator evaluator =
-                new SurfaceMovementEvaluator(settings.movementProfile().capabilities());
+        SurfaceTransitionEvaluator evaluator =
+                new SurfaceTransitionEvaluator(settings.movementProfile().capabilities());
         for (int index = 1; index < nodes.size(); index++) {
             steps.add(routeStep(worldLayer, evaluator, nodes.get(index - 1), nodes.get(index)));
         }
@@ -193,11 +192,10 @@ public final class RouteSearchService {
 
     private static RouteStep routeStep(
             SurfaceWorldLayer worldLayer,
-            SurfaceMovementEvaluator evaluator,
+            SurfaceTransitionEvaluator evaluator,
             SurfaceNode from,
             SurfaceNode to) {
-        SurfaceBlock block = worldLayer.surfaceBlock(to.blockPosition());
-        MovementDecision decision = evaluator.decision(from, to, block);
+        MovementDecision decision = evaluator.decision(worldLayer, from, to);
         return new RouteStep(from, to, decision.action(), surfaceDistance(from, to));
     }
 
