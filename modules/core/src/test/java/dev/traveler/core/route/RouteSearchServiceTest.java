@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.traveler.core.graph.Connection;
+import dev.traveler.core.graph.Graph;
 import dev.traveler.core.layer.SurfaceBlock;
 import dev.traveler.core.layer.SurfaceWorldLayer;
 import dev.traveler.core.path.PathfinderStatus;
@@ -18,6 +20,7 @@ import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.geometry.BlockShape;
 import dev.traveler.core.world.geometry.CollisionBox;
 import dev.traveler.core.world.movement.FluidHandling;
+import dev.traveler.core.world.surface.SurfaceNode;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -103,6 +106,38 @@ class RouteSearchServiceTest {
         RoutePath route = result.route().orElseThrow();
         assertEquals(2, route.nodes().size());
         assertEquals(List.of(MovementAction.WALK), route.actions());
+    }
+
+    @Test
+    void acceptsCustomSurfaceGraphFactory() {
+        TestSurfaceWorldLayer world = new TestSurfaceWorldLayer(flatSurface(0, 2));
+        RouteSearchComponents components = RouteSearchComponents.standard()
+                .withSurfaceGraphFactory((layer, start, goal, settings) -> directSurfaceGraph(goal));
+        RouteSearchService service = new RouteSearchService(RouteSearchSettings.standardClient(), components);
+
+        RouteSearchResult result =
+                service.search(world, new BlockPosition(0, 64, 0), new BlockPosition(2, 63, 0));
+
+        assertEquals(PathfinderStatus.FOUND, result.status());
+        assertEquals(2, result.route().orElseThrow().nodes().size());
+    }
+
+    @Test
+    void acceptsCustomSurfaceSmoothingSelector() {
+        TestSurfaceWorldLayer world = new TestSurfaceWorldLayer(bottomSlabSurface(0, 4, -1, 1));
+        RouteSearchComponents components = RouteSearchComponents.standard()
+                .withSurfaceSmoothingSelector((path, anchor, limit, lineOfWalk) -> anchor + 1);
+        RouteSearchService service = new RouteSearchService(RouteSearchSettings.standardClient(), components);
+
+        RouteSearchResult result =
+                service.search(world, new BlockPosition(0, 64, 0), new BlockPosition(4, 63, 0));
+
+        assertEquals(PathfinderStatus.FOUND, result.status());
+        assertTrue(result.route().orElseThrow().nodes().size() > 2);
+    }
+
+    private static Graph<SurfaceNode> directSurfaceGraph(SurfaceNode goal) {
+        return node -> node.sameSubcell(goal) ? List.of() : List.of(new Connection<>(node, goal, 0.25));
     }
 
     private static Map<BlockPosition, SurfaceBlock> flatSurface(int minX, int maxX) {

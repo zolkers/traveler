@@ -1,27 +1,23 @@
 package dev.traveler.core.route;
 
-import dev.traveler.core.graph.Connection;
 import dev.traveler.core.graph.Graph;
 import dev.traveler.core.graph.MutableGraphPath;
 import dev.traveler.core.layer.SurfaceBlock;
 import dev.traveler.core.layer.SurfaceWorldLayer;
 import dev.traveler.core.layer.WorldLayer;
-import dev.traveler.core.path.AStarPathfinder;
 import dev.traveler.core.path.PathfinderRequest;
 import dev.traveler.core.path.PathfinderResult;
 import dev.traveler.core.path.PathfinderStatus;
+import dev.traveler.core.smooth.PathNodePreservation;
 import dev.traveler.core.smooth.PathSmoother;
 import dev.traveler.core.world.behavior.decision.MovementDecision;
 import dev.traveler.core.world.block.BlockPassability;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.navigation.BlockLineOfWalk;
-import dev.traveler.core.world.navigation.BlockTraversalGraph;
 import dev.traveler.core.world.navigation.SurfaceLineOfWalk;
 import dev.traveler.core.world.navigation.SurfaceLineOfWalkSettings;
 import dev.traveler.core.world.navigation.SurfaceMovementEvaluator;
 import dev.traveler.core.world.navigation.SurfaceSmoothingPolicy;
-import dev.traveler.core.world.navigation.SurfaceTraversalGraph;
-import dev.traveler.core.world.navigation.SurfaceTraversalGraphSettings;
 import dev.traveler.core.world.surface.SurfaceNode;
 import dev.traveler.core.world.surface.SurfaceNodeResolver;
 import java.util.ArrayList;
@@ -32,9 +28,15 @@ import java.util.Optional;
 
 public final class RouteSearchService {
     private final RouteSearchSettings settings;
+    private final RouteSearchComponents components;
 
     public RouteSearchService(RouteSearchSettings settings) {
+        this(settings, RouteSearchComponents.standard());
+    }
+
+    public RouteSearchService(RouteSearchSettings settings, RouteSearchComponents components) {
         this.settings = Objects.requireNonNull(settings, "settings");
+        this.components = Objects.requireNonNull(components, "components");
     }
 
     public RouteSearchResult search(
@@ -96,7 +98,7 @@ public final class RouteSearchService {
         Graph<BlockPosition> graph = graphFor(worldLayer, start, goal);
         PathfinderRequest<BlockPosition> request =
                 new PathfinderRequest<>(graph, start, goal, RouteSearchService::distance);
-        PathfinderResult<BlockPosition> result = new AStarPathfinder<BlockPosition>().search(request);
+        PathfinderResult<BlockPosition> result = components.blockPathfinder().search(request);
         return smoothedResult(worldLayer, result);
     }
 
@@ -155,17 +157,10 @@ public final class RouteSearchService {
             SurfaceWorldLayer worldLayer,
             SurfaceNode start,
             SurfaceNode goal) {
-        Graph<SurfaceNode> graph = new SurfaceTraversalGraph(
-                worldLayer,
-                start,
-                goal,
-                settings.movementProfile(),
-                SurfaceTraversalGraphSettings.standard(
-                        settings.horizontalMargin(),
-                        settings.verticalMargin()));
+        Graph<SurfaceNode> graph = components.surfaceGraphFactory().create(worldLayer, start, goal, settings);
         PathfinderRequest<SurfaceNode> request =
                 new PathfinderRequest<>(graph, start, goal, RouteSearchService::surfaceDistance);
-        PathfinderResult<SurfaceNode> result = new AStarPathfinder<SurfaceNode>().search(request);
+        PathfinderResult<SurfaceNode> result = components.surfacePathfinder().search(request);
         return smoothedSurfaceResult(worldLayer, result);
     }
 
@@ -230,15 +225,7 @@ public final class RouteSearchService {
     }
 
     private Graph<BlockPosition> graphFor(WorldLayer worldLayer, BlockPosition start, BlockPosition goal) {
-        if (worldLayer == null) {
-            return new DirectBlockGraph(goal);
-        }
-        return new BlockTraversalGraph(
-                worldLayer,
-                start,
-                goal,
-                settings.horizontalMargin(),
-                settings.verticalMargin());
+        return components.blockGraphFactory().create(worldLayer, start, goal, settings);
     }
 
     private static List<SurfaceNode> surfaceGoals(SurfaceNodeResolver resolver, BlockPosition target) {
@@ -299,7 +286,7 @@ public final class RouteSearchService {
         return new PathfinderResult<>(result.status(), path);
     }
 
-    private static PathfinderResult<BlockPosition> smoothedResult(
+    private PathfinderResult<BlockPosition> smoothedResult(
             WorldLayer worldLayer,
             PathfinderResult<BlockPosition> result) {
         if (worldLayer == null || result.status() != PathfinderStatus.FOUND) {
@@ -309,7 +296,10 @@ public final class RouteSearchService {
             return result;
         }
         List<BlockPosition> smoothed =
-                new PathSmoother<BlockPosition>(new BlockLineOfWalk(worldLayer))
+                new PathSmoother<BlockPosition>(
+                                new BlockLineOfWalk(worldLayer),
+                                PathNodePreservation.none(),
+                                components.blockSmoothingSelector())
                         .smooth(result.path().nodes());
         return new PathfinderResult<>(result.status(), graphPath(smoothed, result.path().cost()));
     }
@@ -332,7 +322,8 @@ public final class RouteSearchService {
                         SurfaceLineOfWalkSettings.smoothing(
                                 settings.horizontalMargin(),
                                 settings.verticalMargin())),
-                        new SurfaceSmoothingPolicy(worldLayer))
+                        new SurfaceSmoothingPolicy(worldLayer),
+                        components.surfaceSmoothingSelector())
                 .smooth(nodes);
         return new PathfinderResult<>(result.status(), graphPath(smoothed, result.path().cost()));
     }
@@ -344,7 +335,7 @@ public final class RouteSearchService {
         return path;
     }
 
-    private static double distance(BlockPosition from, BlockPosition to) {
+    static double distance(BlockPosition from, BlockPosition to) {
         int deltaX = Math.abs(from.x() - to.x());
         int deltaZ = Math.abs(from.z() - to.z());
         int straight = Math.max(deltaX, deltaZ) - Math.min(deltaX, deltaZ);
@@ -356,25 +347,8 @@ public final class RouteSearchService {
         double deltaZ = Math.abs(from.centerZ() - to.centerZ());
         return Math.hypot(deltaX, deltaZ) + Math.abs(from.floorY() - to.floorY()) * 0.5;
     }
-
     @FunctionalInterface
     private interface SurfaceDiagnosticsFactory {
         RouteSearchDiagnostics create(int knownSurfaceCount);
-    }
-
-    private static final class DirectBlockGraph implements Graph<BlockPosition> {
-        private final BlockPosition goal;
-
-        private DirectBlockGraph(BlockPosition goal) {
-            this.goal = Objects.requireNonNull(goal, "goal");
-        }
-
-        @Override
-        public Iterable<Connection<BlockPosition>> outgoingConnections(BlockPosition node) {
-            if (node.equals(goal)) {
-                return List.of();
-            }
-            return List.of(new Connection<>(node, goal, distance(node, goal)));
-        }
     }
 }
