@@ -24,7 +24,21 @@ public final class SurfaceClimbTraversal {
             SurfaceNode to,
             MovementCapabilities capabilities) {
         SurfaceWorldLayer layer = Objects.requireNonNull(worldLayer, "worldLayer");
-        return canClimbWithLookup(layer::surfaceBlock, from, to, capabilities);
+        return canClimbWithLookup(layer::surfaceBlock, from, to, capabilities, SurfaceClimbTraversal::isClimbable);
+    }
+
+    public static boolean preservesRouteGeometry(
+            SurfaceWorldLayer worldLayer,
+            SurfaceNode from,
+            SurfaceNode to,
+            MovementCapabilities capabilities) {
+        SurfaceWorldLayer layer = Objects.requireNonNull(worldLayer, "worldLayer");
+        return canClimbWithLookup(
+                layer::surfaceBlock,
+                from,
+                to,
+                capabilities,
+                SurfaceClimbTraversal::preservesClimbRouteGeometry);
     }
 
     static boolean canClimbWithLookup(
@@ -32,6 +46,15 @@ public final class SurfaceClimbTraversal {
             SurfaceNode from,
             SurfaceNode to,
             MovementCapabilities capabilities) {
+        return canClimbWithLookup(blocks, from, to, capabilities, SurfaceClimbTraversal::isClimbable);
+    }
+
+    private static boolean canClimbWithLookup(
+            BlockLookup blocks,
+            SurfaceNode from,
+            SurfaceNode to,
+            MovementCapabilities capabilities,
+            ClimbBlockRule climbBlockRule) {
         BlockLookup safeBlocks = Objects.requireNonNull(blocks, "blocks");
         SurfaceNode safeFrom = Objects.requireNonNull(from, "from");
         SurfaceNode safeTo = Objects.requireNonNull(to, "to");
@@ -40,7 +63,13 @@ public final class SurfaceClimbTraversal {
             return false;
         }
         for (BlockColumn column : sharedClimbColumns(safeFrom, safeTo)) {
-            if (hasContinuousClimbColumn(safeBlocks, column, safeFrom.floorY(), safeTo.floorY(), safeCapabilities)) {
+            if (hasContinuousClimbColumn(
+                    safeBlocks,
+                    column,
+                    safeFrom.floorY(),
+                    safeTo.floorY(),
+                    safeCapabilities,
+                    climbBlockRule)) {
                 return true;
             }
         }
@@ -81,11 +110,12 @@ public final class SurfaceClimbTraversal {
             BlockColumn column,
             double fromFloorY,
             double toFloorY,
-            MovementCapabilities capabilities) {
+            MovementCapabilities capabilities,
+            ClimbBlockRule climbBlockRule) {
         int minY = (int) Math.floor(Math.min(fromFloorY, toFloorY) + FLOOR_EPSILON);
         int maxYExclusive = (int) Math.ceil(Math.max(fromFloorY, toFloorY) - FLOOR_EPSILON);
         for (int y = minY; y < maxYExclusive; y++) {
-            if (!isClimbable(blocks.get(new BlockPosition(column.x(), y, column.z())), capabilities)) {
+            if (!climbBlockRule.matches(blocks.get(new BlockPosition(column.x(), y, column.z())), capabilities)) {
                 return false;
             }
         }
@@ -95,6 +125,12 @@ public final class SurfaceClimbTraversal {
     static boolean isClimbable(SurfaceBlock block, MovementCapabilities capabilities) {
         return climbableBehavior(block.behavior())
                 .map(behavior -> behavior.supportsClimbing(capabilities))
+                .orElse(false);
+    }
+
+    private static boolean preservesClimbRouteGeometry(SurfaceBlock block, MovementCapabilities capabilities) {
+        return climbableBehavior(block.behavior())
+                .map(behavior -> behavior.preservesRouteGeometry(capabilities))
                 .orElse(false);
     }
 
@@ -115,6 +151,11 @@ public final class SurfaceClimbTraversal {
     @FunctionalInterface
     interface BlockLookup {
         SurfaceBlock get(BlockPosition position);
+    }
+
+    @FunctionalInterface
+    private interface ClimbBlockRule {
+        boolean matches(SurfaceBlock block, MovementCapabilities capabilities);
     }
 
     private record BlockColumn(int x, int z) {}

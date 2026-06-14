@@ -19,14 +19,11 @@ public final class SurfaceTransitionEvaluator {
     public MovementDecision decision(SurfaceWorldLayer worldLayer, SurfaceNode from, SurfaceNode to) {
         SurfaceWorldLayer layer = Objects.requireNonNull(worldLayer, "worldLayer");
         SurfaceNode safeTo = Objects.requireNonNull(to, "to");
-        SurfaceBlock destinationBlock = layer.surfaceBlock(safeTo.blockPosition());
-        MovementDecision surfaceDecision = surfaceMovementEvaluator.decision(from, safeTo, destinationBlock);
-        if (surfaceDecision.allowed()) {
-            return surfaceDecision;
-        }
         if (SurfaceClimbTraversal.canClimb(layer, from, safeTo, capabilities)) {
             return MovementDecision.climb();
         }
+        SurfaceBlock destinationBlock = layer.surfaceBlock(safeTo.blockPosition());
+        MovementDecision surfaceDecision = surfaceMovementEvaluator.decision(from, safeTo, destinationBlock);
         return surfaceDecision;
     }
 }

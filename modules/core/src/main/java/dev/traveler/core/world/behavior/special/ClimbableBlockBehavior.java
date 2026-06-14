@@ -17,6 +17,11 @@ public abstract class ClimbableBlockBehavior implements BlockBehavior {
     }
 
     @Override
+    public final boolean preservesRouteGeometry(MovementCapabilities capabilities) {
+        return supportsClimbing(capabilities);
+    }
+
+    @Override
     public final MovementDecision evaluateMovement(SurfaceMovementContext context) {
         SurfaceMovementContext safeContext = Objects.requireNonNull(context, "context");
         if (!supportsClimbing(safeContext.capabilities())) {

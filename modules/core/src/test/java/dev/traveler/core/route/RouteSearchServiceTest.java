@@ -166,6 +166,21 @@ class RouteSearchServiceTest {
     }
 
     @Test
+    void descendsLadderColumnAsClimbInsteadOfDrop() {
+        TestSurfaceWorldLayer world =
+                new TestSurfaceWorldLayer(climbColumn(new LadderBlockBehavior(HorizontalFacing.WEST)));
+        RouteSearchService service = new RouteSearchService(RouteSearchSettings.standardClient());
+
+        RouteSearchResult result =
+                service.search(world, new BlockPosition(1, 66, 1), new BlockPosition(0, 64, 0));
+
+        assertEquals(PathfinderStatus.FOUND, result.status());
+        RoutePath route = result.route().orElseThrow();
+        assertTrue(route.actions().contains(MovementAction.CLIMB));
+        assertFalse(route.actions().contains(MovementAction.DROP));
+    }
+
+    @Test
     void findsRouteThatClimbsVineColumn() {
         TestSurfaceWorldLayer world =
                 new TestSurfaceWorldLayer(climbColumn(new VineBlockBehavior(Set.of(HorizontalFacing.WEST), false)));

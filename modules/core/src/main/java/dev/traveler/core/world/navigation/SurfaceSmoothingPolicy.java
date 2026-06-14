@@ -4,6 +4,8 @@ import dev.traveler.core.layer.SurfaceBlock;
 import dev.traveler.core.layer.SurfaceWorldLayer;
 import dev.traveler.core.smooth.PathNodePreservation;
 import dev.traveler.core.world.block.BlockPosition;
+import dev.traveler.core.world.movement.MovementCapabilities;
+import dev.traveler.core.world.movement.MovementProfiles;
 import dev.traveler.core.world.surface.SurfaceNode;
 import java.util.Objects;
 
@@ -11,9 +13,15 @@ public final class SurfaceSmoothingPolicy implements PathNodePreservation<Surfac
     private static final double FLOOR_EPSILON = 0.001;
 
     private final SurfaceWorldLayer worldLayer;
+    private final MovementCapabilities capabilities;
 
     public SurfaceSmoothingPolicy(SurfaceWorldLayer worldLayer) {
+        this(worldLayer, MovementProfiles.defaultPlayer().capabilities());
+    }
+
+    public SurfaceSmoothingPolicy(SurfaceWorldLayer worldLayer, MovementCapabilities capabilities) {
         this.worldLayer = Objects.requireNonNull(worldLayer, "worldLayer");
+        this.capabilities = Objects.requireNonNull(capabilities, "capabilities");
     }
 
     @Override
@@ -26,6 +34,8 @@ public final class SurfaceSmoothingPolicy implements PathNodePreservation<Surfac
         SurfaceBlock nextBlock = block(next);
         return hasActionTransition(previous, current, previousBlock, currentBlock)
                 || hasActionTransition(current, next, currentBlock, nextBlock)
+                || hasClimbTransition(previous, current)
+                || hasClimbTransition(current, next)
                 || hasUnsafeHorizontalTurn(previous, current, next);
     }
 
@@ -54,6 +64,10 @@ public final class SurfaceSmoothingPolicy implements PathNodePreservation<Surfac
 
     private static boolean changesFluidHandling(SurfaceBlock from, SurfaceBlock to) {
         return from.classification().fluidHandling() != to.classification().fluidHandling();
+    }
+
+    private boolean hasClimbTransition(SurfaceNode from, SurfaceNode to) {
+        return SurfaceClimbTraversal.preservesRouteGeometry(worldLayer, from, to, capabilities);
     }
 
     private boolean hasUnsafeHorizontalTurn(SurfaceNode previous, SurfaceNode current, SurfaceNode next) {

@@ -8,6 +8,8 @@ import dev.traveler.core.layer.SurfaceBlock;
 import dev.traveler.core.layer.SurfaceWorldLayer;
 import dev.traveler.core.world.behavior.BlockBehaviorKey;
 import dev.traveler.core.world.behavior.BlockBehaviorRegistry;
+import dev.traveler.core.world.behavior.context.HorizontalFacing;
+import dev.traveler.core.world.behavior.special.LadderBlockBehavior;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.block.BlockPassability;
 import dev.traveler.core.world.geometry.BlockShape;
@@ -64,6 +66,24 @@ class SurfaceSmoothingPolicyTest {
     }
 
     @Test
+    void preservesNodesThatEnterOrLeaveClimbableColumns() {
+        SurfaceWorldLayer world = new TestSurfaceWorldLayer(Map.of(
+                supportAt(0, 0), SurfaceBlock.solid(BlockShape.fullCube()),
+                new BlockPosition(1, 64, 0), ladder(),
+                new BlockPosition(1, 65, 0), ladder(),
+                new BlockPosition(1, 65, 1), SurfaceBlock.solid(BlockShape.fullCube()),
+                new BlockPosition(2, 65, 1), SurfaceBlock.solid(BlockShape.fullCube())));
+        SurfaceSmoothingPolicy policy = new SurfaceSmoothingPolicy(world);
+
+        boolean required = policy.mustPreserve(
+                nodeAt(0, 63, 0, 1, 1, 64.0),
+                nodeAt(1, 65, 1, 0, 0, 66.0),
+                nodeAt(2, 65, 1, 0, 0, 66.0));
+
+        assertTrue(required);
+    }
+
+    @Test
     void preservesHorizontalTurnsNearBlockedBodySpace() {
         SurfaceWorldLayer world = new TestSurfaceWorldLayer(Map.of(
                 supportAt(0, 0), SurfaceBlock.solid(BlockShape.fullCube()),
@@ -95,6 +115,10 @@ class SurfaceSmoothingPolicyTest {
         return new SurfaceNode(supportAt(x, z), 1, 1, floorY);
     }
 
+    private static SurfaceNode nodeAt(int x, int y, int z, int cellX, int cellZ, double floorY) {
+        return new SurfaceNode(new BlockPosition(x, y, z), cellX, cellZ, floorY);
+    }
+
     private static BlockPosition supportAt(int x) {
         return supportAt(x, 0);
     }
@@ -108,6 +132,13 @@ class SurfaceSmoothingPolicyTest {
                 new BlockClassification(BlockPassability.SOLID, FluidHandling.AVOID),
                 BlockShape.topSlab(),
                 BEHAVIORS.behavior(BlockBehaviorKey.SLAB));
+    }
+
+    private static SurfaceBlock ladder() {
+        return new SurfaceBlock(
+                new BlockClassification(BlockPassability.PASSABLE, FluidHandling.AVOID),
+                BlockShape.empty(),
+                new LadderBlockBehavior(HorizontalFacing.WEST));
     }
 
     private record TestSurfaceWorldLayer(Map<BlockPosition, SurfaceBlock> blocks) implements SurfaceWorldLayer {

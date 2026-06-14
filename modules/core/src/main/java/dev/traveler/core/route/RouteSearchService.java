@@ -311,7 +311,7 @@ public final class RouteSearchService {
                         SurfaceLineOfWalkSettings.smoothing(
                                 settings.horizontalMargin(),
                                 settings.verticalMargin())),
-                        new SurfaceSmoothingPolicy(worldLayer),
+                        new SurfaceSmoothingPolicy(worldLayer, settings.movementProfile().capabilities()),
                         components.surfaceSmoothingSelector())
                 .smooth(nodes);
         return new PathfinderResult<>(result.status(), graphPath(smoothed, result.path().cost()));

@@ -10,4 +10,8 @@ public interface BlockBehavior {
     boolean supportsStanding(MovementCapabilities capabilities);
 
     MovementDecision evaluateMovement(SurfaceMovementContext context);
+
+    default boolean preservesRouteGeometry(MovementCapabilities capabilities) {
+        return false;
+    }
 }

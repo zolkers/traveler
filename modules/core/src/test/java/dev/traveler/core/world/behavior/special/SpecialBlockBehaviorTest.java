@@ -35,6 +35,7 @@ class SpecialBlockBehaviorTest {
         LadderBlockBehavior behavior = new LadderBlockBehavior(HorizontalFacing.SOUTH);
 
         assertFalse(behavior.supportsStanding(PLAYER));
+        assertTrue(behavior.preservesRouteGeometry(PLAYER));
         assertEquals(HorizontalFacing.SOUTH, behavior.facing());
 
         MovementDecision decision =
@@ -63,6 +64,7 @@ class SpecialBlockBehaviorTest {
                 new VineBlockBehavior(Set.of(HorizontalFacing.NORTH, HorizontalFacing.EAST), true);
 
         assertFalse(behavior.supportsStanding(PLAYER));
+        assertTrue(behavior.preservesRouteGeometry(PLAYER));
         assertEquals(Set.of(HorizontalFacing.NORTH, HorizontalFacing.EAST), behavior.attachedFaces());
         assertTrue(behavior.ceilingAttached());
 
@@ -84,6 +86,8 @@ class SpecialBlockBehaviorTest {
         assertEquals(MovementAction.BLOCKED,
                 vine.evaluateMovement(context(node(63.0), node(64.0), MovementDirection.west(), SWIM_ONLY))
                         .action());
+        assertFalse(ladder.preservesRouteGeometry(SWIM_ONLY));
+        assertFalse(vine.preservesRouteGeometry(SWIM_ONLY));
     }
 
     private static SurfaceMovementContext context(
