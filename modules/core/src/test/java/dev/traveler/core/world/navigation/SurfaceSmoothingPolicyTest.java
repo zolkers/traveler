@@ -51,6 +51,19 @@ class SurfaceSmoothingPolicyTest {
     }
 
     @Test
+    void allowsFlatSameSpecialBehaviorNodesToBeSmoothedAway() {
+        SurfaceWorldLayer world = new TestSurfaceWorldLayer(Map.of(
+                supportAt(0), slab(),
+                supportAt(1), slab(),
+                supportAt(2), slab()));
+        SurfaceSmoothingPolicy policy = new SurfaceSmoothingPolicy(world);
+
+        boolean required = policy.mustPreserve(nodeAt(0, 63.5), nodeAt(1, 63.5), nodeAt(2, 63.5));
+
+        assertFalse(required);
+    }
+
+    @Test
     void preservesHorizontalTurnsNearBlockedBodySpace() {
         SurfaceWorldLayer world = new TestSurfaceWorldLayer(Map.of(
                 supportAt(0, 0), SurfaceBlock.solid(BlockShape.fullCube()),

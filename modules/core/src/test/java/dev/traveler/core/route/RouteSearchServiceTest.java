@@ -91,12 +91,54 @@ class RouteSearchServiceTest {
         assertTrue(hasVerticalAction(result.route().orElseThrow()));
     }
 
+    @Test
+    void compactsFlatSameSpecialBehaviorSurfaceRuns() {
+        TestSurfaceWorldLayer world = new TestSurfaceWorldLayer(bottomSlabSurface(0, 4, -1, 1));
+        RouteSearchService service = new RouteSearchService(RouteSearchSettings.standardClient());
+
+        RouteSearchResult result =
+                service.search(world, new BlockPosition(0, 64, 0), new BlockPosition(4, 63, 0));
+
+        assertEquals(PathfinderStatus.FOUND, result.status());
+        RoutePath route = result.route().orElseThrow();
+        assertEquals(2, route.nodes().size());
+        assertEquals(List.of(MovementAction.WALK), route.actions());
+    }
+
     private static Map<BlockPosition, SurfaceBlock> flatSurface(int minX, int maxX) {
+        return surfaceRectangle(minX, maxX, 0, 0, SurfaceBlock.solid(BlockShape.fullCube()));
+    }
+
+    private static Map<BlockPosition, SurfaceBlock> bottomSlabSurface(
+            int minX,
+            int maxX,
+            int minZ,
+            int maxZ) {
+        return surfaceRectangle(minX, maxX, minZ, maxZ, bottomSlab());
+    }
+
+    private static Map<BlockPosition, SurfaceBlock> surfaceRectangle(
+            int minX,
+            int maxX,
+            int minZ,
+            int maxZ,
+            SurfaceBlock block) {
         Map<BlockPosition, SurfaceBlock> blocks = new HashMap<>();
         for (int x = minX; x <= maxX; x++) {
-            blocks.put(new BlockPosition(x, 63, 0), SurfaceBlock.solid(BlockShape.fullCube()));
+            addSurfaceColumn(blocks, x, minZ, maxZ, block);
         }
         return blocks;
+    }
+
+    private static void addSurfaceColumn(
+            Map<BlockPosition, SurfaceBlock> blocks,
+            int x,
+            int minZ,
+            int maxZ,
+            SurfaceBlock block) {
+        for (int z = minZ; z <= maxZ; z++) {
+            blocks.put(new BlockPosition(x, 63, z), block);
+        }
     }
 
     private static boolean hasVerticalAction(RoutePath route) {

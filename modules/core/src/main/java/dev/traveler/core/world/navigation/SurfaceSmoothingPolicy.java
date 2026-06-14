@@ -3,7 +3,6 @@ package dev.traveler.core.world.navigation;
 import dev.traveler.core.layer.SurfaceBlock;
 import dev.traveler.core.layer.SurfaceWorldLayer;
 import dev.traveler.core.smooth.PathNodePreservation;
-import dev.traveler.core.world.behavior.BlockBehaviorKey;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.surface.SurfaceNode;
 import java.util.Objects;
@@ -27,7 +26,6 @@ public final class SurfaceSmoothingPolicy implements PathNodePreservation<Surfac
         SurfaceBlock nextBlock = block(next);
         return hasActionTransition(previous, current, previousBlock, currentBlock)
                 || hasActionTransition(current, next, currentBlock, nextBlock)
-                || hasSpecialBehavior(currentBlock)
                 || hasUnsafeHorizontalTurn(previous, current, next);
     }
 
@@ -56,10 +54,6 @@ public final class SurfaceSmoothingPolicy implements PathNodePreservation<Surfac
 
     private static boolean changesFluidHandling(SurfaceBlock from, SurfaceBlock to) {
         return from.classification().fluidHandling() != to.classification().fluidHandling();
-    }
-
-    private static boolean hasSpecialBehavior(SurfaceBlock block) {
-        return block.behavior().key() != BlockBehaviorKey.FULL_BLOCK;
     }
 
     private boolean hasUnsafeHorizontalTurn(SurfaceNode previous, SurfaceNode current, SurfaceNode next) {
