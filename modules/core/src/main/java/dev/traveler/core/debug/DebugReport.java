@@ -1,5 +1,7 @@
 package dev.traveler.core.debug;
 
+import dev.traveler.core.debug.snapshots.NavigationDebugSnapshot;
+import dev.traveler.core.debug.snapshots.PathfinderDebugSnapshot;
 import dev.traveler.core.navigation.camera.CameraAngles;
 import dev.traveler.core.navigation.locomotion.LocomotionAction;
 import dev.traveler.core.navigation.plan.NavigationPhase;

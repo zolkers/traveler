@@ -1,5 +1,7 @@
 package dev.traveler.core.debug;
 
+import dev.traveler.core.debug.snapshots.NavigationDebugSnapshot;
+import dev.traveler.core.debug.snapshots.PathfinderDebugSnapshot;
 import dev.traveler.core.navigation.control.MovementIntent;
 import dev.traveler.core.navigation.spatial.HorizontalVector;
 import dev.traveler.core.navigation.spatial.NavigationPoint;

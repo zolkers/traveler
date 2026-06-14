@@ -1,7 +1,7 @@
 package dev.traveler.core.render;
 
-import dev.traveler.core.debug.NavigationDebugSnapshot;
-import dev.traveler.core.debug.PathfinderDebugSnapshot;
+import dev.traveler.core.debug.snapshots.NavigationDebugSnapshot;
+import dev.traveler.core.debug.snapshots.PathfinderDebugSnapshot;
 import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.graph.GraphPath;
 import dev.traveler.core.navigation.spatial.NavigationPoint;

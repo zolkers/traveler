@@ -1,5 +1,7 @@
 package dev.traveler.core.debug;
 
+import dev.traveler.core.debug.snapshots.NavigationDebugSnapshot;
+import dev.traveler.core.debug.snapshots.PathfinderDebugSnapshot;
 import dev.traveler.core.graph.MutableGraphPath;
 import dev.traveler.core.path.PathfinderResult;
 import dev.traveler.core.navigation.NavigationControlFrame;

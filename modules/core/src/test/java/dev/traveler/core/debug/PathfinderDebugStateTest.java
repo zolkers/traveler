@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.traveler.core.debug.snapshots.NavigationDebugSnapshot;
+import dev.traveler.core.debug.snapshots.PathfinderDebugSnapshot;
 import dev.traveler.core.graph.MutableGraphPath;
 import dev.traveler.core.path.PathfinderResult;
 import dev.traveler.core.path.PathfinderStatus;

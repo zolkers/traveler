@@ -1,4 +1,4 @@
-package dev.traveler.core.debug;
+package dev.traveler.core.debug.snapshots;
 
 import dev.traveler.core.path.PathfinderResult;
 import dev.traveler.core.world.block.BlockPosition;

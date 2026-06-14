@@ -7,7 +7,7 @@ import dev.riege.buildmycommand.api.CommandResult;
 import dev.riege.buildmycommand.api.CommandSource;
 import dev.traveler.core.command.AnnotatedTravelerCommandFeature;
 import dev.traveler.core.command.TravelerCommandCatalog;
-import dev.traveler.core.debug.PathfinderDebugSnapshot;
+import dev.traveler.core.debug.snapshots.PathfinderDebugSnapshot;
 import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.graph.GraphPath;
 import dev.traveler.core.layer.BlockClassification;

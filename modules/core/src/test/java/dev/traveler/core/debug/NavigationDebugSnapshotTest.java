@@ -3,6 +3,8 @@ package dev.traveler.core.debug;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.traveler.core.debug.snapshots.NavigationDebugSnapshot;
+import dev.traveler.core.debug.snapshots.PathfinderDebugSnapshot;
 import dev.traveler.core.navigation.NavigationControlFrame;
 import dev.traveler.core.navigation.NavigationControllerState;
 import dev.traveler.core.navigation.NavigationFrameInput;

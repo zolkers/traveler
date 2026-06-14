@@ -1,4 +1,4 @@
-package dev.traveler.core.debug;
+package dev.traveler.core.debug.snapshots;
 
 import dev.traveler.core.navigation.NavigationControlFrame;
 import dev.traveler.core.navigation.NavigationFrameInput;
