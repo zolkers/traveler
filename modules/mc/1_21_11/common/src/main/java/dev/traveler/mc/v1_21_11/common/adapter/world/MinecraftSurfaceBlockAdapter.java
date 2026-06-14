@@ -8,16 +8,12 @@ import dev.traveler.core.world.behavior.BlockBehavior;
 import dev.traveler.core.world.behavior.BlockBehaviorKey;
 import dev.traveler.core.world.behavior.BlockBehaviorClassificationPolicy;
 import dev.traveler.core.world.behavior.BlockBehaviorRegistry;
-import dev.traveler.core.world.behavior.context.HorizontalFacing;
 import dev.traveler.core.world.geometry.BlockShape;
 import dev.traveler.core.world.geometry.CollisionBox;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import net.minecraft.core.Direction;
-import net.minecraft.world.level.block.SlabBlock;
-import net.minecraft.world.level.block.StairBlock;
-import net.minecraft.world.level.block.state.BlockState;
+import java.util.Optional;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
@@ -25,6 +21,7 @@ public final class MinecraftSurfaceBlockAdapter {
     private final MinecraftBlockClassifier classifier;
     private final BlockBehaviorRegistry behaviorRegistry;
     private final BlockBehaviorClassificationPolicy classificationPolicy;
+    private final List<MinecraftBlockBehaviorResolver> behaviorResolvers;
 
     public MinecraftSurfaceBlockAdapter() {
         this(new MinecraftBlockClassifier(), BlockBehaviorRegistry.defaults(), new BlockBehaviorClassificationPolicy());
@@ -38,15 +35,27 @@ public final class MinecraftSurfaceBlockAdapter {
             MinecraftBlockClassifier classifier,
             BlockBehaviorRegistry behaviorRegistry,
             BlockBehaviorClassificationPolicy classificationPolicy) {
+        this(classifier, behaviorRegistry, classificationPolicy, MinecraftBlockBehaviorResolver.defaults());
+    }
+
+    public MinecraftSurfaceBlockAdapter(
+            MinecraftBlockClassifier classifier,
+            BlockBehaviorRegistry behaviorRegistry,
+            BlockBehaviorClassificationPolicy classificationPolicy,
+            List<MinecraftBlockBehaviorResolver> behaviorResolvers) {
         this.classifier = Objects.requireNonNull(classifier, "classifier");
         this.behaviorRegistry = Objects.requireNonNull(behaviorRegistry, "behaviorRegistry");
         this.classificationPolicy = Objects.requireNonNull(classificationPolicy, "classificationPolicy");
+        this.behaviorResolvers = List.copyOf(Objects.requireNonNull(behaviorResolvers, "behaviorResolvers"));
+        if (this.behaviorResolvers.isEmpty()) {
+            throw new IllegalArgumentException("behaviorResolvers must not be empty.");
+        }
     }
 
     public SurfaceBlock surfaceBlock(MinecraftBlockContext context) {
         MinecraftBlockContext safeContext = Objects.requireNonNull(context, "context");
         BlockShape shape = shapeOf(safeContext);
-        BlockBehavior behavior = behaviorFor(safeContext.state(), shape);
+        BlockBehavior behavior = behaviorFor(safeContext, shape);
         BlockClassification classification = classificationFor(safeContext, behavior);
         return new SurfaceBlock(classification, shape, behavior);
     }
@@ -69,9 +78,9 @@ public final class MinecraftSurfaceBlockAdapter {
                 bounds.minX(), bounds.minY(), bounds.minZ(), bounds.maxX(), bounds.maxY(), bounds.maxZ()));
     }
 
-    private BlockBehavior behaviorFor(BlockState state, BlockShape shape) {
-        BlockBehavior dryBehavior = dryBehaviorFor(state, shape);
-        if (state.getFluidState().isEmpty()) {
+    private BlockBehavior behaviorFor(MinecraftBlockContext context, BlockShape shape) {
+        BlockBehavior dryBehavior = dryBehaviorFor(context, shape);
+        if (context.state().getFluidState().isEmpty()) {
             return dryBehavior;
         }
         if (shape.isEmpty()) {
@@ -80,32 +89,19 @@ public final class MinecraftSurfaceBlockAdapter {
         return behaviorRegistry.waterlogged(dryBehavior);
     }
 
-    private BlockBehavior dryBehaviorFor(BlockState state, BlockShape shape) {
-        if (shape.isEmpty()) {
-            return behaviorRegistry.behavior(BlockBehaviorKey.AIR);
+    private BlockBehavior dryBehaviorFor(MinecraftBlockContext context, BlockShape shape) {
+        for (MinecraftBlockBehaviorResolver resolver : behaviorResolvers) {
+            Optional<BlockBehavior> behavior = resolver.resolve(context, shape, behaviorRegistry);
+            if (behavior.isPresent()) {
+                return behavior.orElseThrow();
+            }
         }
-        if (state.getBlock() instanceof SlabBlock) {
-            return behaviorRegistry.behavior(BlockBehaviorKey.SLAB);
-        }
-        if (StairBlock.isStairs(state)) {
-            return behaviorRegistry.stair(horizontalFacing(state.getValue(StairBlock.FACING)));
-        }
-        return behaviorRegistry.behavior(BlockBehaviorKey.FULL_BLOCK);
+        throw new IllegalStateException("No Minecraft block behavior resolver accepted the block state.");
     }
 
     private BlockClassification classificationFor(MinecraftBlockContext context, BlockBehavior behavior) {
         BlockClassification base = classifier.classify(context);
         return classificationPolicy.classify(base, behavior);
-    }
-
-    private static HorizontalFacing horizontalFacing(Direction direction) {
-        return switch (Objects.requireNonNull(direction, "direction")) {
-            case NORTH -> HorizontalFacing.NORTH;
-            case SOUTH -> HorizontalFacing.SOUTH;
-            case WEST -> HorizontalFacing.WEST;
-            case EAST -> HorizontalFacing.EAST;
-            default -> throw new IllegalArgumentException("Expected horizontal stair facing, got " + direction + ".");
-        };
     }
 
     private record BoxBounds(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {

@@ -8,14 +8,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.traveler.core.layer.SurfaceBlock;
 import dev.traveler.core.layer.SurfaceWorldLayer;
+import dev.traveler.core.world.behavior.BlockBehaviorClassificationPolicy;
 import dev.traveler.core.world.behavior.BlockBehaviorKey;
+import dev.traveler.core.world.behavior.BlockBehaviorRegistry;
 import dev.traveler.core.world.behavior.context.HorizontalFacing;
 import dev.traveler.core.world.behavior.special.StairBlockBehavior;
 import dev.traveler.core.world.block.BlockPassability;
 import dev.traveler.core.world.block.BlockPosition;
+import dev.traveler.mc.v1_21_11.common.adapter.block.MinecraftBlockClassifier;
+import dev.traveler.mc.v1_21_11.common.adapter.block.MinecraftBlockContext;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SlabBlock;
@@ -117,9 +122,28 @@ class MinecraftSurfaceBlockAdapterTest {
         assertEquals(BlockBehaviorKey.AIR, air.behavior().key());
     }
 
+    @Test
+    void customBehaviorResolverCanOverrideFallbackMapping() {
+        BlockBehaviorRegistry registry = BlockBehaviorRegistry.defaults();
+        MinecraftSurfaceBlockAdapter adapter = new MinecraftSurfaceBlockAdapter(
+                new MinecraftBlockClassifier(),
+                registry,
+                new BlockBehaviorClassificationPolicy(),
+                java.util.List.of((context, shape, behaviors) ->
+                        java.util.Optional.of(behaviors.behavior(BlockBehaviorKey.FLUID))));
+
+        SurfaceBlock block = adapter.surfaceBlock(contextFor(Blocks.STONE.defaultBlockState()));
+
+        assertEquals(BlockBehaviorKey.FLUID, block.behavior().key());
+    }
+
     private static SurfaceBlock surfaceBlock(BlockState state) {
         MinecraftWorldSnapshot snapshot = new MinecraftWorldSnapshot(new SingleStateBlockGetter(state));
         return snapshot.surfaceBlock(new BlockPosition(0, 0, 0));
+    }
+
+    private static MinecraftBlockContext contextFor(BlockState state) {
+        return new MinecraftBlockContext(state, new SingleStateBlockGetter(state), BlockPos.ZERO);
     }
 
     private static Stream<Arguments> surfaceClassifications() {
