@@ -3,6 +3,7 @@ package dev.traveler.core.world.navigation;
 import dev.traveler.core.layer.SurfaceBlock;
 import dev.traveler.core.layer.SurfaceWorldLayer;
 import dev.traveler.core.world.behavior.BlockBehavior;
+import dev.traveler.core.world.behavior.context.HorizontalFacing;
 import dev.traveler.core.world.behavior.special.ClimbableBlockBehavior;
 import dev.traveler.core.world.behavior.special.WaterloggedBlockBehavior;
 import dev.traveler.core.world.block.BlockPosition;
@@ -62,10 +63,11 @@ public final class SurfaceClimbTraversal {
         if (!requiresClimb(safeFrom, safeTo, safeCapabilities)) {
             return false;
         }
-        for (BlockColumn column : sharedClimbColumns(safeFrom, safeTo)) {
-            if (hasContinuousClimbColumn(
+        for (ClimbContact fromContact : climbContactsAdjacentTo(safeFrom)) {
+            if (canClimbFromContact(
                     safeBlocks,
-                    column,
+                    fromContact,
+                    safeTo,
                     safeFrom.floorY(),
                     safeTo.floorY(),
                     safeCapabilities,
@@ -84,25 +86,87 @@ public final class SurfaceClimbTraversal {
         return capabilities.canWalk() && floorDelta > capabilities.maxStepUp() + FLOOR_EPSILON;
     }
 
-    private static Set<BlockColumn> sharedClimbColumns(SurfaceNode from, SurfaceNode to) {
-        Set<BlockColumn> fromColumns = climbColumnsAdjacentTo(from);
-        Set<BlockColumn> shared = new HashSet<>();
-        for (BlockColumn column : climbColumnsAdjacentTo(to)) {
-            if (fromColumns.contains(column)) {
-                shared.add(column);
+    private static boolean canClimbFromContact(
+            BlockLookup blocks,
+            ClimbContact fromContact,
+            SurfaceNode to,
+            double fromFloorY,
+            double toFloorY,
+            MovementCapabilities capabilities,
+            ClimbBlockRule climbBlockRule) {
+        for (ClimbContact toContact : climbContactsAdjacentTo(to)) {
+            if (canClimbBetweenContacts(
+                    blocks,
+                    fromContact,
+                    toContact,
+                    fromFloorY,
+                    toFloorY,
+                    capabilities,
+                    climbBlockRule)) {
+                return true;
             }
         }
-        return Set.copyOf(shared);
+        return false;
     }
 
-    private static Set<BlockColumn> climbColumnsAdjacentTo(SurfaceNode node) {
-        Set<BlockColumn> columns = new HashSet<>();
-        for (HorizontalOffset offset : HorizontalDirections.CARDINAL) {
-            columns.add(new BlockColumn(
-                    blockCoordinate(SurfaceTraversalGraph.globalX(node) + offset.x()),
-                    blockCoordinate(SurfaceTraversalGraph.globalZ(node) + offset.z())));
+    private static boolean canClimbBetweenContacts(
+            BlockLookup blocks,
+            ClimbContact fromContact,
+            ClimbContact toContact,
+            double fromFloorY,
+            double toFloorY,
+            MovementCapabilities capabilities,
+            ClimbBlockRule climbBlockRule) {
+        if (!fromContact.column().equals(toContact.column())) {
+            return false;
         }
-        return Set.copyOf(columns);
+        return hasContinuousClimbColumn(
+                        blocks,
+                        fromContact.column(),
+                        fromFloorY,
+                        toFloorY,
+                        capabilities,
+                        fromContact.face(),
+                        climbBlockRule)
+                || hasContinuousClimbColumn(
+                        blocks,
+                        toContact.column(),
+                        fromFloorY,
+                        toFloorY,
+                        capabilities,
+                        toContact.face(),
+                        climbBlockRule);
+    }
+
+    private static Set<ClimbContact> climbContactsAdjacentTo(SurfaceNode node) {
+        Set<ClimbContact> contacts = new HashSet<>();
+        for (HorizontalOffset offset : HorizontalDirections.CARDINAL) {
+            contacts.add(climbContact(node, offset));
+        }
+        return Set.copyOf(contacts);
+    }
+
+    private static ClimbContact climbContact(SurfaceNode node, HorizontalOffset offset) {
+        return new ClimbContact(
+                new BlockColumn(
+                        blockCoordinate(SurfaceTraversalGraph.globalX(node) + offset.x()),
+                        blockCoordinate(SurfaceTraversalGraph.globalZ(node) + offset.z())),
+                faceFromClimbBlockToNode(offset));
+    }
+
+    private static HorizontalFacing faceFromClimbBlockToNode(HorizontalOffset offsetFromNodeToClimb) {
+        int x = -offsetFromNodeToClimb.x();
+        int z = -offsetFromNodeToClimb.z();
+        if (x < 0) {
+            return HorizontalFacing.WEST;
+        }
+        if (x > 0) {
+            return HorizontalFacing.EAST;
+        }
+        if (z < 0) {
+            return HorizontalFacing.NORTH;
+        }
+        return HorizontalFacing.SOUTH;
     }
 
     private static boolean hasContinuousClimbColumn(
@@ -111,11 +175,12 @@ public final class SurfaceClimbTraversal {
             double fromFloorY,
             double toFloorY,
             MovementCapabilities capabilities,
+            HorizontalFacing face,
             ClimbBlockRule climbBlockRule) {
         int minY = (int) Math.floor(Math.min(fromFloorY, toFloorY) + FLOOR_EPSILON);
         int maxYExclusive = (int) Math.ceil(Math.max(fromFloorY, toFloorY) - FLOOR_EPSILON);
         for (int y = minY; y < maxYExclusive; y++) {
-            if (!climbBlockRule.matches(blocks.get(new BlockPosition(column.x(), y, column.z())), capabilities)) {
+            if (!climbBlockRule.matches(blocks.get(new BlockPosition(column.x(), y, column.z())), capabilities, face)) {
                 return false;
             }
         }
@@ -128,9 +193,22 @@ public final class SurfaceClimbTraversal {
                 .orElse(false);
     }
 
-    private static boolean preservesClimbRouteGeometry(SurfaceBlock block, MovementCapabilities capabilities) {
+    private static boolean isClimbable(
+            SurfaceBlock block,
+            MovementCapabilities capabilities,
+            HorizontalFacing face) {
         return climbableBehavior(block.behavior())
-                .map(behavior -> behavior.preservesRouteGeometry(capabilities))
+                .map(behavior -> behavior.supportsClimbingFrom(face, capabilities))
+                .orElse(false);
+    }
+
+    private static boolean preservesClimbRouteGeometry(
+            SurfaceBlock block,
+            MovementCapabilities capabilities,
+            HorizontalFacing face) {
+        return climbableBehavior(block.behavior())
+                .map(behavior -> behavior.preservesRouteGeometry(capabilities)
+                        && behavior.supportsClimbingFrom(face, capabilities))
                 .orElse(false);
     }
 
@@ -155,8 +233,10 @@ public final class SurfaceClimbTraversal {
 
     @FunctionalInterface
     private interface ClimbBlockRule {
-        boolean matches(SurfaceBlock block, MovementCapabilities capabilities);
+        boolean matches(SurfaceBlock block, MovementCapabilities capabilities, HorizontalFacing face);
     }
 
     private record BlockColumn(int x, int z) {}
+
+    private record ClimbContact(BlockColumn column, HorizontalFacing face) {}
 }

@@ -6,6 +6,12 @@ import java.util.Objects;
 import java.util.Set;
 
 public final class VineBlockBehavior extends ClimbableBlockBehavior {
+    private static final Set<HorizontalFacing> CEILING_FACES = Set.of(
+            HorizontalFacing.NORTH,
+            HorizontalFacing.SOUTH,
+            HorizontalFacing.WEST,
+            HorizontalFacing.EAST);
+
     private final Set<HorizontalFacing> attachedFaces;
     private final boolean ceilingAttached;
 
@@ -28,5 +34,13 @@ public final class VineBlockBehavior extends ClimbableBlockBehavior {
 
     public boolean ceilingAttached() {
         return ceilingAttached;
+    }
+
+    @Override
+    public Set<HorizontalFacing> climbableFaces() {
+        if (attachedFaces.isEmpty()) {
+            return CEILING_FACES;
+        }
+        return attachedFaces;
     }
 }

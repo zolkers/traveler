@@ -166,6 +166,18 @@ class RouteSearchServiceTest {
     }
 
     @Test
+    void doesNotClimbLadderFromNonFacingSide() {
+        TestSurfaceWorldLayer world =
+                new TestSurfaceWorldLayer(nonFacingLadderColumn(new LadderBlockBehavior(HorizontalFacing.WEST)));
+        RouteSearchService service = new RouteSearchService(RouteSearchSettings.standardClient());
+
+        RouteSearchResult result =
+                service.search(world, new BlockPosition(1, 64, -1), new BlockPosition(1, 65, -1));
+
+        assertEquals(PathfinderStatus.NOT_FOUND, result.status());
+    }
+
+    @Test
     void descendsLadderColumnAsClimbInsteadOfDrop() {
         TestSurfaceWorldLayer world =
                 new TestSurfaceWorldLayer(climbColumn(new LadderBlockBehavior(HorizontalFacing.WEST)));
@@ -268,6 +280,15 @@ class RouteSearchServiceTest {
         blocks.put(new BlockPosition(1, 64, 0), passable(BlockShape.empty(), climbable));
         blocks.put(new BlockPosition(1, 65, 0), passable(BlockShape.empty(), climbable));
         blocks.put(new BlockPosition(1, 65, 1), fullBlock());
+        return blocks;
+    }
+
+    private static Map<BlockPosition, SurfaceBlock> nonFacingLadderColumn(BlockBehavior climbable) {
+        Map<BlockPosition, SurfaceBlock> blocks = new HashMap<>();
+        blocks.put(new BlockPosition(1, 63, -1), fullBlock());
+        blocks.put(new BlockPosition(1, 64, 0), passable(BlockShape.empty(), climbable));
+        blocks.put(new BlockPosition(1, 65, 0), passable(BlockShape.empty(), climbable));
+        blocks.put(new BlockPosition(1, 65, -1), fullBlock());
         return blocks;
     }
 
