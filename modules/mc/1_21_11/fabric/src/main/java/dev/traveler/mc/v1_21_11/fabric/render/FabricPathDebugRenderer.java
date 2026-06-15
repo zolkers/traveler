@@ -19,7 +19,7 @@ import net.minecraft.client.renderer.state.CameraRenderState;
 import net.minecraft.client.renderer.state.LevelRenderState;
 import net.minecraft.world.phys.Vec3;
 
-public final class FabricPathDebugRenderer implements FabricWorldRenderer {
+public final class FabricPathDebugRenderer {
     private static final double MIN_LINE_LENGTH = 1.0E-6D;
 
     private final PathDebugRenderModel renderModel;
@@ -30,7 +30,6 @@ public final class FabricPathDebugRenderer implements FabricWorldRenderer {
         this.debugState = Objects.requireNonNull(debugState, "debugState");
     }
 
-    @Override
     public void render(WorldRenderContext context) {
         if (context == null) {
             return;

@@ -1,30 +1,30 @@
 package dev.traveler.mc.v1_21_11.fabric.event;
 
-import dev.traveler.mc.v1_21_11.fabric.render.FabricPathDebugRenderer;
-import dev.traveler.mc.v1_21_11.fabric.render.FabricWorldRenderer;
-import dev.traveler.core.navigation.NavigationRuntime;
-import dev.traveler.mc.v1_21_11.fabric.navigation.MinecraftClientNavigationAdapter;
-import dev.traveler.mc.v1_21_11.common.command.TravelerCommandModule;
 import dev.traveler.core.event.ClientTickEvent;
 import dev.traveler.core.event.TravelerClientEvents;
 import dev.traveler.core.event.WorldRenderEvent;
+import dev.traveler.core.navigation.NavigationRuntime;
 import dev.traveler.core.render.PathDebugRenderModel;
+import dev.traveler.mc.v1_21_11.common.command.TravelerCommandModule;
+import dev.traveler.mc.v1_21_11.fabric.navigation.MinecraftClientNavigationAdapter;
+import dev.traveler.mc.v1_21_11.fabric.render.FabricPathDebugRenderer;
 import java.util.Objects;
+import java.util.function.Consumer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.minecraft.world.phys.Vec3;
 
 public final class FabricEventBootstrap {
-    private final FabricWorldRenderer renderer;
+    private final Consumer<WorldRenderContext> renderer;
     private final Runnable navigationUpdate;
     private long tickIndex;
 
-    FabricEventBootstrap(FabricWorldRenderer renderer) {
+    FabricEventBootstrap(Consumer<WorldRenderContext> renderer) {
         this(renderer, () -> {});
     }
 
-    FabricEventBootstrap(FabricWorldRenderer renderer, Runnable navigationUpdate) {
+    FabricEventBootstrap(Consumer<WorldRenderContext> renderer, Runnable navigationUpdate) {
         this.renderer = Objects.requireNonNull(renderer, "renderer");
         this.navigationUpdate = Objects.requireNonNull(navigationUpdate, "navigationUpdate");
     }
@@ -37,7 +37,7 @@ public final class FabricEventBootstrap {
                 commandModule.navigationState(),
                 MinecraftClientNavigationAdapter.currentClient(),
                 commandModule.debugState());
-        new FabricEventBootstrap(renderer, () -> updateClientWork(commandModule, navigationRuntime)).register();
+        new FabricEventBootstrap(renderer::render, () -> updateClientWork(commandModule, navigationRuntime)).register();
     }
 
     void emitClientTick() {
@@ -48,7 +48,7 @@ public final class FabricEventBootstrap {
     void renderWorld(WorldRenderContext context, WorldRenderEvent event) {
         TravelerClientEvents.WORLD_RENDER.dispatch(Objects.requireNonNull(event, "event"));
         navigationUpdate.run();
-        renderer.render(context);
+        renderer.accept(context);
     }
 
     private void register() {

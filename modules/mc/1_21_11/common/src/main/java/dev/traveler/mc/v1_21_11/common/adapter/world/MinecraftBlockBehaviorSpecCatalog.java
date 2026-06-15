@@ -1,18 +1,20 @@
 package dev.traveler.mc.v1_21_11.common.adapter.world;
 
-import java.util.List;
+import dev.traveler.core.layer.BlockBehaviorSpec;
+import dev.traveler.core.world.geometry.BlockShape;
+import dev.traveler.mc.v1_21_11.common.adapter.block.MinecraftBlockContext;
 
-public final class MinecraftBlockBehaviorSpecCatalog {
+final class MinecraftBlockBehaviorSpecCatalog {
     private MinecraftBlockBehaviorSpecCatalog() {}
 
-    public static List<MinecraftBlockBehaviorSpecResolver> defaultResolvers() {
-        return List.of(
-                new CarpetBlockSpecResolver(),
-                new LadderBlockSpecResolver(),
-                new VineBlockSpecResolver(),
-                new FenceBlockSpecResolver(),
-                new WallBlockSpecResolver(),
-                new SlabBlockSpecResolver(),
-                new StairBlockSpecResolver());
+    static BlockBehaviorSpec resolve(MinecraftBlockContext context, BlockShape shape) {
+        return CarpetBlockSpecResolver.resolve(context, shape)
+                .or(() -> LadderBlockSpecResolver.resolve(context, shape))
+                .or(() -> VineBlockSpecResolver.resolve(context, shape))
+                .or(() -> FenceBlockSpecResolver.resolve(context, shape))
+                .or(() -> WallBlockSpecResolver.resolve(context, shape))
+                .or(() -> SlabBlockSpecResolver.resolve(context, shape))
+                .or(() -> StairBlockSpecResolver.resolve(context, shape))
+                .orElseGet(BlockBehaviorSpec::automatic);
     }
 }

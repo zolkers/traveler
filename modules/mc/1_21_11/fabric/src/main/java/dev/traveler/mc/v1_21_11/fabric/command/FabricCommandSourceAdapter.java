@@ -1,8 +1,8 @@
 package dev.traveler.mc.v1_21_11.fabric.command;
 
 import dev.riege.buildmycommand.api.CommandSource;
-import dev.traveler.mc.v1_21_11.common.command.TravelerCommandBlockPosition;
-import dev.traveler.mc.v1_21_11.common.command.TravelerCommandPosition;
+import dev.traveler.core.command.TravelerCommandBlockPosition;
+import dev.traveler.core.command.TravelerCommandPosition;
 import java.util.Objects;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;

@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.riege.buildmycommand.api.CommandResult;
 import dev.riege.buildmycommand.api.CommandSource;
+import dev.traveler.core.command.TravelerCommandBlockPosition;
+import dev.traveler.core.command.TravelerCommandPosition;
 import dev.traveler.core.command.TravelerCommandRuntime;
 import dev.traveler.core.debug.snapshots.PathfinderDebugSnapshot;
 import dev.traveler.core.debug.PathfinderDebugState;

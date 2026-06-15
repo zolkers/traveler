@@ -7,9 +7,10 @@ import java.util.Optional;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.StairBlock;
 
-final class StairBlockSpecResolver implements MinecraftBlockBehaviorSpecResolver {
-    @Override
-    public Optional<BlockBehaviorSpec> resolve(MinecraftBlockContext context, BlockShape shape) {
+final class StairBlockSpecResolver {
+    private StairBlockSpecResolver() {}
+
+    static Optional<BlockBehaviorSpec> resolve(MinecraftBlockContext context, BlockShape shape) {
         if (!StairBlock.isStairs(context.state())) {
             return Optional.empty();
         }

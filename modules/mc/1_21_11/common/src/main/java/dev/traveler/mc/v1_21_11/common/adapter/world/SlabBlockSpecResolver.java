@@ -6,9 +6,10 @@ import dev.traveler.mc.v1_21_11.common.adapter.block.MinecraftBlockContext;
 import java.util.Optional;
 import net.minecraft.world.level.block.SlabBlock;
 
-final class SlabBlockSpecResolver implements MinecraftBlockBehaviorSpecResolver {
-    @Override
-    public Optional<BlockBehaviorSpec> resolve(MinecraftBlockContext context, BlockShape shape) {
+final class SlabBlockSpecResolver {
+    private SlabBlockSpecResolver() {}
+
+    static Optional<BlockBehaviorSpec> resolve(MinecraftBlockContext context, BlockShape shape) {
         if (!(context.state().getBlock() instanceof SlabBlock)) {
             return Optional.empty();
         }

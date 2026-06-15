@@ -16,42 +16,32 @@ public final class TravelerCommandModule {
     private final TravelerCommandRuntime runtime;
 
     public TravelerCommandModule() {
-        this(new PathfinderDebugState(), new TravelerNavigationState(), (WorldLayerSupplier) () -> null);
+        this(new TravelerCommandRuntime(new PathfinderDebugState(), new TravelerNavigationState(), () -> null));
     }
 
     TravelerCommandModule(WorldLayer worldLayer) {
-        this(
+        this(new TravelerCommandRuntime(
                 new PathfinderDebugState(),
                 new TravelerNavigationState(),
-                Objects.requireNonNull(worldLayer, "worldLayer"));
+                () -> Objects.requireNonNull(worldLayer, "worldLayer")));
     }
 
     public TravelerCommandModule(PathfinderDebugState debugState, Supplier<? extends BlockGetter> blockGetterSupplier) {
-        this(debugState, new TravelerNavigationState(), worldLayerSupplier(blockGetterSupplier));
+        this(new TravelerCommandRuntime(
+                debugState,
+                new TravelerNavigationState(),
+                worldLayerSupplier(blockGetterSupplier)));
     }
 
     public TravelerCommandModule(
             PathfinderDebugState debugState,
             TravelerNavigationState navigationState,
             Supplier<? extends BlockGetter> blockGetterSupplier) {
-        this(debugState, navigationState, worldLayerSupplier(blockGetterSupplier));
+        this(new TravelerCommandRuntime(debugState, navigationState, worldLayerSupplier(blockGetterSupplier)));
     }
 
-    private TravelerCommandModule(
-            PathfinderDebugState debugState,
-            TravelerNavigationState navigationState,
-            WorldLayer worldLayer) {
-        this(debugState, navigationState, () -> worldLayer);
-    }
-
-    private TravelerCommandModule(
-            PathfinderDebugState debugState,
-            TravelerNavigationState navigationState,
-            WorldLayerSupplier worldLayerSupplier) {
-        runtime = new TravelerCommandRuntime(
-                Objects.requireNonNull(debugState, "debugState"),
-                Objects.requireNonNull(navigationState, "navigationState"),
-                worldLayerSupplier);
+    private TravelerCommandModule(TravelerCommandRuntime runtime) {
+        this.runtime = Objects.requireNonNull(runtime, "runtime");
         PathTravelerCommandFeature pathFeature = new PathTravelerCommandFeature(runtime.pathCommands());
         NavigateTravelerCommandFeature navigateFeature = new NavigateTravelerCommandFeature(runtime.navigateCommands());
         DebugTravelerCommandFeature debugFeature = new DebugTravelerCommandFeature(runtime.debugCommands());
@@ -77,7 +67,7 @@ public final class TravelerCommandModule {
         runtime.drainPathJobs();
     }
 
-    private static WorldLayerSupplier worldLayerSupplier(Supplier<? extends BlockGetter> blockGetterSupplier) {
+    private static Supplier<WorldLayer> worldLayerSupplier(Supplier<? extends BlockGetter> blockGetterSupplier) {
         Supplier<? extends BlockGetter> blockGetterProvider =
                 Objects.requireNonNull(blockGetterSupplier, "blockGetterSupplier");
         return () -> worldLayerFor(blockGetterProvider.get());
@@ -89,7 +79,4 @@ public final class TravelerCommandModule {
         }
         return new MinecraftWorldSnapshot(blockGetter);
     }
-
-    @FunctionalInterface
-    private interface WorldLayerSupplier extends Supplier<WorldLayer> {}
 }

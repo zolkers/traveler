@@ -9,9 +9,10 @@ import java.util.Optional;
 import java.util.Set;
 import net.minecraft.world.level.block.VineBlock;
 
-final class VineBlockSpecResolver implements MinecraftBlockBehaviorSpecResolver {
-    @Override
-    public Optional<BlockBehaviorSpec> resolve(MinecraftBlockContext context, BlockShape shape) {
+final class VineBlockSpecResolver {
+    private VineBlockSpecResolver() {}
+
+    static Optional<BlockBehaviorSpec> resolve(MinecraftBlockContext context, BlockShape shape) {
         if (!(context.state().getBlock() instanceof VineBlock)) {
             return Optional.empty();
         }

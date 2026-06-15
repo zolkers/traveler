@@ -10,31 +10,18 @@ import dev.traveler.core.world.geometry.CollisionBox;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 public final class MinecraftSurfaceBlockAdapter {
     private final SurfaceBlockFactory surfaceBlockFactory;
-    private final List<MinecraftBlockBehaviorSpecResolver> behaviorSpecResolvers;
 
     public MinecraftSurfaceBlockAdapter() {
         this(new SurfaceBlockFactory());
     }
 
     public MinecraftSurfaceBlockAdapter(SurfaceBlockFactory surfaceBlockFactory) {
-        this(surfaceBlockFactory, MinecraftBlockBehaviorSpecCatalog.defaultResolvers());
-    }
-
-    public MinecraftSurfaceBlockAdapter(
-            SurfaceBlockFactory surfaceBlockFactory,
-            List<MinecraftBlockBehaviorSpecResolver> behaviorSpecResolvers) {
         this.surfaceBlockFactory = Objects.requireNonNull(surfaceBlockFactory, "surfaceBlockFactory");
-        this.behaviorSpecResolvers =
-                List.copyOf(Objects.requireNonNull(behaviorSpecResolvers, "behaviorSpecResolvers"));
-        if (this.behaviorSpecResolvers.isEmpty()) {
-            throw new IllegalArgumentException("behaviorSpecResolvers must not be empty.");
-        }
     }
 
     public SurfaceBlock surfaceBlock(MinecraftBlockContext context) {
@@ -67,13 +54,7 @@ public final class MinecraftSurfaceBlockAdapter {
     }
 
     private BlockBehaviorSpec behaviorSpecFor(MinecraftBlockContext context, BlockShape shape) {
-        for (MinecraftBlockBehaviorSpecResolver resolver : behaviorSpecResolvers) {
-            Optional<BlockBehaviorSpec> behaviorSpec = resolver.resolve(context, shape);
-            if (behaviorSpec.isPresent()) {
-                return behaviorSpec.orElseThrow();
-            }
-        }
-        return BlockBehaviorSpec.automatic();
+        return MinecraftBlockBehaviorSpecCatalog.resolve(context, shape);
     }
 
     private record BoxBounds(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {

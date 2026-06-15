@@ -1,6 +1,8 @@
 package dev.traveler.mc.v1_21_11.common.command;
 
 import dev.riege.buildmycommand.api.CommandContext;
+import dev.traveler.core.command.TravelerCommandBlockPosition;
+import dev.traveler.core.command.TravelerCommandPosition;
 import dev.traveler.core.command.TravelerCommandSource;
 import dev.traveler.core.world.block.BlockPosition;
 import java.util.Objects;

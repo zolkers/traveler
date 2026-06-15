@@ -7,9 +7,10 @@ import java.util.Optional;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.LadderBlock;
 
-final class LadderBlockSpecResolver implements MinecraftBlockBehaviorSpecResolver {
-    @Override
-    public Optional<BlockBehaviorSpec> resolve(MinecraftBlockContext context, BlockShape shape) {
+final class LadderBlockSpecResolver {
+    private LadderBlockSpecResolver() {}
+
+    static Optional<BlockBehaviorSpec> resolve(MinecraftBlockContext context, BlockShape shape) {
         if (!(context.state().getBlock() instanceof LadderBlock)) {
             return Optional.empty();
         }
