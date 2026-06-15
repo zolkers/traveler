@@ -271,6 +271,34 @@ class RouteSearchServiceTest {
     }
 
     @Test
+    void longDistanceFrontierFallbackTriesShorterReachableSurfaceWhenFarFrontierIsBlocked() {
+        Map<BlockPosition, SurfaceBlock> blocks = new HashMap<>();
+        blocks.put(new BlockPosition(0, 63, 0), fullBlock());
+        blocks.put(new BlockPosition(5, 63, 0), fullBlock());
+        blocks.put(new BlockPosition(10, 63, 0), fullBlock());
+        TestSurfaceWorldLayer world = new TestSurfaceWorldLayer(blocks);
+        RouteSearchComponents components = RouteSearchComponents.standard()
+                .withSurfaceGraphFactory((layer, start, goal, settings) -> node -> {
+                    if (goal.blockPosition().x() > 5 || node.sameSubcell(goal)) {
+                        return List.of();
+                    }
+                    return List.of(new Connection<>(node, goal, 0.25));
+                });
+        RouteSearchService service = new RouteSearchService(RouteSearchSettings.standardClient(), components);
+        LongDistanceRoutePlanner planner = new LongDistanceRoutePlanner(
+                new LongDistanceRouteSettings(4.0, 10.0, 10, 3.0, 0, 1, 0, 8, 16, 24, 160_000, 1));
+        RouteGoal frontierGoal = planner.plan(
+                        new BlockPosition(0, 64, 0),
+                        RouteGoal.xyz(1_000, 64, 0))
+                .activeGoal();
+
+        RouteSearchResult result = service.search(world, new BlockPosition(0, 64, 0), frontierGoal);
+
+        assertEquals(PathfinderStatus.FOUND, result.status());
+        assertEquals(new BlockPosition(5, 63, 0), result.route().orElseThrow().nodes().getLast().blockPosition());
+    }
+
+    @Test
     void findsRouteThatClimbsLadderColumn() {
         TestSurfaceWorldLayer world =
                 new TestSurfaceWorldLayer(climbColumn(new LadderBlockBehavior(HorizontalFacing.WEST)));

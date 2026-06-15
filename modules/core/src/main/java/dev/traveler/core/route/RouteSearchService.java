@@ -150,7 +150,7 @@ public final class RouteSearchService {
             RouteGoal goal,
             List<SurfaceNode> starts,
             List<SurfaceNode> goals) {
-        List<SurfaceNode> fallbackGoals = fallbackGoals(goal, goals, goal.preferredPosition(start));
+        List<SurfaceNode> fallbackGoals = fallbackGoals(goal, goals, start, goal.preferredPosition(start));
         List<PathfinderResult<SurfaceNode>> results = new ArrayList<>(starts.size() * fallbackGoals.size());
         for (SurfaceNode startNode : starts) {
             addSurfacePathResults(worldLayer, startNode, fallbackGoals, results);
@@ -250,13 +250,15 @@ public final class RouteSearchService {
     private static List<SurfaceNode> fallbackGoals(
             RouteGoal goal,
             List<SurfaceNode> goals,
+            BlockPosition start,
             BlockPosition preferredPosition) {
         if (goal.surfaceFallbackGoalLimit().isEmpty()) {
             return goals;
         }
         int limit = goal.surfaceFallbackGoalLimit().orElseThrow();
         return goals.stream()
-                .sorted(Comparator.comparingDouble(node -> centerDistance(node, preferredPosition)))
+                .sorted(Comparator.comparingDouble((SurfaceNode node) -> centerDistance(node, start))
+                        .thenComparingDouble(node -> centerDistance(node, preferredPosition)))
                 .limit(limit)
                 .toList();
     }
