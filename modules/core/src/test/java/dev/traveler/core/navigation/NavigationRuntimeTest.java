@@ -8,8 +8,11 @@ import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.navigation.camera.CameraAngles;
 import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.follow.PathProgress;
+import dev.traveler.core.navigation.recovery.MovementHealthSettings;
+import dev.traveler.core.navigation.recovery.MovementProgressMonitor;
 import dev.traveler.core.navigation.control.MovementIntent;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.route.RouteGoal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -100,6 +103,33 @@ class NavigationRuntimeTest {
         runtime.update(1_016_000_000L);
 
         assertFalse(debugState.latestNavigation().isPresent());
+    }
+
+    @Test
+    void requestsReplanWhenMovementIsCommandedButPositionDoesNotProgress() {
+        TravelerNavigationState navigationState = new TravelerNavigationState();
+        TestAgentPort agent = new TestAgentPort(new NavigationPoint(0.0, 64.0, 0.0), new CameraAngles(0.0, 0.0));
+        NavigationRuntime runtime = new NavigationRuntime(
+                navigationState,
+                agent,
+                NavigationController.standard(),
+                new PathfinderDebugState(),
+                new MovementProgressMonitor(new MovementHealthSettings(0.05, 0.15, 0.0)));
+        NavigationGoalPlan goalPlan = new NavigationGoalPlan(
+                RouteGoal.xz(0, 4),
+                RouteGoal.xz(0, 4),
+                true);
+        navigationState.start(NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(0.0, 64.0, 4.0))), "test", goalPlan);
+
+        runtime.update(1_000_000_000L);
+        runtime.update(1_100_000_000L);
+        runtime.update(1_200_000_000L);
+
+        assertTrue(navigationState.pendingReplanRequest().isPresent());
+        assertEquals(RouteGoal.xz(0, 4), navigationState.pendingReplanRequest().orElseThrow().goal());
+        assertTrue(agent.released);
     }
 
     private static final class TestAgentPort implements NavigationAgentPort {

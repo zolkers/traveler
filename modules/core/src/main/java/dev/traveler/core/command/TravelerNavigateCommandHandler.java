@@ -2,6 +2,7 @@ package dev.traveler.core.command;
 
 import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.navigation.TravelerNavigationState;
+import dev.traveler.core.route.RouteGoal;
 import dev.traveler.core.world.block.BlockPosition;
 import java.util.Objects;
 
@@ -21,6 +22,10 @@ public final class TravelerNavigateCommandHandler {
 
     public TravelerCommandResponse block(TravelerCommandSource source, BlockPosition target) {
         return jobService.queueNavigateBlock(source, target);
+    }
+
+    public TravelerCommandResponse goal(TravelerCommandSource source, RouteGoal goal) {
+        return jobService.queueNavigateGoal(source, goal);
     }
 
     public TravelerCommandResponse stop(TravelerCommandSource source) {

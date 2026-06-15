@@ -3,8 +3,10 @@ package dev.traveler.core.command;
 import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.follow.NavigationSegmentIntent;
+import dev.traveler.core.navigation.NavigationGoalPlan;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import dev.traveler.core.path.PathfinderStatus;
+import dev.traveler.core.route.longdistance.LongDistanceRoutePlan;
 import dev.traveler.core.route.RoutePath;
 import dev.traveler.core.route.RouteSearchResult;
 import dev.traveler.core.world.surface.SurfaceNode;
@@ -14,10 +16,20 @@ import java.util.Optional;
 
 public record TravelerPathSearchResult(
         RouteSearchResult searchResult,
-        String message) {
+        String message,
+        Optional<LongDistanceRoutePlan> routePlan) {
+    public TravelerPathSearchResult(RouteSearchResult searchResult, String message) {
+        this(searchResult, message, Optional.empty());
+    }
+
+    public TravelerPathSearchResult(RouteSearchResult searchResult, String message, LongDistanceRoutePlan routePlan) {
+        this(searchResult, message, Optional.of(Objects.requireNonNull(routePlan, "routePlan")));
+    }
+
     public TravelerPathSearchResult {
         Objects.requireNonNull(searchResult, "searchResult");
         Objects.requireNonNull(message, "message");
+        routePlan = Objects.requireNonNull(routePlan, "routePlan");
     }
 
     public void updateDebug(PathfinderDebugState debugState) {
@@ -46,6 +58,10 @@ public record TravelerPathSearchResult(
             return routePath;
         }
         return navigationPath(fallbackNavigationPoints());
+    }
+
+    public Optional<NavigationGoalPlan> navigationGoalPlan() {
+        return routePlan.map(LongDistanceRoutePlan::navigationGoalPlan);
     }
 
     public boolean alreadyAtTarget() {

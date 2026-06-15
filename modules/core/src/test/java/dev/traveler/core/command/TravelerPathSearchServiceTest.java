@@ -36,11 +36,25 @@ class TravelerPathSearchServiceTest {
         TravelerCommandSource source = new TestSource(new BlockPosition(0, 64, 0));
 
         TravelerPathSearchSubmission submission =
-                service.blockPathSubmission(source, new BlockPosition(400, 63, 400), "path:block");
+                service.blockPathSubmission(source, new BlockPosition(0, 10_000, 0), "path:block");
 
         assertTrue(submission.immediateResult().isPresent());
         assertTrue(submission.immediateResult().orElseThrow().message().contains("search-too-large"));
         assertFalse(layer.captureStarted);
+    }
+
+    @Test
+    void clipsLongDistanceSnapshotSearchesInsteadOfRejectingTheWholeGoal() {
+        CapturableLayer layer = new CapturableLayer(1_000L);
+        TravelerPathSearchService service = new TravelerPathSearchService(() -> layer);
+        TravelerCommandSource source = new TestSource(new BlockPosition(0, 64, 0));
+
+        TravelerPathSearchSubmission submission =
+                service.blockPathSubmission(source, new BlockPosition(10_000, 64, 10_000), "path:block");
+
+        assertTrue(submission.snapshotSearch().isPresent());
+        assertTrue(layer.captureStarted);
+        assertEquals(new BlockPosition(72, 64, 72), layer.target);
     }
 
     private static final class CapturableLayer implements SnapshotCapturableWorldLayer {

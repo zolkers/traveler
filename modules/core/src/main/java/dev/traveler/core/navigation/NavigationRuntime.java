@@ -1,6 +1,9 @@
 package dev.traveler.core.navigation;
 
 import dev.traveler.core.debug.PathfinderDebugState;
+import dev.traveler.core.navigation.recovery.MovementFailure;
+import dev.traveler.core.navigation.recovery.MovementProgressMonitor;
+import dev.traveler.core.settings.TravelerSettings;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -12,6 +15,7 @@ public final class NavigationRuntime {
     private final NavigationAgentPort agentPort;
     private final NavigationController controller;
     private final PathfinderDebugState debugState;
+    private final MovementProgressMonitor progressMonitor;
     private NavigationControllerState controllerState = NavigationControllerState.start();
     private NavigationSession activeSession;
     private long previousNanos = -1L;
@@ -40,10 +44,25 @@ public final class NavigationRuntime {
             NavigationAgentPort agentPort,
             NavigationController controller,
             PathfinderDebugState debugState) {
+        this(
+                navigationState,
+                agentPort,
+                controller,
+                debugState,
+                new MovementProgressMonitor(TravelerSettings.standard().movementHealthSettings()));
+    }
+
+    NavigationRuntime(
+            TravelerNavigationState navigationState,
+            NavigationAgentPort agentPort,
+            NavigationController controller,
+            PathfinderDebugState debugState,
+            MovementProgressMonitor progressMonitor) {
         this.navigationState = Objects.requireNonNull(navigationState, "navigationState");
         this.agentPort = Objects.requireNonNull(agentPort, "agentPort");
         this.controller = Objects.requireNonNull(controller, "controller");
         this.debugState = Objects.requireNonNull(debugState, "debugState");
+        this.progressMonitor = Objects.requireNonNull(progressMonitor, "progressMonitor");
     }
 
     public void update(long nowNanos) {
@@ -64,15 +83,45 @@ public final class NavigationRuntime {
             releaseIfNeeded();
             return;
         }
-        NavigationControlFrame frame = controller.update(session.path(), input.orElseThrow(), controllerState);
-        debugState.updateNavigation(input.orElseThrow(), frame);
+        NavigationFrameInput frameInput = input.orElseThrow();
+        NavigationControlFrame frame = controller.update(session.path(), frameInput, controllerState);
+        debugState.updateNavigation(frameInput, frame);
         controllerState = frame.state();
-        applyFrame(frame);
+        if (movementFailure(session, frameInput, frame).isPresent()) {
+            return;
+        }
+        applyFrame(session, frame);
     }
 
-    private void applyFrame(NavigationControlFrame frame) {
+    private Optional<MovementFailure> movementFailure(
+            NavigationSession session,
+            NavigationFrameInput input,
+            NavigationControlFrame frame) {
         if (frame.completed()) {
-            navigationState.stop("navigation completed");
+            return Optional.empty();
+        }
+        Optional<MovementFailure> failure = progressMonitor.update(input, frame.intent());
+        failure.ifPresent(value -> handleMovementFailure(session, value));
+        return failure;
+    }
+
+    private void handleMovementFailure(NavigationSession session, MovementFailure failure) {
+        String message = "navigation recovery requested reason=" + failure.kind();
+        session.goalPlan().ifPresentOrElse(
+                goalPlan -> navigationState.requestReplan(goalPlan, message),
+                () -> navigationState.stop("navigation stopped reason=" + failure.kind()));
+        releaseIfNeeded();
+    }
+
+    private void applyFrame(NavigationSession session, NavigationControlFrame frame) {
+        if (frame.completed()) {
+            if (session.goalPlan().filter(NavigationGoalPlan::needsReplanAfterCompletion).isPresent()) {
+                navigationState.requestReplan(
+                        session.goalPlan().orElseThrow(),
+                        "navigation segment completed; replan requested");
+            } else {
+                navigationState.stop("navigation completed");
+            }
             releaseIfNeeded();
             return;
         }
@@ -86,6 +135,7 @@ public final class NavigationRuntime {
         }
         activeSession = session;
         controllerState = NavigationControllerState.start();
+        progressMonitor.reset();
     }
 
     private void releaseIfNeeded() {
@@ -95,6 +145,7 @@ public final class NavigationRuntime {
         agentPort.release();
         debugState.clearNavigation();
         controllerState = NavigationControllerState.start();
+        progressMonitor.reset();
         released = true;
     }
 

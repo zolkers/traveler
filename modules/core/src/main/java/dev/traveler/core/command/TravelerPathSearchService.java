@@ -7,10 +7,13 @@ import dev.traveler.core.layer.SnapshotCaptureSession;
 import dev.traveler.core.layer.SnapshotCapturableWorldLayer;
 import dev.traveler.core.layer.WorldLayer;
 import dev.traveler.core.path.PathfinderStatus;
+import dev.traveler.core.route.RouteGoal;
 import dev.traveler.core.route.RouteSearchDiagnostics;
 import dev.traveler.core.route.RouteSearchResult;
 import dev.traveler.core.route.RouteSearchService;
 import dev.traveler.core.route.RouteSearchSettings;
+import dev.traveler.core.route.longdistance.LongDistanceRoutePlan;
+import dev.traveler.core.route.longdistance.LongDistanceRoutePlanner;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.movement.FluidHandling;
 import java.util.Objects;
@@ -23,6 +26,7 @@ final class TravelerPathSearchService {
     private static final long MAX_SNAPSHOT_BLOCKS = 262_144L;
     private static final RouteSearchSettings SEARCH_SETTINGS = RouteSearchSettings.standardClient();
     private static final RouteSearchService ROUTE_SEARCH_SERVICE = new RouteSearchService(SEARCH_SETTINGS);
+    private static final LongDistanceRoutePlanner LONG_DISTANCE_PLANNER = LongDistanceRoutePlanner.standard();
 
     private final Supplier<? extends WorldLayer> worldLayerSupplier;
 
@@ -44,17 +48,36 @@ final class TravelerPathSearchService {
             TravelerCommandSource source,
             BlockPosition target,
             String purpose) {
-        BlockPosition start = startPosition(source, target);
+        return goalPathSubmission(source, RouteGoal.blockTarget(target), purpose);
+    }
+
+    TravelerPathSearchSubmission goalPathSubmission(
+            TravelerCommandSource source,
+            RouteGoal goal,
+            String purpose) {
+        RouteGoal safeGoal = Objects.requireNonNull(goal, "goal");
+        BlockPosition start = startPosition(source, safeGoal);
         WorldLayer worldLayer = worldLayerSupplier.get();
-        Optional<TravelerPathSearchResult> rejection = oversizedSnapshot(worldLayer, start, target);
+        LongDistanceRoutePlan plan = LONG_DISTANCE_PLANNER.plan(start, safeGoal);
+        RouteGoal activeGoal = plan.activeGoal();
+        BlockPosition activeBlockGoal = planningBlockGoal(worldLayer, activeGoal, start);
+        Optional<TravelerPathSearchResult> rejection = oversizedSnapshot(worldLayer, start, activeBlockGoal);
         if (rejection.isPresent()) {
             return TravelerPathSearchSubmission.immediate(rejection.orElseThrow());
         }
         if (worldLayer instanceof SnapshotCapturableWorldLayer snapshotWorldLayer) {
             return TravelerPathSearchSubmission.snapshot(
-                    new SnapshotBlockSearch(snapshotWorldLayer, start, target, purpose));
+                    new SnapshotBlockSearch(snapshotWorldLayer, start, activeGoal, activeBlockGoal, plan, purpose));
         }
-        return TravelerPathSearchSubmission.queued(pathJob(worldLayer, start, target, purpose));
+        return TravelerPathSearchSubmission.queued(
+                pathJob(worldLayer, start, activeGoal, activeBlockGoal, plan, purpose));
+    }
+
+    private static BlockPosition planningBlockGoal(WorldLayer worldLayer, RouteGoal goal, BlockPosition start) {
+        if (worldLayer instanceof SnapshotCapturableWorldLayer) {
+            return goal.blockGoal(null, start);
+        }
+        return goal.blockGoal(worldLayer, start);
     }
 
     private static Optional<TravelerPathSearchResult> oversizedSnapshot(
@@ -85,42 +108,60 @@ final class TravelerPathSearchService {
     private static PathJob<TravelerPathSearchResult> pathJob(
             WorldLayer worldLayer,
             BlockPosition start,
-            BlockPosition target,
+            RouteGoal goal,
+            BlockPosition activeBlockGoal,
+            LongDistanceRoutePlan plan,
             String purpose) {
         return new PathJob<>(
                 purpose,
-                () -> searchBlockPath(worldLayer, start, target),
+                () -> searchGoalPath(worldLayer, start, goal, activeBlockGoal, plan),
                 TravelerPathSearchService::jobState);
     }
 
-    private static TravelerPathSearchResult searchBlockPath(
+    private static TravelerPathSearchResult searchGoalPath(
             WorldLayer worldLayer,
             BlockPosition start,
-            BlockPosition target) {
-        RouteSearchResult result = ROUTE_SEARCH_SERVICE.search(worldLayer, start, target);
-        return new TravelerPathSearchResult(result, blockMessage(worldLayer, target, result));
+            RouteGoal goal,
+            BlockPosition activeBlockGoal,
+            LongDistanceRoutePlan plan) {
+        RouteSearchResult result = ROUTE_SEARCH_SERVICE.search(worldLayer, start, goal);
+        return new TravelerPathSearchResult(
+                result,
+                blockMessage(worldLayer, goal, activeBlockGoal, plan, result),
+                plan);
     }
 
-    private static BlockPosition startPosition(TravelerCommandSource source, BlockPosition target) {
+    private static BlockPosition startPosition(TravelerCommandSource source, RouteGoal goal) {
         BlockPosition sourcePosition = Objects.requireNonNull(source, "source").blockPosition();
         if (sourcePosition == null) {
-            return target.above();
+            return goal.requestedTarget()
+                    .map(BlockPosition::above)
+                    .orElseGet(() -> goal.preferredPosition(new BlockPosition(0, 64, 0)));
         }
         return sourcePosition;
     }
 
-    private static String blockMessage(WorldLayer worldLayer, BlockPosition target, RouteSearchResult result) {
+    private static String blockMessage(
+            WorldLayer worldLayer,
+            RouteGoal goal,
+            BlockPosition activeBlockGoal,
+            LongDistanceRoutePlan plan,
+            RouteSearchResult result) {
+        String longDistance = plan.finalSegment()
+                ? ""
+                : " longDistance=segment finalGoal=" + plan.requestedGoal().displayName();
         if (worldLayer == null) {
-            return "path block "
-                    + format(target)
+            return "path "
+                    + goalLabel(goal, activeBlockGoal)
                     + " status="
                     + result.status()
                     + " reason="
-                    + result.diagnostics().reason();
+                    + result.diagnostics().reason()
+                    + longDistance;
         }
-        BlockClassification classification = worldLayer.classify(target);
-        return "path block "
-                + format(target)
+        BlockClassification classification = worldLayer.classify(activeBlockGoal);
+        return "path "
+                + goalLabel(goal, activeBlockGoal)
                 + " status="
                 + result.status()
                 + " passability="
@@ -130,7 +171,14 @@ final class TravelerPathSearchService {
                 + " reason="
                 + result.diagnostics().reason()
                 + " routeSteps="
-                + result.route().map(route -> route.steps().size()).orElse(0);
+                + result.route().map(route -> route.steps().size()).orElse(0)
+                + longDistance;
+    }
+
+    private static String goalLabel(RouteGoal goal, BlockPosition activeBlockGoal) {
+        return goal.requestedTarget()
+                .map(target -> "block " + format(target))
+                .orElse(goal.displayName() + " active=" + format(activeBlockGoal));
     }
 
     private static String format(BlockPosition position) {
@@ -164,18 +212,24 @@ final class TravelerPathSearchService {
     static final class SnapshotBlockSearch {
         private final SnapshotCaptureSession captureSession;
         private final BlockPosition start;
+        private final RouteGoal goal;
         private final BlockPosition target;
+        private final LongDistanceRoutePlan plan;
         private final String purpose;
 
         private SnapshotBlockSearch(
                 SnapshotCapturableWorldLayer worldLayer,
                 BlockPosition start,
+                RouteGoal goal,
                 BlockPosition target,
+                LongDistanceRoutePlan plan,
                 String purpose) {
             this.captureSession = worldLayer.captureSession(
                     start, target, SEARCH_SETTINGS.horizontalMargin(), SEARCH_SETTINGS.verticalMargin());
             this.start = Objects.requireNonNull(start, "start");
+            this.goal = Objects.requireNonNull(goal, "goal");
             this.target = Objects.requireNonNull(target, "target");
+            this.plan = Objects.requireNonNull(plan, "plan");
             this.purpose = Objects.requireNonNull(purpose, "purpose");
         }
 
@@ -194,7 +248,7 @@ final class TravelerPathSearchService {
         PathJob<TravelerPathSearchResult> pathJob() {
             return new PathJob<>(
                     purpose,
-                    () -> searchBlockPath(captureSession.snapshot(), start, target),
+                    () -> searchGoalPath(captureSession.snapshot(), start, goal, target, plan),
                     TravelerPathSearchService::jobState);
         }
     }

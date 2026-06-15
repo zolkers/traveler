@@ -5,8 +5,11 @@ import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.job.PathJobExecutor;
 import dev.traveler.core.job.PathJobHandle;
 import dev.traveler.core.job.PathJobState;
+import dev.traveler.core.navigation.NavigationGoalPlan;
+import dev.traveler.core.navigation.NavigationReplanRequest;
 import dev.traveler.core.navigation.TravelerNavigationState;
 import dev.traveler.core.navigation.follow.NavigationPath;
+import dev.traveler.core.route.RouteGoal;
 import dev.traveler.core.world.block.BlockPosition;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -26,6 +29,7 @@ final class TravelerPathJobService implements AutoCloseable {
     private final PathJobExecutor executor;
     private final List<PendingPathJob> pendingJobs = new ArrayList<>();
     private final List<PendingSnapshotJob> pendingSnapshots = new ArrayList<>();
+    private TravelerCommandSource lastNavigationSource;
     private long nextSnapshotId = 1L;
 
     TravelerPathJobService(
@@ -47,18 +51,27 @@ final class TravelerPathJobService implements AutoCloseable {
     }
 
     TravelerCommandResponse queuePathBlock(TravelerCommandSource source, BlockPosition target) {
-        QueueOutcome outcome = submit(source, target, PATH_PURPOSE, this::completePath);
+        return queuePathGoal(source, RouteGoal.blockTarget(target));
+    }
+
+    TravelerCommandResponse queuePathGoal(TravelerCommandSource source, RouteGoal goal) {
+        QueueOutcome outcome = submit(source, goal, PATH_PURPOSE, this::completePath);
         if (outcome.immediateResult().isPresent()) {
             TravelerPathSearchResult result = outcome.immediateResult().orElseThrow();
             result.updateDebug(debugState);
             return TravelerCommandResponse.reply(source, result.message());
         }
         return TravelerCommandResponse.reply(
-                source, "path queued id=" + outcome.queuedId().orElseThrow() + " target=" + format(target));
+                source, "path queued id=" + outcome.queuedId().orElseThrow() + " goal=" + goal.displayName());
     }
 
     TravelerCommandResponse queueNavigateBlock(TravelerCommandSource source, BlockPosition target) {
-        QueueOutcome outcome = submit(source, target, NAVIGATE_PURPOSE, this::completeNavigation);
+        return queueNavigateGoal(source, RouteGoal.blockTarget(target));
+    }
+
+    TravelerCommandResponse queueNavigateGoal(TravelerCommandSource source, RouteGoal goal) {
+        lastNavigationSource = Objects.requireNonNull(source, "source");
+        QueueOutcome outcome = submit(source, goal, NAVIGATE_PURPOSE, this::completeNavigation);
         if (outcome.immediateResult().isPresent()) {
             TravelerPathSearchResult result = outcome.immediateResult().orElseThrow();
             result.updateDebug(debugState);
@@ -67,10 +80,11 @@ final class TravelerPathJobService implements AutoCloseable {
             return TravelerCommandResponse.reply(source, message);
         }
         return TravelerCommandResponse.reply(
-                source, "navigate queued id=" + outcome.queuedId().orElseThrow() + " target=" + format(target));
+                source, "navigate queued id=" + outcome.queuedId().orElseThrow() + " goal=" + goal.displayName());
     }
 
     void drainCompleted() {
+        queueNavigationReplanIfRequested();
         advanceSnapshotCaptures();
         completedJobs().forEach(PendingPathJob::complete);
     }
@@ -82,11 +96,11 @@ final class TravelerPathJobService implements AutoCloseable {
 
     private synchronized QueueOutcome submit(
             TravelerCommandSource source,
-            BlockPosition target,
+            RouteGoal goal,
             String purpose,
             PathCompletion completion) {
         cancelActiveJob(purpose);
-        TravelerPathSearchSubmission submission = searchService.blockPathSubmission(source, target, purpose);
+        TravelerPathSearchSubmission submission = searchService.goalPathSubmission(source, goal, purpose);
         if (submission.immediateResult().isPresent()) {
             return QueueOutcome.immediate(submission.immediateResult().orElseThrow());
         }
@@ -98,6 +112,30 @@ final class TravelerPathJobService implements AutoCloseable {
         PendingPathJob pending = new PendingPathJob(handle, source::reply, completion);
         pendingJobs.add(pending);
         return QueueOutcome.queued(pending.id());
+    }
+
+    private void queueNavigationReplanIfRequested() {
+        Optional<NavigationReplanRequest> request = navigationState.pendingReplanRequest();
+        if (request.isEmpty() || lastNavigationSource == null || hasActiveNavigationSearch()) {
+            return;
+        }
+        NavigationReplanRequest replan = navigationState.consumeReplanRequest().orElseThrow();
+        QueueOutcome outcome = submit(lastNavigationSource, replan.goal(), NAVIGATE_PURPOSE, this::completeNavigation);
+        if (outcome.immediateResult().isPresent()) {
+            completeNavigation(outcome.immediateResult().orElseThrow(), lastNavigationSource::reply);
+            return;
+        }
+        lastNavigationSource.reply("navigate replan queued id="
+                + outcome.queuedId().orElseThrow()
+                + " goal="
+                + replan.goal().displayName()
+                + " reason="
+                + replan.reason());
+    }
+
+    private synchronized boolean hasActiveNavigationSearch() {
+        return activeHandle(NAVIGATE_PURPOSE).isPresent()
+                || pendingSnapshots.stream().anyMatch(snapshot -> snapshot.purpose().equals(NAVIGATE_PURPOSE));
     }
 
     private synchronized List<PendingPathJob> completedJobs() {
@@ -163,7 +201,12 @@ final class TravelerPathJobService implements AutoCloseable {
             return;
         }
         String message = result.message().replaceFirst("^path", "navigate") + " | " + pathSummary();
-        navigationState.start(path.orElseThrow(), message);
+        Optional<NavigationGoalPlan> goalPlan = result.navigationGoalPlan();
+        if (goalPlan.isPresent()) {
+            navigationState.start(path.orElseThrow(), message, goalPlan.orElseThrow());
+        } else {
+            navigationState.start(path.orElseThrow(), message);
+        }
         feedback.reply(message);
     }
 
@@ -216,10 +259,6 @@ final class TravelerPathJobService implements AutoCloseable {
                 .toList();
         cancelled.forEach(PendingSnapshotJob::cancel);
         pendingSnapshots.removeAll(cancelled);
-    }
-
-    private static String format(BlockPosition position) {
-        return position.x() + "," + position.y() + "," + position.z();
     }
 
     @FunctionalInterface

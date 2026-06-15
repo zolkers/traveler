@@ -69,7 +69,7 @@ public final class RouteSearchService {
                 resolver,
                 start,
                 settings.movementProfile()));
-        List<SurfaceNode> goalNodes = goal.surfaceGoals(resolver);
+        List<SurfaceNode> goalNodes = goal.surfaceGoals(resolver, start);
         if (startNodes.isEmpty()) {
             return surfaceRejected(goal, goalNodes.size(), RouteSearchDiagnostics::noStartSurface);
         }
@@ -97,7 +97,7 @@ public final class RouteSearchService {
     }
 
     private RouteSearchResult blockSearch(WorldLayer worldLayer, BlockPosition start, RouteGoal goal) {
-        BlockPosition blockGoal = goal.blockGoal(worldLayer);
+        BlockPosition blockGoal = goal.blockGoal(worldLayer, start);
         PathfinderResult<BlockPosition> result = findPath(worldLayer, start, blockGoal);
         RouteSearchDiagnostics diagnostics = blockDiagnostics(worldLayer, result);
         return new RouteSearchResult(goal, result, Optional.empty(), Optional.empty(), diagnostics);

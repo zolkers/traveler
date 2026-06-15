@@ -25,6 +25,30 @@ final class NavigateTravelerCommandFeature {
                 handler.block(source, TravelerCommandTargets.blockPosition(context)));
     }
 
+    @SubRoute("navigate xyz <x:Integer> <y:Integer> <z:Integer>")
+    @Description("Starts Traveler navigation toward an exact XYZ goal")
+    CommandResult navigateXyz(@RouteCtx CommandContext context) {
+        return TravelerCommandReplies.result(handler.goal(
+                BuildMyCommandTravelerSource.from(context),
+                TravelerCommandTargets.xyzGoal(context)));
+    }
+
+    @SubRoute("navigate xz <x:Integer> <z:Integer>")
+    @Description("Starts Traveler navigation toward an XZ goal")
+    CommandResult navigateXz(@RouteCtx CommandContext context) {
+        return TravelerCommandReplies.result(handler.goal(
+                BuildMyCommandTravelerSource.from(context),
+                TravelerCommandTargets.xzGoal(context)));
+    }
+
+    @SubRoute("navigate y <y:Integer>")
+    @Description("Starts Traveler navigation toward a Y-level goal")
+    CommandResult navigateY(@RouteCtx CommandContext context) {
+        return TravelerCommandReplies.result(handler.goal(
+                BuildMyCommandTravelerSource.from(context),
+                TravelerCommandTargets.yGoal(context)));
+    }
+
     @SubRoute("navigate stop")
     @Description("Stops active Traveler client navigation")
     CommandResult navigateStop(@RouteCtx CommandContext context) {

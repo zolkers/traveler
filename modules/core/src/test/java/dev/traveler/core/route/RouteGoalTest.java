@@ -1,6 +1,7 @@
 package dev.traveler.core.route;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.traveler.core.layer.BlockClassification;
 import dev.traveler.core.layer.SurfaceBlock;
@@ -86,5 +87,23 @@ class RouteGoalTest {
         WorldLayer world = position -> new BlockClassification(BlockPassability.PASSABLE, FluidHandling.AVOID);
 
         assertEquals(target, goal.blockGoal(world));
+    }
+
+    @Test
+    void xzGoalKeepsCurrentHeightAndAcceptsAnyMatchingHeight() {
+        RouteGoal goal = RouteGoal.xz(8, -4);
+        BlockPosition start = new BlockPosition(2, 64, 3);
+
+        assertEquals(new BlockPosition(8, 64, -4), goal.blockGoal(null, start));
+        assertTrue(goal.isSatisfiedBy(new BlockPosition(8, -20, -4)));
+    }
+
+    @Test
+    void yGoalKeepsCurrentColumnAndAcceptsAnyMatchingHeight() {
+        RouteGoal goal = RouteGoal.yLevel(90);
+        BlockPosition start = new BlockPosition(2, 64, 3);
+
+        assertEquals(new BlockPosition(2, 90, 3), goal.blockGoal(null, start));
+        assertTrue(goal.isSatisfiedBy(new BlockPosition(-30, 90, 18)));
     }
 }

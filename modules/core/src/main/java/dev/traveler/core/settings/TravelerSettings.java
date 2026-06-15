@@ -6,7 +6,9 @@ import dev.traveler.core.navigation.control.ControlProjectionSettings;
 import dev.traveler.core.navigation.follow.PathFollowSettings;
 import dev.traveler.core.navigation.locomotion.LocomotionSequencerSettings;
 import dev.traveler.core.navigation.plan.MovementVectorSettings;
+import dev.traveler.core.navigation.recovery.MovementHealthSettings;
 import dev.traveler.core.navigation.steering.PathSteeringSettings;
+import dev.traveler.core.route.longdistance.LongDistanceRouteSettings;
 import dev.traveler.core.route.RouteSearchSettings;
 import dev.traveler.core.world.movement.EntityDimensions;
 import dev.traveler.core.world.movement.MovementCapabilities;
@@ -22,6 +24,15 @@ public final class TravelerSettings {
             positiveInteger("route.horizontal-margin", 24);
     public static final Setting<Integer> ROUTE_VERTICAL_MARGIN =
             positiveInteger("route.vertical-margin", 8);
+
+    public static final Setting<Double> LONG_DISTANCE_DIRECT_HORIZONTAL_DISTANCE =
+            positiveDouble("long-distance.direct-horizontal-distance", 96.0);
+    public static final Setting<Double> LONG_DISTANCE_SEGMENT_HORIZONTAL_DISTANCE =
+            positiveDouble("long-distance.segment-horizontal-distance", 128.0);
+    public static final Setting<Integer> LONG_DISTANCE_MAX_SEGMENT_AXIS_DELTA =
+            positiveInteger("long-distance.max-segment-axis-delta", 72);
+    public static final Setting<Double> LONG_DISTANCE_REPLAN_DISTANCE =
+            positiveDouble("long-distance.replan-distance", 12.0);
 
     public static final Setting<Double> ENTITY_WIDTH =
             positiveDouble("entity.width", 0.6);
@@ -63,6 +74,13 @@ public final class TravelerSettings {
             positiveDouble("navigation.arrival-distance", 2.5);
     public static final Setting<Double> NAVIGATION_MINIMUM_SPEED_SCALE =
             boundedDouble("navigation.minimum-speed-scale", 0.35, 0.0, 1.0);
+
+    public static final Setting<Double> MOVEMENT_HEALTH_MINIMUM_PROGRESS_DISTANCE =
+            nonNegativeDouble("movement-health.minimum-progress-distance", 0.05);
+    public static final Setting<Double> MOVEMENT_HEALTH_STUCK_AFTER_SECONDS =
+            positiveDouble("movement-health.stuck-after-seconds", 1.5);
+    public static final Setting<Double> MOVEMENT_HEALTH_RECOVERY_COOLDOWN_SECONDS =
+            nonNegativeDouble("movement-health.recovery-cooldown-seconds", 1.0);
 
     public static final Setting<Double> STEERING_PREDICTION_SECONDS =
             nonNegativeDouble("steering.prediction-seconds", 0.25);
@@ -154,6 +172,14 @@ public final class TravelerSettings {
                 movementProfile());
     }
 
+    public LongDistanceRouteSettings longDistanceRouteSettings() {
+        return new LongDistanceRouteSettings(
+                get(LONG_DISTANCE_DIRECT_HORIZONTAL_DISTANCE),
+                get(LONG_DISTANCE_SEGMENT_HORIZONTAL_DISTANCE),
+                get(LONG_DISTANCE_MAX_SEGMENT_AXIS_DELTA),
+                get(LONG_DISTANCE_REPLAN_DISTANCE));
+    }
+
     public MovementProfile movementProfile() {
         return new MovementProfile(
                 entityDimensions(),
@@ -199,6 +225,13 @@ public final class TravelerSettings {
                 get(STEERING_LATERAL_CORRECTION_GAIN),
                 get(STEERING_MAX_CORRECTION_DISTANCE),
                 get(STEERING_CLEARANCE_WARNING_LATERAL_ERROR));
+    }
+
+    public MovementHealthSettings movementHealthSettings() {
+        return new MovementHealthSettings(
+                get(MOVEMENT_HEALTH_MINIMUM_PROGRESS_DISTANCE),
+                get(MOVEMENT_HEALTH_STUCK_AFTER_SECONDS),
+                get(MOVEMENT_HEALTH_RECOVERY_COOLDOWN_SECONDS));
     }
 
     public MovementVectorSettings movementVectorSettings() {
