@@ -9,6 +9,7 @@ import static dev.traveler.core.world.surface.FakeSurfaceWorldLayer.waterloggedN
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.traveler.core.graph.Connection;
@@ -99,6 +100,22 @@ class SurfaceTraversalGraphTest {
 
         assertNotNull(connection);
         assertEquals(63.5, connection.to().floorY());
+    }
+
+    @Test
+    void doesNotMaterializeSurfaceNodesOutsideSearchBounds() {
+        BlockPosition startBlock = new BlockPosition(0, 63, 0);
+        BlockPosition goalBlock = new BlockPosition(1, 63, 0);
+        BlockPosition outsideBlock = new BlockPosition(3, 63, 0);
+        SurfaceNode start = new SurfaceNode(startBlock, 1, 1, 64.0);
+        SurfaceNode goal = new SurfaceNode(goalBlock, 0, 1, 64.0);
+        FakeSurfaceWorldLayer world = new FakeSurfaceWorldLayer(Map.of(
+                startBlock, fullBlock(),
+                goalBlock, fullBlock(),
+                outsideBlock, fullBlock()));
+        SurfaceTraversalGraph graph = new SurfaceTraversalGraph(world, start, goal, PLAYER, 1, 1);
+
+        assertNull(graph.surfaceNodeAt(6, 63, 0));
     }
 
     @Test

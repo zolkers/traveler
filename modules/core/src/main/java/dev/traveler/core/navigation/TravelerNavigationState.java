@@ -42,12 +42,25 @@ public final class TravelerNavigationState {
         latestMessage = message;
     }
 
+    public synchronized void requestLookaheadReplan(NavigationGoalPlan goalPlan, String message) {
+        NavigationGoalPlan plan = Objects.requireNonNull(goalPlan, "goalPlan");
+        if (pendingReplanRequest != null) {
+            return;
+        }
+        pendingReplanRequest = new NavigationReplanRequest(plan.requestedGoal(), message, Instant.now(), true);
+        latestMessage = message;
+    }
+
     public synchronized Optional<NavigationSession> activeSession() {
         return Optional.ofNullable(activeSession);
     }
 
     public synchronized Optional<NavigationReplanRequest> pendingReplanRequest() {
         return Optional.ofNullable(pendingReplanRequest);
+    }
+
+    public synchronized boolean hasPendingReplanRequest() {
+        return pendingReplanRequest != null;
     }
 
     public synchronized Optional<NavigationReplanRequest> consumeReplanRequest() {

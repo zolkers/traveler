@@ -120,9 +120,12 @@ final class TravelerPathJobService implements AutoCloseable {
             return;
         }
         NavigationReplanRequest replan = navigationState.consumeReplanRequest().orElseThrow();
-        QueueOutcome outcome = submit(lastNavigationSource, replan.goal(), NAVIGATE_PURPOSE, this::completeNavigation);
+        PathCompletion completion = replan.preserveActiveSession()
+                ? this::completeNavigationLookahead
+                : this::completeNavigation;
+        QueueOutcome outcome = submit(lastNavigationSource, replan.goal(), NAVIGATE_PURPOSE, completion);
         if (outcome.immediateResult().isPresent()) {
-            completeNavigation(outcome.immediateResult().orElseThrow(), lastNavigationSource::reply);
+            completion.apply(outcome.immediateResult().orElseThrow(), lastNavigationSource::reply);
             return;
         }
         lastNavigationSource.reply("navigate replan queued id="
@@ -208,6 +211,19 @@ final class TravelerPathJobService implements AutoCloseable {
             navigationState.start(path.orElseThrow(), message);
         }
         feedback.reply(message);
+    }
+
+    private void completeNavigationLookahead(TravelerPathSearchResult result, CommandFeedback feedback) {
+        if (result.navigationPath().isPresent()) {
+            completeNavigation(result, feedback);
+            return;
+        }
+        if (navigationState.activeSession().isEmpty()) {
+            completeEmptyNavigation(result, feedback);
+            return;
+        }
+        result.updateDebug(debugState);
+        feedback.reply(navigationFailureMessage(result) + " | keeping current segment");
     }
 
     private void completeEmptyNavigation(TravelerPathSearchResult result, CommandFeedback feedback) {

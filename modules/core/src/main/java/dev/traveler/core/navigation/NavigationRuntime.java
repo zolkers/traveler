@@ -90,6 +90,7 @@ public final class NavigationRuntime {
         if (movementFailure(session, frameInput, frame).isPresent()) {
             return;
         }
+        requestLookaheadReplanIfNeeded(session, frameInput, frame);
         applyFrame(session, frame);
     }
 
@@ -127,6 +128,24 @@ public final class NavigationRuntime {
         }
         agentPort.apply(frame);
         released = false;
+    }
+
+    private void requestLookaheadReplanIfNeeded(
+            NavigationSession session,
+            NavigationFrameInput input,
+            NavigationControlFrame frame) {
+        if (frame.completed() || navigationState.hasPendingReplanRequest()) {
+            return;
+        }
+        session.goalPlan()
+                .filter(goalPlan -> goalPlan.needsLookaheadReplan(distanceToSegmentEnd(session, input)))
+                .ifPresent(goalPlan -> navigationState.requestLookaheadReplan(
+                        goalPlan,
+                        "navigation segment near frontier; lookahead replan requested"));
+    }
+
+    private static double distanceToSegmentEnd(NavigationSession session, NavigationFrameInput input) {
+        return input.position().horizontalDistanceTo(session.path().lastNode());
     }
 
     private void resetProgressWhenSessionChanges(NavigationSession session) {

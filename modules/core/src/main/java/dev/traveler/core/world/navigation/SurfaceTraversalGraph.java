@@ -207,12 +207,18 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
 
     @Override
     public boolean hasClimbableAtGlobalCell(int globalX, int blockY, int globalZ) {
+        if (!bounds.contains(blockCoordinate(globalX), blockY, blockCoordinate(globalZ))) {
+            return false;
+        }
         SurfaceBlock block = surfaceBlock(blockCoordinate(globalX), blockY, blockCoordinate(globalZ));
         return SurfaceClimbTraversal.isClimbable(block, capabilities);
     }
 
     @Override
     public List<SurfaceNode> climbNodesAt(int blockX, int blockY, int blockZ) {
+        if (!bounds.contains(blockX, blockY, blockZ)) {
+            return List.of();
+        }
         return SurfaceClimbTraversal.climbStartNodes(
                 worldLayer,
                 new BlockPosition(blockX, blockY, blockZ),
@@ -270,6 +276,9 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
     private SurfaceNode surfaceNode(int globalX, int blockY, int globalZ) {
         int blockX = blockCoordinate(globalX);
         int blockZ = blockCoordinate(globalZ);
+        if (!bounds.contains(blockX, blockY, blockZ)) {
+            return null;
+        }
         int cellX = cellCoordinate(globalX);
         int cellZ = cellCoordinate(globalZ);
         SurfaceBlock block = surfaceBlock(blockX, blockY, blockZ);

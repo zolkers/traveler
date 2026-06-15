@@ -132,6 +132,30 @@ class NavigationRuntimeTest {
         assertTrue(agent.released);
     }
 
+    @Test
+    void requestsLookaheadReplanBeforeSegmentCompletionWithoutStoppingCurrentSession() {
+        TravelerNavigationState navigationState = new TravelerNavigationState();
+        TestAgentPort agent = new TestAgentPort(new NavigationPoint(14.0, 64.0, 0.0), new CameraAngles(0.0, 0.0));
+        NavigationRuntime runtime = new NavigationRuntime(navigationState, agent);
+        NavigationGoalPlan goalPlan = new NavigationGoalPlan(
+                RouteGoal.xz(100, 0),
+                RouteGoal.xz(20, 0),
+                false,
+                8.0);
+        navigationState.start(NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(20.0, 64.0, 0.0))), "test", goalPlan);
+
+        runtime.update(1_000_000_000L);
+
+        NavigationReplanRequest request = navigationState.pendingReplanRequest().orElseThrow();
+        assertEquals(RouteGoal.xz(100, 0), request.goal());
+        assertTrue(request.preserveActiveSession());
+        assertTrue(navigationState.activeSession().isPresent());
+        assertFalse(agent.released);
+        assertFalse(agent.intents.isEmpty());
+    }
+
     private static final class TestAgentPort implements NavigationAgentPort {
         private final List<NavigationFrameInput> frames = new ArrayList<>();
         private final List<NavigationControlFrame> controlFrames = new ArrayList<>();

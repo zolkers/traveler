@@ -20,6 +20,6 @@ public record LongDistanceRoutePlan(
     }
 
     public NavigationGoalPlan navigationGoalPlan() {
-        return new NavigationGoalPlan(requestedGoal, activeGoal, finalSegment);
+        return new NavigationGoalPlan(requestedGoal, activeGoal, finalSegment, settings.replanDistance());
     }
 }

@@ -28,11 +28,11 @@ public final class TravelerSettings {
     public static final Setting<Double> LONG_DISTANCE_DIRECT_HORIZONTAL_DISTANCE =
             positiveDouble("long-distance.direct-horizontal-distance", 96.0);
     public static final Setting<Double> LONG_DISTANCE_SEGMENT_HORIZONTAL_DISTANCE =
-            positiveDouble("long-distance.segment-horizontal-distance", 48.0);
+            positiveDouble("long-distance.segment-horizontal-distance", 96.0);
     public static final Setting<Integer> LONG_DISTANCE_MAX_SEGMENT_AXIS_DELTA =
-            positiveInteger("long-distance.max-segment-axis-delta", 32);
+            positiveInteger("long-distance.max-segment-axis-delta", 64);
     public static final Setting<Double> LONG_DISTANCE_REPLAN_DISTANCE =
-            positiveDouble("long-distance.replan-distance", 12.0);
+            positiveDouble("long-distance.replan-distance", 24.0);
     public static final Setting<Integer> LONG_DISTANCE_FRONTIER_VERTICAL_SEARCH_RADIUS =
             nonNegativeInteger("long-distance.frontier-vertical-search-radius", 16);
     public static final Setting<Integer> LONG_DISTANCE_FRONTIER_LATERAL_STEP =
@@ -42,7 +42,7 @@ public final class TravelerSettings {
     public static final Setting<Integer> LONG_DISTANCE_FRONTIER_CAPTURE_HORIZONTAL_MARGIN =
             nonNegativeInteger("long-distance.frontier-capture-horizontal-margin", 8);
     public static final Setting<Integer> LONG_DISTANCE_FRONTIER_CAPTURE_VERTICAL_MARGIN =
-            nonNegativeInteger("long-distance.frontier-capture-vertical-margin", 8);
+            nonNegativeInteger("long-distance.frontier-capture-vertical-margin", 16);
 
     public static final Setting<Double> ENTITY_WIDTH =
             positiveDouble("entity.width", 0.6);

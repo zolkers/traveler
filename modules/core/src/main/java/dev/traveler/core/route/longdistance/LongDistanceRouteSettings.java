@@ -15,7 +15,7 @@ public record LongDistanceRouteSettings(
             double segmentHorizontalDistance,
             int maxSegmentAxisDelta,
             double replanDistance) {
-        this(directHorizontalDistance, segmentHorizontalDistance, maxSegmentAxisDelta, replanDistance, 16, 1, 8, 8, 8);
+        this(directHorizontalDistance, segmentHorizontalDistance, maxSegmentAxisDelta, replanDistance, 16, 1, 8, 8, 16);
     }
 
     public LongDistanceRouteSettings {
