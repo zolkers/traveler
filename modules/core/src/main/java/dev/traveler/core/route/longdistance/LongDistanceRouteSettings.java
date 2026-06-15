@@ -9,13 +9,24 @@ public record LongDistanceRouteSettings(
         int frontierLateralStep,
         int frontierLateralSamples,
         int frontierCaptureHorizontalMargin,
-        int frontierCaptureVerticalMargin) {
+        int frontierCaptureVerticalMargin,
+        int visibilityEdgeSafetyBlocks) {
     public LongDistanceRouteSettings(
             double directHorizontalDistance,
             double segmentHorizontalDistance,
             int maxSegmentAxisDelta,
             double replanDistance) {
-        this(directHorizontalDistance, segmentHorizontalDistance, maxSegmentAxisDelta, replanDistance, 16, 1, 8, 8, 16);
+        this(
+                directHorizontalDistance,
+                segmentHorizontalDistance,
+                maxSegmentAxisDelta,
+                replanDistance,
+                16,
+                1,
+                8,
+                8,
+                16,
+                24);
     }
 
     public LongDistanceRouteSettings {
@@ -32,6 +43,21 @@ public record LongDistanceRouteSettings(
         requireNonNegative(frontierLateralSamples, "frontierLateralSamples");
         requireNonNegative(frontierCaptureHorizontalMargin, "frontierCaptureHorizontalMargin");
         requireNonNegative(frontierCaptureVerticalMargin, "frontierCaptureVerticalMargin");
+        requireNonNegative(visibilityEdgeSafetyBlocks, "visibilityEdgeSafetyBlocks");
+    }
+
+    public LongDistanceRouteSettings withMaxSegmentAxisDelta(int axisDelta) {
+        return new LongDistanceRouteSettings(
+                directHorizontalDistance,
+                segmentHorizontalDistance,
+                axisDelta,
+                replanDistance,
+                frontierVerticalSearchRadius,
+                frontierLateralStep,
+                frontierLateralSamples,
+                frontierCaptureHorizontalMargin,
+                frontierCaptureVerticalMargin,
+                visibilityEdgeSafetyBlocks);
     }
 
     private static void requirePositive(double value, String name) {

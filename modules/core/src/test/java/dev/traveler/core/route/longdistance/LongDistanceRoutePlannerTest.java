@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.traveler.core.layer.WorldNavigationBudget;
 import dev.traveler.core.route.RouteGoal;
 import dev.traveler.core.world.block.BlockPosition;
 import org.junit.jupiter.api.Test;
@@ -24,7 +25,7 @@ class LongDistanceRoutePlannerTest {
 
     @Test
     void clipsVeryLongGoalsToSnapshotSizedIntermediateGoals() {
-        LongDistanceRouteSettings settings = new LongDistanceRouteSettings(96.0, 48.0, 32, 12.0);
+        LongDistanceRouteSettings settings = new LongDistanceRouteSettings(96.0, 102.0, 72, 24.0);
         LongDistanceRoutePlanner planner = new LongDistanceRoutePlanner(settings);
 
         LongDistanceRoutePlan plan = planner.plan(
@@ -33,8 +34,43 @@ class LongDistanceRoutePlannerTest {
 
         BlockPosition activeBlockGoal = plan.activeGoal().blockGoal(null, new BlockPosition(0, 64, 0));
         assertFalse(plan.finalSegment());
+        assertEquals(72, Math.abs(activeBlockGoal.x()));
+        assertEquals(72, Math.abs(activeBlockGoal.z()));
+        assertTrue(plan.activeGoal().displayName().startsWith("frontier"));
+    }
+
+    @Test
+    void adaptsIntermediateGoalToVisibleWorldBudget() {
+        LongDistanceRouteSettings settings = new LongDistanceRouteSettings(96.0, 102.0, 72, 24.0);
+        LongDistanceRoutePlanner planner = new LongDistanceRoutePlanner(settings);
+        WorldNavigationBudget budget = new WorldNavigationBudget(64);
+
+        LongDistanceRoutePlan plan = planner.plan(
+                new BlockPosition(0, 64, 0),
+                RouteGoal.xyz(10_000, 64, 10_000),
+                budget);
+
+        BlockPosition activeBlockGoal = plan.activeGoal().blockGoal(null, new BlockPosition(0, 64, 0));
+        assertFalse(plan.finalSegment());
         assertEquals(32, Math.abs(activeBlockGoal.x()));
         assertEquals(32, Math.abs(activeBlockGoal.z()));
-        assertTrue(plan.activeGoal().displayName().startsWith("frontier"));
+        assertEquals(32, plan.settings().maxSegmentAxisDelta());
+    }
+
+    @Test
+    void keepsConfiguredSegmentCapWhenVisibilityAllowsIt() {
+        LongDistanceRouteSettings settings = new LongDistanceRouteSettings(96.0, 102.0, 72, 24.0);
+        LongDistanceRoutePlanner planner = new LongDistanceRoutePlanner(settings);
+        WorldNavigationBudget budget = new WorldNavigationBudget(192);
+
+        LongDistanceRoutePlan plan = planner.plan(
+                new BlockPosition(0, 64, 0),
+                RouteGoal.xyz(10_000, 64, 10_000),
+                budget);
+
+        BlockPosition activeBlockGoal = plan.activeGoal().blockGoal(null, new BlockPosition(0, 64, 0));
+        assertEquals(72, Math.abs(activeBlockGoal.x()));
+        assertEquals(72, Math.abs(activeBlockGoal.z()));
+        assertEquals(72, plan.settings().maxSegmentAxisDelta());
     }
 }

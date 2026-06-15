@@ -6,7 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
+import dev.traveler.core.layer.NavigationBudgetProvider;
 import dev.traveler.core.layer.WorldLayer;
+import dev.traveler.core.layer.WorldNavigationBudget;
 import dev.traveler.core.world.block.BlockPassability;
 import dev.traveler.core.world.block.BlockPosition;
 import net.minecraft.core.BlockPos;
@@ -56,6 +58,15 @@ class MinecraftWorldSnapshotTest {
         assertEquals(
                 BlockPassability.SOLID,
                 snapshot.classify(new BlockPosition(0, 0, 0)).passability());
+    }
+
+    @Test
+    void exposesCoreNavigationBudgetWhenProvided() {
+        MinecraftWorldSnapshot snapshot =
+                new MinecraftWorldSnapshot(new StubBlockGetter(), new WorldNavigationBudget(128));
+
+        NavigationBudgetProvider provider = assertInstanceOf(NavigationBudgetProvider.class, snapshot);
+        assertEquals(128, provider.navigationBudget().visibleHorizontalRadiusBlocks());
     }
 
     private static final class StubBlockGetter extends AbstractTestBlockGetter {

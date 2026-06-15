@@ -3,6 +3,7 @@ package dev.traveler.core.command;
 import dev.traveler.core.job.PathJob;
 import dev.traveler.core.job.PathJobState;
 import dev.traveler.core.layer.BlockClassification;
+import dev.traveler.core.layer.NavigationBudgetProvider;
 import dev.traveler.core.layer.SnapshotCaptureSession;
 import dev.traveler.core.layer.SnapshotCapturableWorldLayer;
 import dev.traveler.core.layer.WorldLayer;
@@ -59,7 +60,7 @@ final class TravelerPathSearchService {
         RouteGoal safeGoal = Objects.requireNonNull(goal, "goal");
         BlockPosition start = startPosition(source, safeGoal);
         WorldLayer worldLayer = worldLayerSupplier.get();
-        LongDistanceRoutePlan plan = LONG_DISTANCE_PLANNER.plan(start, safeGoal);
+        LongDistanceRoutePlan plan = longDistancePlan(start, safeGoal, worldLayer);
         RouteGoal activeGoal = plan.activeGoal();
         BlockPosition activeBlockGoal = planningBlockGoal(worldLayer, activeGoal, start);
         SnapshotMargins margins = snapshotMargins(plan);
@@ -81,6 +82,16 @@ final class TravelerPathSearchService {
         }
         return TravelerPathSearchSubmission.queued(
                 pathJob(worldLayer, start, activeGoal, activeBlockGoal, plan, purpose));
+    }
+
+    private static LongDistanceRoutePlan longDistancePlan(
+            BlockPosition start,
+            RouteGoal goal,
+            WorldLayer worldLayer) {
+        if (worldLayer instanceof NavigationBudgetProvider provider) {
+            return LONG_DISTANCE_PLANNER.plan(start, goal, provider.navigationBudget());
+        }
+        return LONG_DISTANCE_PLANNER.plan(start, goal);
     }
 
     private static BlockPosition planningBlockGoal(WorldLayer worldLayer, RouteGoal goal, BlockPosition start) {

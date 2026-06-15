@@ -9,6 +9,8 @@ import dev.traveler.command.buildmycommand.TravelerCommandModule;
 import dev.traveler.core.command.TravelerCommandBlockPosition;
 import dev.traveler.core.command.TravelerCommandPosition;
 import dev.traveler.core.debug.PathfinderDebugState;
+import dev.traveler.core.layer.WorldNavigationBudget;
+import dev.traveler.core.navigation.TravelerNavigationState;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.mc.v1_21_11.common.adapter.testing.AbstractTestBlockGetter;
 import dev.traveler.mc.v1_21_11.common.adapter.testing.MinecraftTestBootstrap;
@@ -61,6 +63,22 @@ class MinecraftTravelerCommandBridgeTest {
         assertEquals(0, blockGetter.blockReads);
 
         waitForJobs(module, () -> blockGetter.blockReads > 0);
+    }
+
+    @Test
+    void bridgePassesNavigationBudgetToCorePathSearch() {
+        SnapshotOnlyBlockGetter blockGetter = new SnapshotOnlyBlockGetter();
+        TravelerCommandModule module = MinecraftTravelerCommandBridge.create(
+                new PathfinderDebugState(),
+                new TravelerNavigationState(),
+                () -> blockGetter,
+                () -> new WorldNavigationBudget(64));
+        TestSource source = new TestSource(new BlockPosition(0, 64, 0));
+
+        CommandResult result = dispatchAndDrain(module, source, "traveler path xz 10000 10000");
+
+        assertEquals(CommandResult.Status.SUCCESS, result.status());
+        assertTrue(source.replies.stream().anyMatch(reply -> reply.contains("active=32,64,32")));
     }
 
     private static CommandResult dispatchAndDrain(TravelerCommandModule module, TestSource source, String command) {

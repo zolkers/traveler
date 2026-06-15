@@ -4,10 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.traveler.core.layer.NavigationBudgetProvider;
 import dev.traveler.core.layer.SnapshotCaptureSession;
 import dev.traveler.core.layer.SnapshotCapturableWorldLayer;
 import dev.traveler.core.layer.SurfaceBlock;
 import dev.traveler.core.layer.SurfaceWorldLayer;
+import dev.traveler.core.layer.WorldNavigationBudget;
 import dev.traveler.core.world.block.BlockPosition;
 import org.junit.jupiter.api.Test;
 
@@ -54,12 +56,29 @@ class TravelerPathSearchServiceTest {
 
         assertTrue(submission.snapshotSearch().isPresent());
         assertTrue(layer.captureStarted);
-        assertEquals(new BlockPosition(64, 64, 64), layer.target);
+        assertEquals(new BlockPosition(72, 64, 72), layer.target);
         assertEquals(8, layer.horizontalMargin);
         assertEquals(16, layer.verticalMargin);
     }
 
-    private static final class CapturableLayer implements SnapshotCapturableWorldLayer {
+    @Test
+    void adaptsLongDistanceSnapshotSearchesToWorldNavigationBudget() {
+        BudgetedCapturableLayer layer = new BudgetedCapturableLayer(1_000L, new WorldNavigationBudget(64));
+        TravelerPathSearchService service = new TravelerPathSearchService(() -> layer);
+        TravelerCommandSource source = new TestSource(new BlockPosition(0, 64, 0));
+
+        TravelerPathSearchSubmission submission =
+                service.blockPathSubmission(source, new BlockPosition(10_000, 64, 10_000), "path:block");
+
+        CapturableLayer captured = layer;
+        assertTrue(submission.snapshotSearch().isPresent());
+        assertTrue(captured.captureStarted);
+        assertEquals(new BlockPosition(32, 64, 32), captured.target);
+        assertEquals(8, captured.horizontalMargin);
+        assertEquals(16, captured.verticalMargin);
+    }
+
+    private static class CapturableLayer implements SnapshotCapturableWorldLayer {
         private final long blockCount;
         private boolean captureStarted;
         private BlockPosition start;
@@ -108,6 +127,20 @@ class TravelerPathSearchServiceTest {
                     return CapturableLayer.this;
                 }
             };
+        }
+    }
+
+    private static final class BudgetedCapturableLayer extends CapturableLayer implements NavigationBudgetProvider {
+        private final WorldNavigationBudget budget;
+
+        private BudgetedCapturableLayer(long blockCount, WorldNavigationBudget budget) {
+            super(blockCount);
+            this.budget = budget;
+        }
+
+        @Override
+        public WorldNavigationBudget navigationBudget() {
+            return budget;
         }
     }
 

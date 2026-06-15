@@ -2,9 +2,11 @@ package dev.traveler.mc.v1_21_11.common.adapter.world;
 
 import dev.traveler.mc.v1_21_11.common.adapter.block.MinecraftBlockContext;
 import dev.traveler.core.layer.BlockClassification;
+import dev.traveler.core.layer.NavigationBudgetProvider;
 import dev.traveler.core.layer.SnapshotCaptureSession;
 import dev.traveler.core.layer.SnapshotCapturableWorldLayer;
 import dev.traveler.core.layer.SurfaceBlock;
+import dev.traveler.core.layer.WorldNavigationBudget;
 import dev.traveler.core.world.block.BlockPosition;
 import java.util.Objects;
 import net.minecraft.core.BlockPos;
@@ -12,12 +14,18 @@ import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
 
-public final class MinecraftWorldSnapshot implements SnapshotCapturableWorldLayer {
+public final class MinecraftWorldSnapshot implements SnapshotCapturableWorldLayer, NavigationBudgetProvider {
     private final BlockGetter blockGetter;
     private final MinecraftSurfaceBlockAdapter surfaceBlockAdapter;
+    private final WorldNavigationBudget navigationBudget;
 
     public MinecraftWorldSnapshot(BlockGetter blockGetter) {
+        this(blockGetter, WorldNavigationBudget.unbounded());
+    }
+
+    public MinecraftWorldSnapshot(BlockGetter blockGetter, WorldNavigationBudget navigationBudget) {
         this.blockGetter = Objects.requireNonNull(blockGetter, "blockGetter");
+        this.navigationBudget = Objects.requireNonNull(navigationBudget, "navigationBudget");
         surfaceBlockAdapter = new MinecraftSurfaceBlockAdapter();
     }
 
@@ -39,6 +47,11 @@ public final class MinecraftWorldSnapshot implements SnapshotCapturableWorldLaye
 
     public FluidState fluidState(BlockPos position) {
         return blockGetter.getFluidState(position);
+    }
+
+    @Override
+    public WorldNavigationBudget navigationBudget() {
+        return navigationBudget;
     }
 
     @Override

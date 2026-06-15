@@ -1,6 +1,7 @@
 package dev.traveler.mc.v1_21_11.fabric;
 
 import dev.traveler.command.buildmycommand.TravelerCommandModule;
+import dev.traveler.core.layer.WorldNavigationBudget;
 import dev.traveler.mc.v1_21_11.fabric.command.FabricCommandBootstrap;
 import dev.traveler.mc.v1_21_11.fabric.event.FabricEventBootstrap;
 import dev.traveler.mc.v1_21_11.fabric.hud.FabricHudBootstrap;
@@ -18,9 +19,15 @@ public final class TravelerFabricClientMod implements ClientModInitializer {
         TravelerCommandModule module = MinecraftTravelerCommandBridge.create(
                 debugState,
                 navigationState,
-                () -> Minecraft.getInstance().level);
+                () -> Minecraft.getInstance().level,
+                TravelerFabricClientMod::navigationBudget);
         FabricCommandBootstrap.register(module);
         FabricEventBootstrap.registerClientEvents(module);
         FabricHudBootstrap.registerDefaultHud();
+    }
+
+    private static WorldNavigationBudget navigationBudget() {
+        int renderDistanceChunks = Math.max(1, Minecraft.getInstance().options.renderDistance().get());
+        return new WorldNavigationBudget(renderDistanceChunks * 16);
     }
 }
