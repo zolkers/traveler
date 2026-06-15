@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.riege.buildmycommand.api.CommandResult;
 import dev.riege.buildmycommand.api.CommandSource;
+import dev.traveler.core.command.TravelerCommandRuntime;
 import dev.traveler.core.debug.snapshots.PathfinderDebugSnapshot;
 import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.graph.GraphPath;
@@ -16,6 +17,7 @@ import dev.traveler.core.navigation.NavigationControlFrame;
 import dev.traveler.core.navigation.NavigationControllerState;
 import dev.traveler.core.navigation.NavigationFrameInput;
 import dev.traveler.core.navigation.NavigationSession;
+import dev.traveler.core.navigation.TravelerNavigationState;
 import dev.traveler.core.navigation.camera.CameraAngles;
 import dev.traveler.core.navigation.control.MovementIntent;
 import dev.traveler.core.navigation.follow.MovementTarget;
@@ -78,9 +80,11 @@ class TravelerCommandModuleTest {
 
     @Test
     void pathCommandFeatureCanBeRegisteredWithBuildMyCommandAnnotations() {
-        PathTravelerCommandFeature feature = new PathTravelerCommandFeature(
+        TravelerCommandRuntime runtime = new TravelerCommandRuntime(
                 new PathfinderDebugState(),
+                new TravelerNavigationState(),
                 () -> null);
+        PathTravelerCommandFeature feature = new PathTravelerCommandFeature(runtime.pathCommands());
         dev.riege.buildmycommand.core.CommandFramework framework =
                 dev.riege.buildmycommand.core.CommandFramework.create();
 

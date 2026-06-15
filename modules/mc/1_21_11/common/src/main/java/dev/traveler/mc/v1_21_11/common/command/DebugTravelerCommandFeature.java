@@ -6,34 +6,26 @@ import dev.riege.buildmycommand.annotation.RouteCtx;
 import dev.riege.buildmycommand.annotation.SubRoute;
 import dev.riege.buildmycommand.api.CommandContext;
 import dev.riege.buildmycommand.api.CommandResult;
-import dev.traveler.core.debug.DebugTextFormatter;
-import dev.traveler.core.debug.PathfinderDebugState;
-import java.time.Instant;
+import dev.traveler.core.command.TravelerDebugCommandHandler;
 import java.util.Objects;
 
 @Command("traveler")
 public final class DebugTravelerCommandFeature {
-    private final PathfinderDebugState debugState;
+    private final TravelerDebugCommandHandler handler;
 
-    DebugTravelerCommandFeature(PathfinderDebugState debugState) {
-        this.debugState = Objects.requireNonNull(debugState, "debugState");
+    DebugTravelerCommandFeature(TravelerDebugCommandHandler handler) {
+        this.handler = Objects.requireNonNull(handler, "handler");
     }
 
     @SubRoute("debug status")
     @Description("Prints Traveler path and navigation debug state")
     CommandResult status(@RouteCtx CommandContext context) {
-        return TravelerCommandReplies.success(
-                context,
-                DebugTextFormatter.detailedStatus(
-                        debugState.latestNavigation(),
-                        debugState.latestSnapshot(),
-                        Instant.now()));
+        return TravelerCommandReplies.result(handler.status(BuildMyCommandTravelerSource.from(context)));
     }
 
     @SubRoute("debug clear")
     @Description("Clears Traveler path and navigation debug state")
     CommandResult clear(@RouteCtx CommandContext context) {
-        debugState.clear();
-        return TravelerCommandReplies.success(context, "debug cleared");
+        return TravelerCommandReplies.result(handler.clear(BuildMyCommandTravelerSource.from(context)));
     }
 }

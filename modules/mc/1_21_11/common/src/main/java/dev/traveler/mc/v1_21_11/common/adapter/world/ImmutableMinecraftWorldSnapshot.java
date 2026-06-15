@@ -2,6 +2,7 @@ package dev.traveler.mc.v1_21_11.common.adapter.world;
 
 import dev.traveler.core.layer.SurfaceBlock;
 import dev.traveler.core.layer.SurfaceWorldLayer;
+import dev.traveler.core.layer.SnapshotCaptureSession;
 import dev.traveler.core.world.block.BlockPosition;
 import java.util.Collections;
 import java.util.HashMap;
@@ -43,7 +44,7 @@ public final class ImmutableMinecraftWorldSnapshot implements SurfaceWorldLayer 
         return blocks.getOrDefault(position, SurfaceBlock.empty());
     }
 
-    public static final class CaptureSession {
+    public static final class CaptureSession implements SnapshotCaptureSession {
         private final MinecraftWorldSnapshot source;
         private final Bounds bounds;
         private final Map<BlockPosition, SurfaceBlock> blocks;
@@ -66,6 +67,7 @@ public final class ImmutableMinecraftWorldSnapshot implements SurfaceWorldLayer 
             return captureNext(blockBudget, Long.MAX_VALUE);
         }
 
+        @Override
         public boolean captureNext(int blockBudget, long deadlineNanos) {
             requirePositive(blockBudget, "blockBudget");
             int captured = 0;
@@ -80,6 +82,7 @@ public final class ImmutableMinecraftWorldSnapshot implements SurfaceWorldLayer 
             return complete;
         }
 
+        @Override
         public ImmutableMinecraftWorldSnapshot snapshot() {
             if (!complete) {
                 throw new IllegalStateException("Snapshot capture is not complete.");
@@ -87,10 +90,12 @@ public final class ImmutableMinecraftWorldSnapshot implements SurfaceWorldLayer 
             return new ImmutableMinecraftWorldSnapshot(blocks);
         }
 
+        @Override
         public long blockCount() {
             return bounds.blockCount();
         }
 
+        @Override
         public long capturedBlocks() {
             return capturedBlocks;
         }

@@ -1,15 +1,10 @@
 package dev.traveler.mc.v1_21_11.common.adapter.world;
 
-import dev.traveler.mc.v1_21_11.common.adapter.block.MinecraftBlockClassifier;
 import dev.traveler.mc.v1_21_11.common.adapter.block.MinecraftBlockContext;
-import dev.traveler.core.layer.BlockClassification;
+import dev.traveler.core.layer.BlockBehaviorSpec;
 import dev.traveler.core.layer.SurfaceBlock;
-import dev.traveler.core.world.behavior.BlockBehavior;
-import dev.traveler.core.world.behavior.BlockBehaviorKey;
-import dev.traveler.core.world.behavior.BlockBehaviorClassificationPolicy;
-import dev.traveler.core.world.behavior.BlockBehaviorRegistry;
-import dev.traveler.core.world.behavior.special.ClimbableBlockBehavior;
-import dev.traveler.core.world.behavior.special.WaterloggedBlockBehavior;
+import dev.traveler.core.layer.SurfaceBlockFactory;
+import dev.traveler.core.layer.SurfaceBlockSample;
 import dev.traveler.core.world.geometry.BlockShape;
 import dev.traveler.core.world.geometry.CollisionBox;
 import java.util.ArrayList;
@@ -20,47 +15,37 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 public final class MinecraftSurfaceBlockAdapter {
-    private final MinecraftBlockClassifier classifier;
-    private final BlockBehaviorRegistry behaviorRegistry;
-    private final BlockBehaviorClassificationPolicy classificationPolicy;
-    private final List<MinecraftBlockBehaviorResolver> behaviorResolvers;
+    private final SurfaceBlockFactory surfaceBlockFactory;
+    private final List<MinecraftBlockBehaviorSpecResolver> behaviorSpecResolvers;
 
     public MinecraftSurfaceBlockAdapter() {
-        this(new MinecraftBlockClassifier(), BlockBehaviorRegistry.defaults(), new BlockBehaviorClassificationPolicy());
+        this(new SurfaceBlockFactory());
     }
 
-    public MinecraftSurfaceBlockAdapter(MinecraftBlockClassifier classifier, BlockBehaviorRegistry behaviorRegistry) {
-        this(classifier, behaviorRegistry, new BlockBehaviorClassificationPolicy());
-    }
-
-    public MinecraftSurfaceBlockAdapter(
-            MinecraftBlockClassifier classifier,
-            BlockBehaviorRegistry behaviorRegistry,
-            BlockBehaviorClassificationPolicy classificationPolicy) {
-        this(classifier, behaviorRegistry, classificationPolicy, MinecraftBlockBehaviorCatalog.defaultResolvers());
+    public MinecraftSurfaceBlockAdapter(SurfaceBlockFactory surfaceBlockFactory) {
+        this(surfaceBlockFactory, MinecraftBlockBehaviorSpecCatalog.defaultResolvers());
     }
 
     public MinecraftSurfaceBlockAdapter(
-            MinecraftBlockClassifier classifier,
-            BlockBehaviorRegistry behaviorRegistry,
-            BlockBehaviorClassificationPolicy classificationPolicy,
-            List<MinecraftBlockBehaviorResolver> behaviorResolvers) {
-        this.classifier = Objects.requireNonNull(classifier, "classifier");
-        this.behaviorRegistry = Objects.requireNonNull(behaviorRegistry, "behaviorRegistry");
-        this.classificationPolicy = Objects.requireNonNull(classificationPolicy, "classificationPolicy");
-        this.behaviorResolvers = List.copyOf(Objects.requireNonNull(behaviorResolvers, "behaviorResolvers"));
-        if (this.behaviorResolvers.isEmpty()) {
-            throw new IllegalArgumentException("behaviorResolvers must not be empty.");
+            SurfaceBlockFactory surfaceBlockFactory,
+            List<MinecraftBlockBehaviorSpecResolver> behaviorSpecResolvers) {
+        this.surfaceBlockFactory = Objects.requireNonNull(surfaceBlockFactory, "surfaceBlockFactory");
+        this.behaviorSpecResolvers =
+                List.copyOf(Objects.requireNonNull(behaviorSpecResolvers, "behaviorSpecResolvers"));
+        if (this.behaviorSpecResolvers.isEmpty()) {
+            throw new IllegalArgumentException("behaviorSpecResolvers must not be empty.");
         }
     }
 
     public SurfaceBlock surfaceBlock(MinecraftBlockContext context) {
         MinecraftBlockContext safeContext = Objects.requireNonNull(context, "context");
-        BlockShape rawShape = shapeOf(safeContext);
-        BlockBehavior behavior = behaviorFor(safeContext, rawShape);
-        BlockShape shape = navigationShape(rawShape, behavior);
-        BlockClassification classification = classificationFor(safeContext, behavior);
-        return new SurfaceBlock(classification, shape, behavior);
+        BlockShape collisionShape = shapeOf(safeContext);
+        SurfaceBlockSample sample = new SurfaceBlockSample(
+                safeContext.state().isAir(),
+                !safeContext.state().getFluidState().isEmpty(),
+                collisionShape,
+                behaviorSpecFor(safeContext, collisionShape));
+        return surfaceBlockFactory.create(sample);
     }
 
     private BlockShape shapeOf(MinecraftBlockContext context) {
@@ -81,47 +66,14 @@ public final class MinecraftSurfaceBlockAdapter {
                 bounds.minX(), bounds.minY(), bounds.minZ(), bounds.maxX(), bounds.maxY(), bounds.maxZ()));
     }
 
-    private BlockBehavior behaviorFor(MinecraftBlockContext context, BlockShape shape) {
-        BlockBehavior dryBehavior = dryBehaviorFor(context, shape);
-        if (context.state().getFluidState().isEmpty()) {
-            return dryBehavior;
-        }
-        if (shape.isEmpty()) {
-            return behaviorRegistry.behavior(BlockBehaviorKey.FLUID);
-        }
-        return behaviorRegistry.waterlogged(dryBehavior);
-    }
-
-    private BlockBehavior dryBehaviorFor(MinecraftBlockContext context, BlockShape shape) {
-        for (MinecraftBlockBehaviorResolver resolver : behaviorResolvers) {
-            Optional<BlockBehavior> behavior = resolver.resolve(context, shape, behaviorRegistry);
-            if (behavior.isPresent()) {
-                return behavior.orElseThrow();
+    private BlockBehaviorSpec behaviorSpecFor(MinecraftBlockContext context, BlockShape shape) {
+        for (MinecraftBlockBehaviorSpecResolver resolver : behaviorSpecResolvers) {
+            Optional<BlockBehaviorSpec> behaviorSpec = resolver.resolve(context, shape);
+            if (behaviorSpec.isPresent()) {
+                return behaviorSpec.orElseThrow();
             }
         }
-        throw new IllegalStateException("No Minecraft block behavior resolver accepted the block state.");
-    }
-
-    private static BlockShape navigationShape(BlockShape rawShape, BlockBehavior behavior) {
-        if (isClimbable(behavior)) {
-            return BlockShape.empty();
-        }
-        return rawShape;
-    }
-
-    private static boolean isClimbable(BlockBehavior behavior) {
-        if (behavior instanceof ClimbableBlockBehavior) {
-            return true;
-        }
-        if (behavior instanceof WaterloggedBlockBehavior waterlogged) {
-            return isClimbable(waterlogged.delegate());
-        }
-        return false;
-    }
-
-    private BlockClassification classificationFor(MinecraftBlockContext context, BlockBehavior behavior) {
-        BlockClassification base = classifier.classify(context);
-        return classificationPolicy.classify(base, behavior);
+        return BlockBehaviorSpec.automatic();
     }
 
     private record BoxBounds(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {

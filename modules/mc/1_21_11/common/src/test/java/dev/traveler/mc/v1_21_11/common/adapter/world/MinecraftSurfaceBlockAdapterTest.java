@@ -13,7 +13,8 @@ import dev.traveler.core.route.RoutePath;
 import dev.traveler.core.route.RouteSearchResult;
 import dev.traveler.core.route.RouteSearchService;
 import dev.traveler.core.route.RouteSearchSettings;
-import dev.traveler.core.world.behavior.BlockBehaviorClassificationPolicy;
+import dev.traveler.core.layer.BlockBehaviorSpec;
+import dev.traveler.core.layer.SurfaceBlockFactory;
 import dev.traveler.core.world.behavior.BlockBehaviorKey;
 import dev.traveler.core.world.behavior.BlockBehaviorRegistry;
 import dev.traveler.core.world.behavior.context.HorizontalFacing;
@@ -24,7 +25,6 @@ import dev.traveler.core.world.behavior.special.VineBlockBehavior;
 import dev.traveler.core.world.behavior.special.WaterloggedBlockBehavior;
 import dev.traveler.core.world.block.BlockPassability;
 import dev.traveler.core.world.block.BlockPosition;
-import dev.traveler.mc.v1_21_11.common.adapter.block.MinecraftBlockClassifier;
 import dev.traveler.mc.v1_21_11.common.adapter.block.MinecraftBlockContext;
 import dev.traveler.mc.v1_21_11.common.adapter.testing.AbstractTestBlockGetter;
 import java.util.HashMap;
@@ -249,11 +249,8 @@ class MinecraftSurfaceBlockAdapterTest {
     void customBehaviorResolverCanOverrideFallbackMapping() {
         BlockBehaviorRegistry registry = BlockBehaviorRegistry.defaults();
         MinecraftSurfaceBlockAdapter adapter = new MinecraftSurfaceBlockAdapter(
-                new MinecraftBlockClassifier(),
-                registry,
-                new BlockBehaviorClassificationPolicy(),
-                java.util.List.of((context, shape, behaviors) ->
-                        java.util.Optional.of(behaviors.behavior(BlockBehaviorKey.FLUID))));
+                new SurfaceBlockFactory(registry),
+                java.util.List.of((context, shape) -> java.util.Optional.of(BlockBehaviorSpec.fluid())));
 
         SurfaceBlock block = adapter.surfaceBlock(contextFor(Blocks.STONE.defaultBlockState()));
 

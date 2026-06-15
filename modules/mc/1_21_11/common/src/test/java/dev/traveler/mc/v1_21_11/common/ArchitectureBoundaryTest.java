@@ -12,14 +12,25 @@ class ArchitectureBoundaryTest {
     private static final List<String> FORBIDDEN_IMPORTS = List.of("net.fabricmc", "net.neoforged");
     private static final List<String> FORBIDDEN_COMMAND_SEARCH_IMPORTS = List.of(
             "dev.traveler.core.graph.",
+            "dev.traveler.core.job.",
             "dev.traveler.core.path.AStarPathfinder",
             "dev.traveler.core.path.PathfinderRequest",
+            "dev.traveler.core.path.PathfinderStatus",
+            "dev.traveler.core.route.",
             "dev.traveler.core.smooth.",
+            "dev.traveler.core.debug.DebugTextFormatter",
+            "dev.traveler.core.navigation.follow.NavigationPath",
             "dev.traveler.core.world.navigation.BlockLineOfWalk",
             "dev.traveler.core.world.navigation.BlockTraversalGraph",
             "dev.traveler.core.world.navigation.SurfaceLineOfWalk",
             "dev.traveler.core.world.navigation.SurfaceSmoothingPolicy",
             "dev.traveler.core.world.navigation.SurfaceTraversalGraph");
+    private static final List<String> FORBIDDEN_MINECRAFT_ADAPTER_POLICY_IMPORTS = List.of(
+            "dev.traveler.core.world.behavior.BlockBehavior;",
+            "dev.traveler.core.world.behavior.BlockBehaviorRegistry",
+            "dev.traveler.core.world.behavior.BlockBehaviorClassificationPolicy",
+            "dev.traveler.core.world.behavior.special.ClimbableBlockBehavior",
+            "dev.traveler.core.world.behavior.special.WaterloggedBlockBehavior");
     private static final List<String> FORBIDDEN_PACKAGES = List.of(
             "/common/event/",
             "\\common\\event\\",
@@ -57,5 +68,14 @@ class ArchitectureBoundaryTest {
                 Path.of("src/main/java/dev/traveler/mc/v1_21_11/common/adapter"));
 
         assertTrue(directAdapterSources.isEmpty(), () -> "Flat Minecraft adapter sources: " + directAdapterSources);
+    }
+
+    @Test
+    void minecraftWorldAdaptersOnlyFillCoreSurfaceContracts() throws IOException {
+        List<String> violations = JavaSourceRules.forbiddenImports(
+                Path.of("src/main/java/dev/traveler/mc/v1_21_11/common/adapter"),
+                FORBIDDEN_MINECRAFT_ADAPTER_POLICY_IMPORTS);
+
+        assertTrue(violations.isEmpty(), () -> "Minecraft adapter owns core surface policy: " + violations);
     }
 }

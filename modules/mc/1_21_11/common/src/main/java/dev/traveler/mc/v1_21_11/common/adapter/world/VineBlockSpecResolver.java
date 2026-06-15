@@ -1,7 +1,6 @@
 package dev.traveler.mc.v1_21_11.common.adapter.world;
 
-import dev.traveler.core.world.behavior.BlockBehavior;
-import dev.traveler.core.world.behavior.BlockBehaviorRegistry;
+import dev.traveler.core.layer.BlockBehaviorSpec;
 import dev.traveler.core.world.behavior.context.HorizontalFacing;
 import dev.traveler.core.world.geometry.BlockShape;
 import dev.traveler.mc.v1_21_11.common.adapter.block.MinecraftBlockContext;
@@ -10,16 +9,13 @@ import java.util.Optional;
 import java.util.Set;
 import net.minecraft.world.level.block.VineBlock;
 
-final class VineBlockBehaviorResolver implements MinecraftBlockBehaviorResolver {
+final class VineBlockSpecResolver implements MinecraftBlockBehaviorSpecResolver {
     @Override
-    public Optional<BlockBehavior> resolve(
-            MinecraftBlockContext context,
-            BlockShape shape,
-            BlockBehaviorRegistry behaviorRegistry) {
+    public Optional<BlockBehaviorSpec> resolve(MinecraftBlockContext context, BlockShape shape) {
         if (!(context.state().getBlock() instanceof VineBlock)) {
             return Optional.empty();
         }
-        return Optional.of(behaviorRegistry.vine(attachedFaces(context), context.state().getValue(VineBlock.UP)));
+        return Optional.of(BlockBehaviorSpec.vine(attachedFaces(context), context.state().getValue(VineBlock.UP)));
     }
 
     private static Set<HorizontalFacing> attachedFaces(MinecraftBlockContext context) {

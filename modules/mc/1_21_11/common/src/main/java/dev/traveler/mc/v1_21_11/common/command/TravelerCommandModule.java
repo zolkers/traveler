@@ -2,6 +2,7 @@ package dev.traveler.mc.v1_21_11.common.command;
 
 import dev.riege.buildmycommand.annotation.AnnotationCommandScanner;
 import dev.riege.buildmycommand.core.CommandFramework;
+import dev.traveler.core.command.TravelerCommandRuntime;
 import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.layer.WorldLayer;
 import dev.traveler.core.navigation.TravelerNavigationState;
@@ -12,9 +13,7 @@ import net.minecraft.world.level.BlockGetter;
 
 public final class TravelerCommandModule {
     private final CommandFramework framework;
-    private final PathfinderDebugState debugState;
-    private final TravelerNavigationState navigationState;
-    private final TravelerPathJobService pathJobService;
+    private final TravelerCommandRuntime runtime;
 
     public TravelerCommandModule() {
         this(new PathfinderDebugState(), new TravelerNavigationState(), (WorldLayerSupplier) () -> null);
@@ -49,15 +48,13 @@ public final class TravelerCommandModule {
             PathfinderDebugState debugState,
             TravelerNavigationState navigationState,
             WorldLayerSupplier worldLayerSupplier) {
-        this.debugState = Objects.requireNonNull(debugState, "debugState");
-        this.navigationState = Objects.requireNonNull(navigationState, "navigationState");
-        TravelerPathSearchService searchService = new TravelerPathSearchService(worldLayerSupplier);
-        pathJobService = new TravelerPathJobService(this.debugState, this.navigationState, searchService);
-        PathTravelerCommandFeature pathFeature =
-                new PathTravelerCommandFeature(this.debugState, searchService, pathJobService);
-        NavigateTravelerCommandFeature navigateFeature =
-                new NavigateTravelerCommandFeature(this.debugState, this.navigationState, pathJobService);
-        DebugTravelerCommandFeature debugFeature = new DebugTravelerCommandFeature(this.debugState);
+        runtime = new TravelerCommandRuntime(
+                Objects.requireNonNull(debugState, "debugState"),
+                Objects.requireNonNull(navigationState, "navigationState"),
+                worldLayerSupplier);
+        PathTravelerCommandFeature pathFeature = new PathTravelerCommandFeature(runtime.pathCommands());
+        NavigateTravelerCommandFeature navigateFeature = new NavigateTravelerCommandFeature(runtime.navigateCommands());
+        DebugTravelerCommandFeature debugFeature = new DebugTravelerCommandFeature(runtime.debugCommands());
         framework = CommandFramework.builder().build();
         AnnotationCommandScanner.register(framework.registry(), pathFeature);
         AnnotationCommandScanner.register(framework.registry(), navigateFeature);
@@ -69,15 +66,15 @@ public final class TravelerCommandModule {
     }
 
     public PathfinderDebugState debugState() {
-        return debugState;
+        return runtime.debugState();
     }
 
     public TravelerNavigationState navigationState() {
-        return navigationState;
+        return runtime.navigationState();
     }
 
     public void drainPathJobs() {
-        pathJobService.drainCompleted();
+        runtime.drainPathJobs();
     }
 
     private static WorldLayerSupplier worldLayerSupplier(Supplier<? extends BlockGetter> blockGetterSupplier) {

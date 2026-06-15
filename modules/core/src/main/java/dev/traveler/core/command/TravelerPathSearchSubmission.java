@@ -1,4 +1,4 @@
-package dev.traveler.mc.v1_21_11.common.command;
+package dev.traveler.core.command;
 
 import dev.traveler.core.job.PathJob;
 import java.util.Objects;

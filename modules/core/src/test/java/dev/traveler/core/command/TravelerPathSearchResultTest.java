@@ -1,4 +1,4 @@
-package dev.traveler.mc.v1_21_11.common.command;
+package dev.traveler.core.command;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

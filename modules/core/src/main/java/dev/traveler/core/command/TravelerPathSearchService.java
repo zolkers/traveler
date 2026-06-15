@@ -1,9 +1,10 @@
-package dev.traveler.mc.v1_21_11.common.command;
+package dev.traveler.core.command;
 
-import dev.riege.buildmycommand.api.CommandContext;
 import dev.traveler.core.job.PathJob;
 import dev.traveler.core.job.PathJobState;
 import dev.traveler.core.layer.BlockClassification;
+import dev.traveler.core.layer.SnapshotCaptureSession;
+import dev.traveler.core.layer.SnapshotCapturableWorldLayer;
 import dev.traveler.core.layer.WorldLayer;
 import dev.traveler.core.path.PathfinderStatus;
 import dev.traveler.core.route.RouteSearchDiagnostics;
@@ -12,8 +13,6 @@ import dev.traveler.core.route.RouteSearchService;
 import dev.traveler.core.route.RouteSearchSettings;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.movement.FluidHandling;
-import dev.traveler.mc.v1_21_11.common.adapter.world.ImmutableMinecraftWorldSnapshot;
-import dev.traveler.mc.v1_21_11.common.adapter.world.MinecraftWorldSnapshot;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -21,7 +20,7 @@ import java.util.function.Supplier;
 final class TravelerPathSearchService {
     private static final BlockPosition TEST_START = new BlockPosition(0, 64, 0);
     private static final BlockPosition TEST_GOAL = new BlockPosition(3, 64, 0);
-    private static final long MAX_MINECRAFT_SNAPSHOT_BLOCKS = 262_144L;
+    private static final long MAX_SNAPSHOT_BLOCKS = 262_144L;
     private static final RouteSearchSettings SEARCH_SETTINGS = RouteSearchSettings.standardClient();
     private static final RouteSearchService ROUTE_SEARCH_SERVICE = new RouteSearchService(SEARCH_SETTINGS);
 
@@ -37,32 +36,36 @@ final class TravelerPathSearchService {
         return new TravelerPathSearchResult(result, message);
     }
 
+    static RouteSearchSettings searchSettings() {
+        return SEARCH_SETTINGS;
+    }
+
     TravelerPathSearchSubmission blockPathSubmission(
-            CommandContext context,
+            TravelerCommandSource source,
             BlockPosition target,
             String purpose) {
-        BlockPosition start = startPosition(context, target);
+        BlockPosition start = startPosition(source, target);
         WorldLayer worldLayer = worldLayerSupplier.get();
-        Optional<TravelerPathSearchResult> rejection = oversizedMinecraftSnapshot(worldLayer, start, target);
+        Optional<TravelerPathSearchResult> rejection = oversizedSnapshot(worldLayer, start, target);
         if (rejection.isPresent()) {
             return TravelerPathSearchSubmission.immediate(rejection.orElseThrow());
         }
-        if (worldLayer instanceof MinecraftWorldSnapshot minecraftWorldLayer) {
+        if (worldLayer instanceof SnapshotCapturableWorldLayer snapshotWorldLayer) {
             return TravelerPathSearchSubmission.snapshot(
-                    new SnapshotBlockSearch(minecraftWorldLayer, start, target, purpose));
+                    new SnapshotBlockSearch(snapshotWorldLayer, start, target, purpose));
         }
         return TravelerPathSearchSubmission.queued(pathJob(worldLayer, start, target, purpose));
     }
 
-    private static Optional<TravelerPathSearchResult> oversizedMinecraftSnapshot(
+    private static Optional<TravelerPathSearchResult> oversizedSnapshot(
             WorldLayer worldLayer,
             BlockPosition start,
             BlockPosition target) {
-        if (!(worldLayer instanceof MinecraftWorldSnapshot)) {
+        if (!(worldLayer instanceof SnapshotCapturableWorldLayer)) {
             return Optional.empty();
         }
         SearchVolume volume = SearchVolume.around(start, target);
-        if (volume.blockCount() <= MAX_MINECRAFT_SNAPSHOT_BLOCKS) {
+        if (volume.blockCount() <= MAX_SNAPSHOT_BLOCKS) {
             return Optional.empty();
         }
         return Optional.of(rejectedSearch(target, volume));
@@ -75,7 +78,7 @@ final class TravelerPathSearchService {
                 + " status=NOT_FOUND reason=search-too-large estimatedBlocks="
                 + volume.blockCount()
                 + " limit="
-                + MAX_MINECRAFT_SNAPSHOT_BLOCKS;
+                + MAX_SNAPSHOT_BLOCKS;
         return new TravelerPathSearchResult(searchResult, message);
     }
 
@@ -98,12 +101,12 @@ final class TravelerPathSearchService {
         return new TravelerPathSearchResult(result, blockMessage(worldLayer, target, result));
     }
 
-    private static BlockPosition startPosition(CommandContext context, BlockPosition target) {
-        return context.source()
-                .unwrap(TravelerCommandPosition.class)
-                .flatMap(TravelerCommandPosition::blockPosition)
-                .map(TravelerCommandBlockPosition::toCorePosition)
-                .orElse(target.above());
+    private static BlockPosition startPosition(TravelerCommandSource source, BlockPosition target) {
+        BlockPosition sourcePosition = Objects.requireNonNull(source, "source").blockPosition();
+        if (sourcePosition == null) {
+            return target.above();
+        }
+        return sourcePosition;
     }
 
     private static String blockMessage(WorldLayer worldLayer, BlockPosition target, RouteSearchResult result) {
@@ -159,22 +162,18 @@ final class TravelerPathSearchService {
     }
 
     static final class SnapshotBlockSearch {
-        private final ImmutableMinecraftWorldSnapshot.CaptureSession captureSession;
+        private final SnapshotCaptureSession captureSession;
         private final BlockPosition start;
         private final BlockPosition target;
         private final String purpose;
 
         private SnapshotBlockSearch(
-                MinecraftWorldSnapshot worldLayer,
+                SnapshotCapturableWorldLayer worldLayer,
                 BlockPosition start,
                 BlockPosition target,
                 String purpose) {
-            this.captureSession = ImmutableMinecraftWorldSnapshot.captureSession(
-                    worldLayer,
-                    start,
-                    target,
-                    SEARCH_SETTINGS.horizontalMargin(),
-                    SEARCH_SETTINGS.verticalMargin());
+            this.captureSession = worldLayer.captureSession(
+                    start, target, SEARCH_SETTINGS.horizontalMargin(), SEARCH_SETTINGS.verticalMargin());
             this.start = Objects.requireNonNull(start, "start");
             this.target = Objects.requireNonNull(target, "target");
             this.purpose = Objects.requireNonNull(purpose, "purpose");

@@ -1,4 +1,4 @@
-package dev.traveler.mc.v1_21_11.common.command;
+package dev.traveler.core.command;
 
 import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.navigation.follow.NavigationPath;
@@ -12,15 +12,15 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-record TravelerPathSearchResult(
+public record TravelerPathSearchResult(
         RouteSearchResult searchResult,
         String message) {
-    TravelerPathSearchResult {
+    public TravelerPathSearchResult {
         Objects.requireNonNull(searchResult, "searchResult");
         Objects.requireNonNull(message, "message");
     }
 
-    void updateDebug(PathfinderDebugState debugState) {
+    public void updateDebug(PathfinderDebugState debugState) {
         PathfinderDebugState state = Objects.requireNonNull(debugState, "debugState");
         if (searchResult.surfaceResult().isPresent()) {
             if (searchResult.route().isPresent()) {
@@ -36,7 +36,7 @@ record TravelerPathSearchResult(
         state.update(searchResult.blockResult(), message);
     }
 
-    Optional<NavigationPath> navigationPath() {
+    public Optional<NavigationPath> navigationPath() {
         if (status() != PathfinderStatus.FOUND) {
             return Optional.empty();
         }
@@ -48,11 +48,11 @@ record TravelerPathSearchResult(
         return navigationPath(fallbackNavigationPoints());
     }
 
-    boolean alreadyAtTarget() {
+    public boolean alreadyAtTarget() {
         return status() == PathfinderStatus.FOUND && navigationPointCount() == 1;
     }
 
-    PathfinderStatus status() {
+    public PathfinderStatus status() {
         return searchResult.status();
     }
 
