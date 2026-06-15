@@ -1,5 +1,6 @@
 package dev.traveler.core.navigation.recovery;
 
 public enum MovementFailureKind {
-    STUCK_NO_PROGRESS
+    STUCK_NO_PROGRESS,
+    HORIZONTAL_COLLISION
 }

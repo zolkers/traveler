@@ -11,7 +11,7 @@ public record MovementHealthSettings(
     }
 
     public static MovementHealthSettings standard() {
-        return new MovementHealthSettings(0.05, 1.5, 1.0);
+        return new MovementHealthSettings(0.05, 0.5, 1.0);
     }
 
     private static void requirePositive(double value, String name) {

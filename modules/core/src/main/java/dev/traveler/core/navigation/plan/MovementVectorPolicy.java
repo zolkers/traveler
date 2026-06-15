@@ -30,8 +30,8 @@ public final class MovementVectorPolicy {
         CameraAngles camera = Objects.requireNonNull(cameraAngles, "cameraAngles");
         LocomotionPlan action = Objects.requireNonNull(actionPlan, "actionPlan");
         MovementVectorDecision decision = vectorDecision(currentPosition, steeringPlan, action);
-        PlannedMovementMode mode = modeFor(decision, camera);
-        boolean actionAllowed = allowsSpecialAction(action, steeringPlan, decision);
+        PlannedMovementMode mode = modeFor(decision, camera, action);
+        boolean actionAllowed = allowsSpecialAction(action, steeringPlan, decision, mode);
         return new MovementVectorIntent(decision.desiredVector(), mode, actionAllowed);
     }
 
@@ -54,7 +54,10 @@ public final class MovementVectorPolicy {
                 && steering.lateralCorrection().length() >= settings.centeringCorrectionThreshold();
     }
 
-    private PlannedMovementMode modeFor(MovementVectorDecision decision, CameraAngles cameraAngles) {
+    private PlannedMovementMode modeFor(
+            MovementVectorDecision decision,
+            CameraAngles cameraAngles,
+            LocomotionPlan action) {
         if (decision.recentering()) {
             return PlannedMovementMode.SIDESTEP_RECENTER;
         }
@@ -65,7 +68,17 @@ public final class MovementVectorPolicy {
         HorizontalVector desired = decision.desiredVector().normalized();
         double forwardAmount = desired.dot(basis.forward());
         double sideAmount = Math.abs(desired.dot(basis.right()));
+        if (requiresStableForwardImpulse(action.action())) {
+            return stableForwardImpulseMode(forwardAmount);
+        }
         return modeForAmounts(forwardAmount, sideAmount, decision.desiredVector().length());
+    }
+
+    private PlannedMovementMode stableForwardImpulseMode(double forwardAmount) {
+        if (forwardAmount >= settings.pressThreshold()) {
+            return PlannedMovementMode.DIRECT;
+        }
+        return PlannedMovementMode.WAIT_FOR_CAMERA;
     }
 
     private PlannedMovementMode modeForAmounts(double forwardAmount, double sideAmount, double distance) {
@@ -98,7 +111,11 @@ public final class MovementVectorPolicy {
     private boolean allowsSpecialAction(
             LocomotionPlan action,
             SteeringPlan steering,
-            MovementVectorDecision decision) {
+            MovementVectorDecision decision,
+            PlannedMovementMode mode) {
+        if (requiresStableForwardImpulse(action.action())) {
+            return mode == PlannedMovementMode.DIRECT && decision.specialActionAllowed();
+        }
         if (action.action() == LocomotionAction.CLIMB) {
             return nearEnoughForSpecialAction(action, steering);
         }
@@ -114,6 +131,10 @@ public final class MovementVectorPolicy {
 
     private static boolean isContinuousMovement(LocomotionAction action) {
         return action == LocomotionAction.WALK || action == LocomotionAction.SWIM;
+    }
+
+    private static boolean requiresStableForwardImpulse(LocomotionAction action) {
+        return action == LocomotionAction.JUMP || action == LocomotionAction.STEP_UP;
     }
 
     private record MovementVectorDecision(

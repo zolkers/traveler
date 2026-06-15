@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.traveler.core.navigation.follow.PathFollowSettings;
+import dev.traveler.core.navigation.recovery.MovementHealthSettings;
 import dev.traveler.core.route.RouteSearchSettings;
 import org.junit.jupiter.api.Test;
 
@@ -64,6 +65,13 @@ class TravelerSettingsTest {
 
         assertEquals(0.5, follow.reachedDistance());
         assertEquals(3.0, follow.lookAheadDistance());
+    }
+
+    @Test
+    void defaultMovementHealthDetectsStagnationQuickly() {
+        MovementHealthSettings health = TravelerSettings.standard().movementHealthSettings();
+
+        assertEquals(0.5, health.stuckAfterSeconds());
     }
 
     @Test

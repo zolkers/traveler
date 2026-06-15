@@ -8,9 +8,11 @@ import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.navigation.camera.CameraAngles;
 import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.follow.PathProgress;
+import dev.traveler.core.navigation.locomotion.AgentMotionState;
 import dev.traveler.core.navigation.recovery.MovementHealthSettings;
 import dev.traveler.core.navigation.recovery.MovementProgressMonitor;
 import dev.traveler.core.navigation.control.MovementIntent;
+import dev.traveler.core.navigation.spatial.HorizontalVector;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import dev.traveler.core.route.RouteGoal;
 import java.util.ArrayList;
@@ -133,6 +135,32 @@ class NavigationRuntimeTest {
     }
 
     @Test
+    void requestsReplanImmediatelyWhenHorizontalCollisionBlocksMovement() {
+        TravelerNavigationState navigationState = new TravelerNavigationState();
+        AgentMotionState blocked = new AgentMotionState(
+                true,
+                true,
+                new HorizontalVector(0.0, 0.0),
+                0.0);
+        TestAgentPort agent =
+                new TestAgentPort(new NavigationPoint(0.0, 64.0, 0.0), new CameraAngles(0.0, 0.0), blocked);
+        NavigationRuntime runtime = new NavigationRuntime(navigationState, agent);
+        NavigationGoalPlan goalPlan = new NavigationGoalPlan(
+                RouteGoal.xz(0, 4),
+                RouteGoal.xz(0, 4),
+                true);
+        navigationState.start(NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(0.0, 64.0, 4.0))), "test", goalPlan);
+
+        runtime.update(1_000_000_000L);
+
+        assertTrue(navigationState.pendingReplanRequest().isPresent());
+        assertEquals(RouteGoal.xz(0, 4), navigationState.pendingReplanRequest().orElseThrow().goal());
+        assertTrue(agent.intents.isEmpty());
+    }
+
+    @Test
     void requestsLookaheadReplanBeforeSegmentCompletionWithoutStoppingCurrentSession() {
         TravelerNavigationState navigationState = new TravelerNavigationState();
         TestAgentPort agent = new TestAgentPort(new NavigationPoint(14.0, 64.0, 0.0), new CameraAngles(0.0, 0.0));
@@ -191,16 +219,25 @@ class NavigationRuntimeTest {
         private final List<MovementIntent> intents = new ArrayList<>();
         private final NavigationPoint position;
         private final CameraAngles cameraAngles;
+        private final AgentMotionState motionState;
         private boolean released;
 
         private TestAgentPort(NavigationPoint position, CameraAngles cameraAngles) {
+            this(position, cameraAngles, AgentMotionState.groundedStill());
+        }
+
+        private TestAgentPort(
+                NavigationPoint position,
+                CameraAngles cameraAngles,
+                AgentMotionState motionState) {
             this.position = position;
             this.cameraAngles = cameraAngles;
+            this.motionState = motionState;
         }
 
         @Override
         public Optional<NavigationFrameInput> frameInput(double deltaSeconds) {
-            NavigationFrameInput input = new NavigationFrameInput(position, cameraAngles, deltaSeconds);
+            NavigationFrameInput input = new NavigationFrameInput(position, cameraAngles, deltaSeconds, motionState);
             frames.add(input);
             return Optional.of(input);
         }

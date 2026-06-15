@@ -22,6 +22,12 @@ public final class MovementProgressMonitor {
             reset();
             return Optional.empty();
         }
+        if (frameInput.motionState().blockedOnGround()) {
+            reset();
+            return Optional.of(new MovementFailure(
+                    MovementFailureKind.HORIZONTAL_COLLISION,
+                    "movement commanded but horizontal collision prevents progress"));
+        }
         if (lastProgressPosition == null) {
             lastProgressPosition = frameInput.position();
             stagnantSeconds = frameInput.deltaSeconds();
