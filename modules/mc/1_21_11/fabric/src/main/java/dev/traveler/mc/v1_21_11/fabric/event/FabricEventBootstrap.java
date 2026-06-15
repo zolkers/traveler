@@ -1,11 +1,11 @@
 package dev.traveler.mc.v1_21_11.fabric.event;
 
+import dev.traveler.command.buildmycommand.TravelerCommandModule;
 import dev.traveler.core.event.ClientTickEvent;
 import dev.traveler.core.event.TravelerClientEvents;
 import dev.traveler.core.event.WorldRenderEvent;
 import dev.traveler.core.navigation.NavigationRuntime;
 import dev.traveler.core.render.PathDebugRenderModel;
-import dev.traveler.mc.v1_21_11.common.command.TravelerCommandModule;
 import dev.traveler.mc.v1_21_11.fabric.navigation.MinecraftClientNavigationAdapter;
 import dev.traveler.mc.v1_21_11.fabric.render.FabricPathDebugRenderer;
 import java.util.Objects;

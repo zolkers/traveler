@@ -8,7 +8,7 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
-import dev.traveler.mc.v1_21_11.common.command.TravelerCommandModule;
+import dev.traveler.command.buildmycommand.TravelerCommandModule;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;

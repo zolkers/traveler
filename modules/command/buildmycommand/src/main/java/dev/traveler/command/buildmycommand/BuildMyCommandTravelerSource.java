@@ -1,4 +1,4 @@
-package dev.traveler.mc.v1_21_11.common.command;
+package dev.traveler.command.buildmycommand;
 
 import dev.riege.buildmycommand.api.CommandContext;
 import dev.traveler.core.command.TravelerCommandBlockPosition;

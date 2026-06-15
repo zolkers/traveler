@@ -1,4 +1,4 @@
-package dev.traveler.mc.v1_21_11.common.command;
+package dev.traveler.command.buildmycommand;
 
 import dev.riege.buildmycommand.annotation.AnnotationCommandScanner;
 import dev.riege.buildmycommand.core.CommandFramework;
@@ -6,10 +6,8 @@ import dev.traveler.core.command.TravelerCommandRuntime;
 import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.layer.WorldLayer;
 import dev.traveler.core.navigation.TravelerNavigationState;
-import dev.traveler.mc.v1_21_11.common.adapter.world.MinecraftWorldSnapshot;
 import java.util.Objects;
 import java.util.function.Supplier;
-import net.minecraft.world.level.BlockGetter;
 
 public final class TravelerCommandModule {
     private final CommandFramework framework;
@@ -19,25 +17,28 @@ public final class TravelerCommandModule {
         this(new TravelerCommandRuntime(new PathfinderDebugState(), new TravelerNavigationState(), () -> null));
     }
 
-    TravelerCommandModule(WorldLayer worldLayer) {
+    public TravelerCommandModule(WorldLayer worldLayer) {
         this(new TravelerCommandRuntime(
                 new PathfinderDebugState(),
                 new TravelerNavigationState(),
                 () -> Objects.requireNonNull(worldLayer, "worldLayer")));
     }
 
-    public TravelerCommandModule(PathfinderDebugState debugState, Supplier<? extends BlockGetter> blockGetterSupplier) {
+    public TravelerCommandModule(PathfinderDebugState debugState, Supplier<? extends WorldLayer> worldLayerSupplier) {
         this(new TravelerCommandRuntime(
                 debugState,
                 new TravelerNavigationState(),
-                worldLayerSupplier(blockGetterSupplier)));
+                Objects.requireNonNull(worldLayerSupplier, "worldLayerSupplier")));
     }
 
     public TravelerCommandModule(
             PathfinderDebugState debugState,
             TravelerNavigationState navigationState,
-            Supplier<? extends BlockGetter> blockGetterSupplier) {
-        this(new TravelerCommandRuntime(debugState, navigationState, worldLayerSupplier(blockGetterSupplier)));
+            Supplier<? extends WorldLayer> worldLayerSupplier) {
+        this(new TravelerCommandRuntime(
+                debugState,
+                navigationState,
+                Objects.requireNonNull(worldLayerSupplier, "worldLayerSupplier")));
     }
 
     private TravelerCommandModule(TravelerCommandRuntime runtime) {
@@ -65,18 +66,5 @@ public final class TravelerCommandModule {
 
     public void drainPathJobs() {
         runtime.drainPathJobs();
-    }
-
-    private static Supplier<WorldLayer> worldLayerSupplier(Supplier<? extends BlockGetter> blockGetterSupplier) {
-        Supplier<? extends BlockGetter> blockGetterProvider =
-                Objects.requireNonNull(blockGetterSupplier, "blockGetterSupplier");
-        return () -> worldLayerFor(blockGetterProvider.get());
-    }
-
-    private static WorldLayer worldLayerFor(BlockGetter blockGetter) {
-        if (blockGetter == null) {
-            return null;
-        }
-        return new MinecraftWorldSnapshot(blockGetter);
     }
 }

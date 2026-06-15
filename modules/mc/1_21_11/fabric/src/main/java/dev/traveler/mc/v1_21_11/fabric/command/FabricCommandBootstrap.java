@@ -3,7 +3,7 @@ package dev.traveler.mc.v1_21_11.fabric.command;
 import com.mojang.brigadier.CommandDispatcher;
 import dev.riege.buildmycommand.adapters.minecraft.common.MinecraftSourceMapper;
 import dev.riege.buildmycommand.adapters.minecraft.fabric.FabricMinecraftIntegration;
-import dev.traveler.mc.v1_21_11.common.command.TravelerCommandModule;
+import dev.traveler.command.buildmycommand.TravelerCommandModule;
 import java.util.Objects;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;

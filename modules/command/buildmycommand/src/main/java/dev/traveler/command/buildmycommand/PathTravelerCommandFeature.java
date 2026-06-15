@@ -1,4 +1,4 @@
-package dev.traveler.mc.v1_21_11.common.command;
+package dev.traveler.command.buildmycommand;
 
 import dev.riege.buildmycommand.annotation.Command;
 import dev.riege.buildmycommand.annotation.Description;
@@ -10,7 +10,7 @@ import dev.traveler.core.command.TravelerPathCommandHandler;
 import java.util.Objects;
 
 @Command("traveler")
-public final class PathTravelerCommandFeature {
+final class PathTravelerCommandFeature {
     private final TravelerPathCommandHandler handler;
 
     PathTravelerCommandFeature(TravelerPathCommandHandler handler) {

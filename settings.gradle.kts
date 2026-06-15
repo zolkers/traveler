@@ -24,6 +24,9 @@ rootProject.name = "traveler"
 include(":core")
 project(":core").projectDir = file("modules/core")
 
+include(":command_buildmycommand")
+project(":command_buildmycommand").projectDir = file("modules/command/buildmycommand")
+
 include(":mc_1_21_11_common")
 project(":mc_1_21_11_common").projectDir = file("modules/mc/1_21_11/common")
 
