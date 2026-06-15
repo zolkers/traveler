@@ -62,6 +62,21 @@ class TravelerPathSearchServiceTest {
     }
 
     @Test
+    void longDistanceSnapshotSearchUsesTheSameMarginsAsItsCapture() {
+        CapturableLayer layer = new CapturableLayer(1_000L);
+        TravelerPathSearchService service = new TravelerPathSearchService(() -> layer);
+        TravelerCommandSource source = new TestSource(new BlockPosition(0, 64, 0));
+
+        TravelerPathSearchSubmission submission =
+                service.blockPathSubmission(source, new BlockPosition(10_000, 64, 10_000), "path:block");
+
+        TravelerPathSearchService.SnapshotBlockSearch snapshotSearch =
+                submission.snapshotSearch().orElseThrow();
+        assertEquals(8, snapshotSearch.routeSearchSettings().horizontalMargin());
+        assertEquals(16, snapshotSearch.routeSearchSettings().verticalMargin());
+    }
+
+    @Test
     void adaptsLongDistanceSnapshotSearchesToWorldNavigationBudget() {
         BudgetedCapturableLayer layer = new BudgetedCapturableLayer(1_000L, new WorldNavigationBudget(64));
         TravelerPathSearchService service = new TravelerPathSearchService(() -> layer);

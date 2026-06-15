@@ -136,17 +136,18 @@ final class TravelerPathSearchService {
             String purpose) {
         return new PathJob<>(
                 purpose,
-                () -> searchGoalPath(worldLayer, start, goal, activeBlockGoal, plan),
+                () -> searchGoalPath(ROUTE_SEARCH_SERVICE, worldLayer, start, goal, activeBlockGoal, plan),
                 TravelerPathSearchService::jobState);
     }
 
     private static TravelerPathSearchResult searchGoalPath(
+            RouteSearchService routeSearchService,
             WorldLayer worldLayer,
             BlockPosition start,
             RouteGoal goal,
             BlockPosition activeBlockGoal,
             LongDistanceRoutePlan plan) {
-        RouteSearchResult result = ROUTE_SEARCH_SERVICE.search(worldLayer, start, goal);
+        RouteSearchResult result = routeSearchService.search(worldLayer, start, goal);
         return new TravelerPathSearchResult(
                 result,
                 blockMessage(worldLayer, goal, activeBlockGoal, plan, result),
@@ -296,10 +297,15 @@ final class TravelerPathSearchService {
             return captureSession.capturedBlocks();
         }
 
+        RouteSearchSettings routeSearchSettings() {
+            return SEARCH_SETTINGS.withMargins(margins.horizontal(), margins.vertical());
+        }
+
         PathJob<TravelerPathSearchResult> pathJob() {
+            RouteSearchService routeSearchService = new RouteSearchService(routeSearchSettings());
             return new PathJob<>(
                     purpose,
-                    () -> searchGoalPath(captureSession.snapshot(), start, goal, target, plan),
+                    () -> searchGoalPath(routeSearchService, captureSession.snapshot(), start, goal, target, plan),
                     TravelerPathSearchService::jobState);
         }
     }

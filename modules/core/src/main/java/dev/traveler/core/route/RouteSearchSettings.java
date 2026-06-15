@@ -21,6 +21,10 @@ public record RouteSearchSettings(
         return TravelerSettings.standard().routeSearchSettings();
     }
 
+    public RouteSearchSettings withMargins(int horizontal, int vertical) {
+        return new RouteSearchSettings(horizontal, vertical, movementProfile);
+    }
+
     public RouteSearchSettings withMovementProfile(MovementProfile profile) {
         return new RouteSearchSettings(horizontalMargin, verticalMargin, profile);
     }
