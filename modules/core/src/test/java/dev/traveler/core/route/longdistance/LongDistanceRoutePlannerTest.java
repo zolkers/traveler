@@ -35,5 +35,6 @@ class LongDistanceRoutePlannerTest {
         assertFalse(plan.finalSegment());
         assertEquals(72, Math.abs(activeBlockGoal.x()));
         assertEquals(72, Math.abs(activeBlockGoal.z()));
+        assertTrue(plan.activeGoal().displayName().startsWith("frontier"));
     }
 }

@@ -33,6 +33,12 @@ public final class TravelerSettings {
             positiveInteger("long-distance.max-segment-axis-delta", 72);
     public static final Setting<Double> LONG_DISTANCE_REPLAN_DISTANCE =
             positiveDouble("long-distance.replan-distance", 12.0);
+    public static final Setting<Integer> LONG_DISTANCE_FRONTIER_VERTICAL_SEARCH_RADIUS =
+            nonNegativeInteger("long-distance.frontier-vertical-search-radius", 16);
+    public static final Setting<Integer> LONG_DISTANCE_FRONTIER_LATERAL_STEP =
+            positiveInteger("long-distance.frontier-lateral-step", 1);
+    public static final Setting<Integer> LONG_DISTANCE_FRONTIER_LATERAL_SAMPLES =
+            nonNegativeInteger("long-distance.frontier-lateral-samples", 8);
 
     public static final Setting<Double> ENTITY_WIDTH =
             positiveDouble("entity.width", 0.6);
@@ -177,7 +183,10 @@ public final class TravelerSettings {
                 get(LONG_DISTANCE_DIRECT_HORIZONTAL_DISTANCE),
                 get(LONG_DISTANCE_SEGMENT_HORIZONTAL_DISTANCE),
                 get(LONG_DISTANCE_MAX_SEGMENT_AXIS_DELTA),
-                get(LONG_DISTANCE_REPLAN_DISTANCE));
+                get(LONG_DISTANCE_REPLAN_DISTANCE),
+                get(LONG_DISTANCE_FRONTIER_VERTICAL_SEARCH_RADIUS),
+                get(LONG_DISTANCE_FRONTIER_LATERAL_STEP),
+                get(LONG_DISTANCE_FRONTIER_LATERAL_SAMPLES));
     }
 
     public MovementProfile movementProfile() {

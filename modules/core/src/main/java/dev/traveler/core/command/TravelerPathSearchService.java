@@ -16,6 +16,7 @@ import dev.traveler.core.route.longdistance.LongDistanceRoutePlan;
 import dev.traveler.core.route.longdistance.LongDistanceRoutePlanner;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.movement.FluidHandling;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -159,9 +160,10 @@ final class TravelerPathSearchService {
                     + result.diagnostics().reason()
                     + longDistance;
         }
-        BlockClassification classification = worldLayer.classify(activeBlockGoal);
+        BlockPosition reportedGoal = reportedGoal(activeBlockGoal, result);
+        BlockClassification classification = worldLayer.classify(reportedGoal);
         return "path "
-                + goalLabel(goal, activeBlockGoal)
+                + goalLabel(goal, reportedGoal)
                 + " status="
                 + result.status()
                 + " passability="
@@ -173,6 +175,14 @@ final class TravelerPathSearchService {
                 + " routeSteps="
                 + result.route().map(route -> route.steps().size()).orElse(0)
                 + longDistance;
+    }
+
+    private static BlockPosition reportedGoal(BlockPosition fallback, RouteSearchResult result) {
+        List<BlockPosition> nodes = result.blockResult().path().nodes();
+        if (nodes.isEmpty()) {
+            return fallback;
+        }
+        return nodes.getLast();
     }
 
     private static String goalLabel(RouteGoal goal, BlockPosition activeBlockGoal) {

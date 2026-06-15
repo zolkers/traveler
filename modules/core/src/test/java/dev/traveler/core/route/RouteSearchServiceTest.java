@@ -23,6 +23,8 @@ import dev.traveler.core.world.behavior.special.VineBlockBehavior;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import dev.traveler.core.route.start.SurfaceRouteStartProvider;
 import dev.traveler.core.route.start.SurfaceRouteStartResolver;
+import dev.traveler.core.route.longdistance.LongDistanceRoutePlanner;
+import dev.traveler.core.route.longdistance.LongDistanceRouteSettings;
 import dev.traveler.core.world.block.BlockPassability;
 import dev.traveler.core.world.behavior.decision.MovementAction;
 import dev.traveler.core.world.behavior.decision.MovementDecision;
@@ -219,6 +221,28 @@ class RouteSearchServiceTest {
         assertEquals(injectedGoal, result.route().orElseThrow().nodes().getLast());
         assertEquals(List.of(MovementAction.SWIM), result.route().orElseThrow().actions());
         assertEquals(List.of(new NavigationPoint(2.25, 64.0, 0.25)), result.route().orElseThrow().actionTargets());
+    }
+
+    @Test
+    void longDistanceFrontierGoalFindsReachableKnownSurfaceInsteadOfExactUnloadedProjection() {
+        Map<BlockPosition, SurfaceBlock> blocks = new HashMap<>();
+        for (int x = 0; x <= 10; x++) {
+            blocks.put(new BlockPosition(x, 63, 1), fullBlock());
+        }
+        blocks.put(new BlockPosition(0, 63, 0), fullBlock());
+        TestSurfaceWorldLayer world = new TestSurfaceWorldLayer(blocks);
+        RouteSearchService service = new RouteSearchService(RouteSearchSettings.standardClient());
+        LongDistanceRoutePlanner planner =
+                new LongDistanceRoutePlanner(new LongDistanceRouteSettings(4.0, 10.0, 10, 3.0));
+        RouteGoal frontierGoal = planner.plan(
+                        new BlockPosition(0, 64, 0),
+                        RouteGoal.xyz(10_000, 64, 0))
+                .activeGoal();
+
+        RouteSearchResult result = service.search(world, new BlockPosition(0, 64, 0), frontierGoal);
+
+        assertEquals(PathfinderStatus.FOUND, result.status());
+        assertEquals(new BlockPosition(10, 63, 1), result.route().orElseThrow().nodes().getLast().blockPosition());
     }
 
     @Test

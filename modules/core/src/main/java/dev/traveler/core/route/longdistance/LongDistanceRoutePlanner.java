@@ -28,43 +28,7 @@ public final class LongDistanceRoutePlanner {
                 && maxAxisDistance <= settings.maxSegmentAxisDelta()) {
             return new LongDistanceRoutePlan(safeGoal, safeGoal, true, horizontalDistance);
         }
-        RouteGoal activeGoal = intermediateGoal(safeStart, deltaX, deltaZ, horizontalDistance, maxAxisDistance);
+        RouteGoal activeGoal = new FrontierRouteGoal(finalPosition, settings);
         return new LongDistanceRoutePlan(safeGoal, activeGoal, false, horizontalDistance);
-    }
-
-    private RouteGoal intermediateGoal(
-            BlockPosition start,
-            int deltaX,
-            int deltaZ,
-            double horizontalDistance,
-            int maxAxisDistance) {
-        if (horizontalDistance <= 0.0 || maxAxisDistance == 0) {
-            return RouteGoal.xz(start.x(), start.z());
-        }
-        double ratio = Math.min(
-                settings.segmentHorizontalDistance() / horizontalDistance,
-                (double) settings.maxSegmentAxisDelta() / maxAxisDistance);
-        ratio = Math.clamp(ratio, 0.0, 1.0);
-        int x = start.x() + roundedStep(deltaX, ratio);
-        int z = start.z() + roundedStep(deltaZ, ratio);
-        if (x == start.x() && z == start.z()) {
-            if (Math.abs(deltaX) >= Math.abs(deltaZ)) {
-                x += Integer.signum(deltaX);
-            } else {
-                z += Integer.signum(deltaZ);
-            }
-        }
-        return RouteGoal.xz(x, z);
-    }
-
-    private static int roundedStep(int delta, double ratio) {
-        if (delta == 0) {
-            return 0;
-        }
-        int step = (int) Math.round(delta * ratio);
-        if (step == 0) {
-            return Integer.signum(delta);
-        }
-        return step;
     }
 }
