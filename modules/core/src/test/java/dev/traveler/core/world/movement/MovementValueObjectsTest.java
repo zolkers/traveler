@@ -78,8 +78,18 @@ class MovementValueObjectsTest {
         TraversalRules rules = new TraversalRules(false, true, new TraversalCost(1.0));
 
         assertEquals(false, rules.allowDiagonal());
+        assertEquals(false, rules.allowDiagonalJump());
         assertEquals(true, rules.allowVertical());
         assertEquals(new TraversalCost(1.0), rules.defaultCost());
+    }
+
+    @Test
+    void traversalRulesCanExplicitlyAllowDiagonalJump() {
+        TraversalRules rules = new TraversalRules(true, true, true, new TraversalCost(1.0));
+
+        assertEquals(true, rules.allowDiagonal());
+        assertEquals(true, rules.allowDiagonalJump());
+        assertEquals(true, rules.allowVertical());
     }
 
     @Test

@@ -191,6 +191,50 @@ class SurfaceTraversalGraphTest {
     }
 
     @Test
+    void rejectsDirectDiagonalJumpToPreferStableCardinalSetup() {
+        BlockPosition startBlock = new BlockPosition(0, 63, 0);
+        BlockPosition eastSideBlock = new BlockPosition(1, 63, 0);
+        BlockPosition southSideBlock = new BlockPosition(0, 63, 1);
+        BlockPosition highDiagonalBlock = new BlockPosition(1, 64, 1);
+        SurfaceNode start = new SurfaceNode(startBlock, 1, 1, 64.0);
+        SurfaceNode highDiagonal = new SurfaceNode(highDiagonalBlock, 0, 0, 65.0);
+        FakeSurfaceWorldLayer world = new FakeSurfaceWorldLayer(Map.of(
+                startBlock, fullBlock(),
+                eastSideBlock, fullBlock(),
+                southSideBlock, fullBlock(),
+                highDiagonalBlock, fullBlock()));
+        SurfaceTraversalGraph graph = new SurfaceTraversalGraph(world, start, highDiagonal, PLAYER, 8, 4);
+
+        List<Connection<SurfaceNode>> connections = connectionsFrom(graph, start);
+
+        assertTrue(connections.stream().noneMatch(connection -> connection.to().sameSubcell(highDiagonal)));
+    }
+
+    @Test
+    void explicitTraversalRulesCanAllowDirectDiagonalJump() {
+        BlockPosition startBlock = new BlockPosition(0, 63, 0);
+        BlockPosition eastSideBlock = new BlockPosition(1, 63, 0);
+        BlockPosition southSideBlock = new BlockPosition(0, 63, 1);
+        BlockPosition highDiagonalBlock = new BlockPosition(1, 64, 1);
+        SurfaceNode start = new SurfaceNode(startBlock, 1, 1, 64.0);
+        SurfaceNode highDiagonal = new SurfaceNode(highDiagonalBlock, 0, 0, 65.0);
+        FakeSurfaceWorldLayer world = new FakeSurfaceWorldLayer(Map.of(
+                startBlock, fullBlock(),
+                eastSideBlock, fullBlock(),
+                southSideBlock, fullBlock(),
+                highDiagonalBlock, fullBlock()));
+        MovementProfile profile = new MovementProfile(
+                MovementProfiles.defaultPlayerDimensions(),
+                PLAYER,
+                new TraversalRules(true, true, true, new TraversalCost(1.0)));
+        SurfaceTraversalGraph graph = new SurfaceTraversalGraph(world, start, highDiagonal, profile, 8, 4);
+
+        List<Connection<SurfaceNode>> connections = connectionsFrom(graph, start);
+
+        assertTrue(connections.stream().anyMatch(connection -> connection.to().sameSubcell(highDiagonal)));
+    }
+
+    @Test
     void headroomMustBeClearAboveTopSlabSurface() {
         BlockPosition slab = new BlockPosition(0, 63, 0);
         BlockPosition headBlock = new BlockPosition(1, 64, 0);

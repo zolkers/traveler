@@ -72,6 +72,8 @@ public final class TravelerSettings {
 
     public static final Setting<Boolean> TRAVERSAL_ALLOW_DIAGONAL =
             Setting.of("traversal.allow-diagonal", Boolean.class, true);
+    public static final Setting<Boolean> TRAVERSAL_ALLOW_DIAGONAL_JUMP =
+            Setting.of("traversal.allow-diagonal-jump", Boolean.class, false);
     public static final Setting<Boolean> TRAVERSAL_ALLOW_VERTICAL =
             Setting.of("traversal.allow-vertical", Boolean.class, true);
     public static final Setting<Double> TRAVERSAL_DEFAULT_COST =
@@ -229,6 +231,7 @@ public final class TravelerSettings {
     public TraversalRules traversalRules() {
         return new TraversalRules(
                 get(TRAVERSAL_ALLOW_DIAGONAL),
+                get(TRAVERSAL_ALLOW_DIAGONAL_JUMP),
                 get(TRAVERSAL_ALLOW_VERTICAL),
                 new TraversalCost(get(TRAVERSAL_DEFAULT_COST)));
     }

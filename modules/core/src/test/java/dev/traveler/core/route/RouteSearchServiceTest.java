@@ -627,6 +627,30 @@ class RouteSearchServiceTest {
         assertTrue(result.route().orElseThrow().actions().contains(MovementAction.CLIMB));
     }
 
+    @Test
+    void routeSearchDoesNotSmoothStableSetupIntoDirectDiagonalJump() {
+        BlockPosition startBlock = new BlockPosition(0, 63, 0);
+        BlockPosition eastSideBlock = new BlockPosition(1, 63, 0);
+        BlockPosition southSideBlock = new BlockPosition(0, 63, 1);
+        BlockPosition highDiagonalBlock = new BlockPosition(1, 64, 1);
+        Map<BlockPosition, SurfaceBlock> blocks = new HashMap<>();
+        blocks.put(startBlock, fullBlock());
+        blocks.put(eastSideBlock, fullBlock());
+        blocks.put(southSideBlock, fullBlock());
+        blocks.put(highDiagonalBlock, fullBlock());
+        TestSurfaceWorldLayer world = new TestSurfaceWorldLayer(blocks);
+        RouteSearchService service = new RouteSearchService(RouteSearchSettings.standardClient());
+
+        RouteSearchResult result = service.search(world, new BlockPosition(0, 64, 0), highDiagonalBlock);
+
+        assertEquals(PathfinderStatus.FOUND, result.status());
+        RoutePath route = result.route().orElseThrow();
+        assertTrue(route.actions().contains(MovementAction.JUMP));
+        assertFalse(route.steps().stream().anyMatch(step -> step.action() == MovementAction.JUMP
+                && step.from().blockPosition().equals(startBlock)
+                && step.to().blockPosition().equals(highDiagonalBlock)));
+    }
+
     private static Graph<SurfaceNode> directSurfaceGraph(SurfaceNode goal) {
         return node -> node.sameSubcell(goal) ? List.of() : List.of(new Connection<>(node, goal, 0.25));
     }

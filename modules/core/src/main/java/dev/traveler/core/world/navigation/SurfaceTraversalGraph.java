@@ -238,6 +238,9 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
         if (!rules.allowDiagonal()) {
             return false;
         }
+        if (isJumpUp(from, to) && !rules.allowDiagonalJump()) {
+            return false;
+        }
         return canMoveDiagonally(from, to, direction);
     }
 
