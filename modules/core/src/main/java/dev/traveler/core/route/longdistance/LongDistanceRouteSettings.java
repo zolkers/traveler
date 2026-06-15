@@ -11,6 +11,7 @@ public record LongDistanceRouteSettings(
         int frontierCaptureHorizontalMargin,
         int frontierCaptureVerticalMargin,
         int visibilityEdgeSafetyBlocks,
+        int targetSnapshotBlockBudget,
         int frontierFallbackSurfaceGoalLimit) {
     public LongDistanceRouteSettings(
             double directHorizontalDistance,
@@ -28,6 +29,7 @@ public record LongDistanceRouteSettings(
                 8,
                 16,
                 24,
+                160_000,
                 16);
     }
 
@@ -46,6 +48,9 @@ public record LongDistanceRouteSettings(
         requireNonNegative(frontierCaptureHorizontalMargin, "frontierCaptureHorizontalMargin");
         requireNonNegative(frontierCaptureVerticalMargin, "frontierCaptureVerticalMargin");
         requireNonNegative(visibilityEdgeSafetyBlocks, "visibilityEdgeSafetyBlocks");
+        if (targetSnapshotBlockBudget <= 0) {
+            throw new IllegalArgumentException("targetSnapshotBlockBudget must be positive.");
+        }
         if (frontierFallbackSurfaceGoalLimit <= 0) {
             throw new IllegalArgumentException("frontierFallbackSurfaceGoalLimit must be positive.");
         }
@@ -63,6 +68,7 @@ public record LongDistanceRouteSettings(
                 frontierCaptureHorizontalMargin,
                 frontierCaptureVerticalMargin,
                 visibilityEdgeSafetyBlocks,
+                targetSnapshotBlockBudget,
                 frontierFallbackSurfaceGoalLimit);
     }
 

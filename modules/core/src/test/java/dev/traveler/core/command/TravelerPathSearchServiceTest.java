@@ -56,7 +56,7 @@ class TravelerPathSearchServiceTest {
 
         assertTrue(submission.snapshotSearch().isPresent());
         assertTrue(layer.captureStarted);
-        assertEquals(new BlockPosition(72, 64, 72), layer.target);
+        assertEquals(new BlockPosition(52, 64, 52), layer.target);
         assertEquals(8, layer.horizontalMargin);
         assertEquals(16, layer.verticalMargin);
     }

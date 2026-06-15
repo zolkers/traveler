@@ -18,7 +18,7 @@ public final class LongDistanceRoutePlanner {
     }
 
     public LongDistanceRoutePlan plan(BlockPosition start, RouteGoal goal) {
-        return plan(start, goal, settings);
+        return plan(start, goal, settingsForConfiguredCap());
     }
 
     public LongDistanceRoutePlan plan(BlockPosition start, RouteGoal goal, WorldNavigationBudget budget) {
@@ -48,7 +48,23 @@ public final class LongDistanceRoutePlanner {
         int budgetedAxisDelta = budget.visibleHorizontalRadiusBlocks()
                 - settings.visibilityEdgeSafetyBlocks()
                 - settings.frontierCaptureHorizontalMargin();
-        int axisDelta = Math.clamp(budgetedAxisDelta, 1, settings.maxSegmentAxisDelta());
+        int axisDelta = constrainedAxisDelta(budgetedAxisDelta);
         return settings.withMaxSegmentAxisDelta(axisDelta);
+    }
+
+    private LongDistanceRouteSettings settingsForConfiguredCap() {
+        int axisDelta = constrainedAxisDelta(settings.maxSegmentAxisDelta());
+        return settings.withMaxSegmentAxisDelta(axisDelta);
+    }
+
+    private int constrainedAxisDelta(int candidateAxisDelta) {
+        int upperBound = Math.min(settings.maxSegmentAxisDelta(), snapshotAxisDeltaLimit());
+        return Math.clamp(candidateAxisDelta, 1, upperBound);
+    }
+
+    private int snapshotAxisDeltaLimit() {
+        int height = settings.frontierCaptureVerticalMargin() * 2 + 1;
+        int horizontalSpan = (int) Math.floor(Math.sqrt((double) settings.targetSnapshotBlockBudget() / height));
+        return Math.max(1, horizontalSpan - settings.frontierCaptureHorizontalMargin() * 2 - 1);
     }
 }

@@ -45,6 +45,8 @@ public final class TravelerSettings {
             nonNegativeInteger("long-distance.frontier-capture-vertical-margin", 16);
     public static final Setting<Integer> LONG_DISTANCE_VISIBILITY_EDGE_SAFETY_BLOCKS =
             nonNegativeInteger("long-distance.visibility-edge-safety-blocks", 24);
+    public static final Setting<Integer> LONG_DISTANCE_TARGET_SNAPSHOT_BLOCK_BUDGET =
+            positiveInteger("long-distance.target-snapshot-block-budget", 160_000);
     public static final Setting<Integer> LONG_DISTANCE_FRONTIER_FALLBACK_SURFACE_GOAL_LIMIT =
             positiveInteger("long-distance.frontier-fallback-surface-goal-limit", 16);
 
@@ -198,6 +200,7 @@ public final class TravelerSettings {
                 get(LONG_DISTANCE_FRONTIER_CAPTURE_HORIZONTAL_MARGIN),
                 get(LONG_DISTANCE_FRONTIER_CAPTURE_VERTICAL_MARGIN),
                 get(LONG_DISTANCE_VISIBILITY_EDGE_SAFETY_BLOCKS),
+                get(LONG_DISTANCE_TARGET_SNAPSHOT_BLOCK_BUDGET),
                 get(LONG_DISTANCE_FRONTIER_FALLBACK_SURFACE_GOAL_LIMIT));
     }
 

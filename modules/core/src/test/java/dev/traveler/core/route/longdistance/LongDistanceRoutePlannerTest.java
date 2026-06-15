@@ -34,8 +34,8 @@ class LongDistanceRoutePlannerTest {
 
         BlockPosition activeBlockGoal = plan.activeGoal().blockGoal(null, new BlockPosition(0, 64, 0));
         assertFalse(plan.finalSegment());
-        assertEquals(72, Math.abs(activeBlockGoal.x()));
-        assertEquals(72, Math.abs(activeBlockGoal.z()));
+        assertEquals(52, Math.abs(activeBlockGoal.x()));
+        assertEquals(52, Math.abs(activeBlockGoal.z()));
         assertTrue(plan.activeGoal().displayName().startsWith("frontier"));
     }
 
@@ -58,7 +58,7 @@ class LongDistanceRoutePlannerTest {
     }
 
     @Test
-    void keepsConfiguredSegmentCapWhenVisibilityAllowsIt() {
+    void capsIntermediateGoalToTargetSnapshotBudgetWhenVisibilityAllowsMore() {
         LongDistanceRouteSettings settings = new LongDistanceRouteSettings(96.0, 102.0, 72, 24.0);
         LongDistanceRoutePlanner planner = new LongDistanceRoutePlanner(settings);
         WorldNavigationBudget budget = new WorldNavigationBudget(192);
@@ -69,8 +69,8 @@ class LongDistanceRoutePlannerTest {
                 budget);
 
         BlockPosition activeBlockGoal = plan.activeGoal().blockGoal(null, new BlockPosition(0, 64, 0));
-        assertEquals(72, Math.abs(activeBlockGoal.x()));
-        assertEquals(72, Math.abs(activeBlockGoal.z()));
-        assertEquals(72, plan.settings().maxSegmentAxisDelta());
+        assertEquals(52, Math.abs(activeBlockGoal.x()));
+        assertEquals(52, Math.abs(activeBlockGoal.z()));
+        assertEquals(52, plan.settings().maxSegmentAxisDelta());
     }
 }

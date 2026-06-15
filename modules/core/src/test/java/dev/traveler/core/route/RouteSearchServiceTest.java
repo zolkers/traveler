@@ -258,7 +258,7 @@ class RouteSearchServiceTest {
                 });
         RouteSearchService service = new RouteSearchService(RouteSearchSettings.standardClient(), components);
         LongDistanceRoutePlanner planner = new LongDistanceRoutePlanner(
-                new LongDistanceRouteSettings(4.0, 10.0, 10, 3.0, 0, 1, 8, 8, 16, 24, 16));
+                new LongDistanceRouteSettings(4.0, 10.0, 10, 3.0, 0, 1, 8, 8, 16, 24, 160_000, 16));
         RouteGoal frontierGoal = planner.plan(
                         new BlockPosition(0, 64, 0),
                         RouteGoal.xyz(10_000, 64, 0))
