@@ -1,5 +1,7 @@
 package dev.traveler.core.navigation.control;
 
+import dev.traveler.core.settings.TravelerSettings;
+
 public record ControlProjectionSettings(double pressThreshold, double releaseThreshold) {
     public ControlProjectionSettings {
         requireThreshold(pressThreshold, "pressThreshold");
@@ -10,7 +12,7 @@ public record ControlProjectionSettings(double pressThreshold, double releaseThr
     }
 
     public static ControlProjectionSettings standard() {
-        return new ControlProjectionSettings(0.32, 0.18);
+        return TravelerSettings.standard().controlProjectionSettings();
     }
 
     private static void requireThreshold(double value, String name) {

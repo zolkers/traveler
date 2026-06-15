@@ -18,7 +18,6 @@
 - Create: `modules/core/src/main/java/dev/traveler/core/navigation/plan/ActionIntent.java`
 - Create: `modules/core/src/main/java/dev/traveler/core/navigation/plan/MovementVectorIntent.java`
 - Create: `modules/core/src/main/java/dev/traveler/core/navigation/plan/SpeedIntent.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/navigation/plan/ToleranceProfile.java`
 - Create: `modules/core/src/main/java/dev/traveler/core/navigation/plan/NavigationFramePlan.java`
 - Test: `modules/core/src/test/java/dev/traveler/core/navigation/plan/NavigationFramePlanTest.java`
 

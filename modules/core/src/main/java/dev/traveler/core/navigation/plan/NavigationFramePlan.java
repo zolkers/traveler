@@ -14,7 +14,6 @@ public record NavigationFramePlan(
         CameraAngles cameraTarget,
         ActionIntent actionIntent,
         SpeedIntent speedIntent,
-        ToleranceProfile toleranceProfile,
         LocomotionExecutionState locomotionState,
         boolean completed,
         NavigationSteeringDebug steeringDebug) {
@@ -26,7 +25,6 @@ public record NavigationFramePlan(
             CameraAngles cameraTarget,
             ActionIntent actionIntent,
             SpeedIntent speedIntent,
-            ToleranceProfile toleranceProfile,
             LocomotionExecutionState locomotionState,
             boolean completed) {
         this(
@@ -37,7 +35,6 @@ public record NavigationFramePlan(
                 cameraTarget,
                 actionIntent,
                 speedIntent,
-                toleranceProfile,
                 locomotionState,
                 completed,
                 NavigationSteeringDebug.none());
@@ -51,7 +48,6 @@ public record NavigationFramePlan(
         Objects.requireNonNull(cameraTarget, "cameraTarget");
         Objects.requireNonNull(actionIntent, "actionIntent");
         Objects.requireNonNull(speedIntent, "speedIntent");
-        Objects.requireNonNull(toleranceProfile, "toleranceProfile");
         Objects.requireNonNull(locomotionState, "locomotionState");
         Objects.requireNonNull(steeringDebug, "steeringDebug");
     }

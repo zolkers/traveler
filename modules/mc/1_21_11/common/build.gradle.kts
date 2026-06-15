@@ -11,4 +11,5 @@ dependencies {
     implementation(libs.buildmycommand.api)
     implementation(libs.buildmycommand.core)
     implementation(libs.buildmycommand.annotations)
+    testImplementation(testFixtures(project(":core")))
 }

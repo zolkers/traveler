@@ -22,4 +22,26 @@ public record MovementCapabilities(
             throw new IllegalArgumentException("Max safe fall distance must be non-negative and finite.");
         }
     }
+
+    public MovementCapabilities withMaxSafeFallDistance(double distance) {
+        return new MovementCapabilities(
+                canWalk,
+                canSwim,
+                canFly,
+                canCrouch,
+                maxStepUp,
+                maxJumpHeight,
+                distance);
+    }
+
+    public MovementCapabilities withCanSwim(boolean enabled) {
+        return new MovementCapabilities(
+                canWalk,
+                enabled,
+                canFly,
+                canCrouch,
+                maxStepUp,
+                maxJumpHeight,
+                maxSafeFallDistance);
+    }
 }

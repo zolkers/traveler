@@ -1,6 +1,7 @@
 package dev.traveler.core.debug;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.traveler.core.debug.snapshots.NavigationDebugSnapshot;
@@ -21,7 +22,6 @@ import dev.traveler.core.navigation.plan.NavigationPhase;
 import dev.traveler.core.navigation.plan.NavigationSteeringDebug;
 import dev.traveler.core.navigation.plan.PlannedMovementMode;
 import dev.traveler.core.navigation.plan.SpeedIntent;
-import dev.traveler.core.navigation.plan.ToleranceProfile;
 import dev.traveler.core.navigation.spatial.HorizontalVector;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import dev.traveler.core.graph.MutableGraphPath;
@@ -113,6 +113,17 @@ class NavigationDebugSnapshotTest {
     }
 
     @Test
+    void treatsPassiveClimbDownAsIntentionalMovement() {
+        DebugReport report = DebugReport.from(
+                Optional.of(passiveClimbDownSnapshot()),
+                Optional.of(foundPathSnapshot()),
+                Instant.EPOCH);
+
+        assertFalse(report.anomalies().contains(DebugAnomaly.NO_MOVEMENT_KEYS_WHILE_ACTIVE));
+        assertFalse(report.anomalies().contains(DebugAnomaly.ZERO_VECTOR_WHILE_NOT_COMPLETED));
+    }
+
+    @Test
     void formatsMissingDebugStateAsAnomalies() {
         String report = DebugTextFormatter.detailedStatus(Optional.empty(), Optional.empty(), Instant.EPOCH);
 
@@ -142,7 +153,6 @@ class NavigationDebugSnapshotTest {
                 new CameraAngles(12.0, 0.0),
                 ActionIntent.jump(),
                 new SpeedIntent(1.0, true),
-                ToleranceProfile.standard(),
                 LocomotionExecutionState.start(),
                 false,
                 steeringDebug);
@@ -173,5 +183,33 @@ class NavigationDebugSnapshotTest {
                 new MovementIntent(true, false, false, false, false, false),
                 new SpeedIntent(0.2, false),
                 false);
+    }
+
+    private static NavigationDebugSnapshot passiveClimbDownSnapshot() {
+        return new NavigationDebugSnapshot(
+                Instant.EPOCH,
+                new NavigationPoint(1.0, 70.0, 2.0),
+                new NavigationPoint(1.0, 64.0, 2.0),
+                new HorizontalVector(0.0, 0.0),
+                NavigationPhase.EXECUTE_ACTION,
+                ActionIntent.climbDown(),
+                PlannedMovementMode.WAIT_FOR_CAMERA,
+                new PathProgress(2),
+                new CameraAngles(0.0, 0.0),
+                new CameraAngles(0.0, 0.0),
+                new CameraAngles(0.0, 0.0),
+                MovementIntent.idle(),
+                new SpeedIntent(0.2, false),
+                false);
+    }
+
+    private static PathfinderDebugSnapshot foundPathSnapshot() {
+        MutableGraphPath<BlockPosition> path = new MutableGraphPath<>();
+        path.addNode(new BlockPosition(1, 70, 2));
+        path.addNode(new BlockPosition(1, 64, 2));
+        return new PathfinderDebugSnapshot(
+                new PathfinderResult<>(PathfinderStatus.FOUND, path),
+                "path",
+                Instant.EPOCH);
     }
 }

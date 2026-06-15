@@ -25,9 +25,13 @@ public record SteeringPlan(
     }
 
     public static SteeringPlan seek(NavigationPoint target) {
+        return seek(target, 0.0);
+    }
+
+    public static SteeringPlan seek(NavigationPoint target, double lateralError) {
         NavigationPoint point = Objects.requireNonNull(target, "target");
         HorizontalVector zero = new HorizontalVector(0.0, 0.0);
-        return new SteeringPlan(point, point, point, zero, zero, 0.0, 0.0, false, false);
+        return new SteeringPlan(point, point, point, zero, zero, lateralError, 0.0, false, false);
     }
 
     public static SteeringPlan corridor(

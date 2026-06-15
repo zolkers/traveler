@@ -9,8 +9,11 @@ import dev.traveler.core.layer.WorldLayer;
 import dev.traveler.core.world.block.BlockPassability;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.geometry.BlockShape;
+import dev.traveler.core.world.behavior.context.HorizontalFacing;
+import dev.traveler.core.world.behavior.special.LadderBlockBehavior;
 import dev.traveler.core.world.movement.FluidHandling;
 import dev.traveler.core.world.surface.SurfaceNodeResolver;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class RouteGoalTest {
@@ -24,6 +27,46 @@ class RouteGoalTest {
 
         assertEquals(
                 support,
+                goal.surfaceGoals(new SurfaceNodeResolver(world)).getFirst().blockPosition());
+    }
+
+    @Test
+    void resolvesClimbableTargetToAdjacentLandingSurface() {
+        BlockPosition ladder = new BlockPosition(4, 64, 2);
+        BlockPosition landing = new BlockPosition(4, 63, 1);
+        BlockPosition wrongSideLanding = new BlockPosition(4, 63, 3);
+        RouteGoal goal = RouteGoal.blockTarget(ladder);
+        SurfaceWorldLayer world = position -> Map.of(
+                        landing,
+                        SurfaceBlock.solid(BlockShape.fullCube()),
+                        wrongSideLanding,
+                        SurfaceBlock.solid(BlockShape.fullCube()),
+                        ladder,
+                        new SurfaceBlock(
+                                new BlockClassification(BlockPassability.PASSABLE, FluidHandling.AVOID),
+                                BlockShape.empty(),
+                                new LadderBlockBehavior(HorizontalFacing.NORTH)))
+                .getOrDefault(position, SurfaceBlock.empty());
+
+        assertEquals(
+                landing,
+                goal.surfaceGoals(new SurfaceNodeResolver(world)).getFirst().blockPosition());
+    }
+
+    @Test
+    void resolvesClimbableTargetWithoutLandingToClimbSurface() {
+        BlockPosition ladder = new BlockPosition(4, 64, 2);
+        RouteGoal goal = RouteGoal.blockTarget(ladder);
+        SurfaceWorldLayer world = position -> Map.of(
+                        ladder,
+                        new SurfaceBlock(
+                                new BlockClassification(BlockPassability.PASSABLE, FluidHandling.AVOID),
+                                BlockShape.empty(),
+                                new LadderBlockBehavior(HorizontalFacing.NORTH)))
+                .getOrDefault(position, SurfaceBlock.empty());
+
+        assertEquals(
+                ladder,
                 goal.surfaceGoals(new SurfaceNodeResolver(world)).getFirst().blockPosition());
     }
 

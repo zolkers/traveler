@@ -1,8 +1,7 @@
 package dev.traveler.mc.v1_21_11.common.command;
 
+import dev.riege.buildmycommand.annotation.AnnotationCommandScanner;
 import dev.riege.buildmycommand.core.CommandFramework;
-import dev.traveler.core.command.AnnotatedTravelerCommandFeature;
-import dev.traveler.core.command.TravelerCommandCatalog;
 import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.layer.WorldLayer;
 import dev.traveler.core.navigation.TravelerNavigationState;
@@ -12,7 +11,6 @@ import java.util.function.Supplier;
 import net.minecraft.world.level.BlockGetter;
 
 public final class TravelerCommandModule {
-    private final TravelerCommandCatalog catalog;
     private final CommandFramework framework;
     private final PathfinderDebugState debugState;
     private final TravelerNavigationState navigationState;
@@ -60,16 +58,10 @@ public final class TravelerCommandModule {
         NavigateTravelerCommandFeature navigateFeature =
                 new NavigateTravelerCommandFeature(this.debugState, this.navigationState, pathJobService);
         DebugTravelerCommandFeature debugFeature = new DebugTravelerCommandFeature(this.debugState);
-        catalog = TravelerCommandCatalog.fromFeatures(
-                AnnotatedTravelerCommandFeature.from(pathFeature),
-                AnnotatedTravelerCommandFeature.from(navigateFeature),
-                AnnotatedTravelerCommandFeature.from(debugFeature));
         framework = CommandFramework.builder().build();
-        new BuildMyCommandCatalogAdapter(framework.registry()).register(catalog);
-    }
-
-    public TravelerCommandCatalog catalog() {
-        return catalog;
+        AnnotationCommandScanner.register(framework.registry(), pathFeature);
+        AnnotationCommandScanner.register(framework.registry(), navigateFeature);
+        AnnotationCommandScanner.register(framework.registry(), debugFeature);
     }
 
     public CommandFramework framework() {

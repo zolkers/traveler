@@ -6,6 +6,7 @@ import dev.traveler.core.graph.MutableGraphPath;
 import dev.traveler.core.path.PathfinderResult;
 import dev.traveler.core.navigation.NavigationControlFrame;
 import dev.traveler.core.navigation.NavigationFrameInput;
+import dev.traveler.core.navigation.spatial.NavigationPoint;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.surface.SurfaceNode;
 import java.time.Instant;
@@ -31,9 +32,21 @@ public final class PathfinderDebugState {
     }
 
     public synchronized void updateSurface(PathfinderResult<SurfaceNode> result, String message) {
+        updateSurface(result, List.of(), message);
+    }
+
+    public synchronized void updateSurface(
+            PathfinderResult<SurfaceNode> result,
+            List<NavigationPoint> routePoints,
+            String message) {
         PathfinderResult<SurfaceNode> safeResult = Objects.requireNonNull(result, "result");
+        List<NavigationPoint> safeRoutePoints = List.copyOf(Objects.requireNonNull(routePoints, "routePoints"));
         latestSnapshot = new PathfinderDebugSnapshot(
-                copySurfaceResult(safeResult), message, Instant.now(), copySurfaceNodes(safeResult));
+                copySurfaceResult(safeResult),
+                message,
+                Instant.now(),
+                copySurfaceNodes(safeResult),
+                safeRoutePoints);
     }
 
     public synchronized void clear() {

@@ -7,22 +7,34 @@ import static dev.traveler.core.world.surface.FakeSurfaceWorldLayer.topSlab;
 import static dev.traveler.core.world.surface.FakeSurfaceWorldLayer.waterloggedBottomSlab;
 import static dev.traveler.core.world.surface.FakeSurfaceWorldLayer.waterloggedNorthFacingBottomStair;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.traveler.core.graph.Connection;
 import dev.traveler.core.graph.GraphPath;
+import dev.traveler.core.layer.BlockClassification;
 import dev.traveler.core.layer.SurfaceBlock;
 import dev.traveler.core.layer.SurfaceWorldLayer;
 import dev.traveler.core.path.AStarPathfinder;
 import dev.traveler.core.path.PathfinderRequest;
 import dev.traveler.core.path.PathfinderResult;
 import dev.traveler.core.path.PathfinderStatus;
+import dev.traveler.core.world.behavior.context.HorizontalFacing;
+import dev.traveler.core.world.behavior.decision.MovementDecision;
 import dev.traveler.core.world.behavior.special.AirBlockBehavior;
+import dev.traveler.core.world.behavior.special.LadderBlockBehavior;
+import dev.traveler.core.world.block.BlockPassability;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.geometry.BlockShape;
+import dev.traveler.core.world.movement.FluidHandling;
 import dev.traveler.core.world.movement.MovementCapabilities;
+import dev.traveler.core.world.movement.MovementProfile;
+import dev.traveler.core.world.movement.MovementProfiles;
+import dev.traveler.core.world.movement.TraversalCost;
+import dev.traveler.core.world.movement.TraversalRules;
 import dev.traveler.core.world.navigation.SurfaceConnectionProvider;
+import dev.traveler.core.world.navigation.SurfaceTransitionResolver;
 import dev.traveler.core.world.navigation.SurfaceTraversalGraphSettings;
 import dev.traveler.core.world.navigation.SurfaceTraversalGraph;
 import java.util.ArrayList;
@@ -138,6 +150,30 @@ class SurfaceTraversalGraphTest {
     }
 
     @Test
+    void movementProfileRulesControlSurfaceExpansionAndCost() {
+        BlockPosition startBlock = new BlockPosition(0, 63, 0);
+        BlockPosition straightBlock = new BlockPosition(1, 63, 0);
+        BlockPosition diagonalBlock = new BlockPosition(1, 63, 1);
+        SurfaceNode start = new SurfaceNode(startBlock, 1, 1, 64.0);
+        SurfaceNode straight = new SurfaceNode(straightBlock, 0, 1, 64.0);
+        SurfaceNode diagonal = new SurfaceNode(diagonalBlock, 0, 0, 64.0);
+        FakeSurfaceWorldLayer world = new FakeSurfaceWorldLayer(Map.of(
+                startBlock, fullBlock(),
+                straightBlock, fullBlock(),
+                diagonalBlock, fullBlock()));
+        MovementProfile profile = new MovementProfile(
+                MovementProfiles.defaultPlayerDimensions(),
+                PLAYER,
+                new TraversalRules(false, true, new TraversalCost(2.0)));
+        SurfaceTraversalGraph graph = new SurfaceTraversalGraph(world, start, diagonal, profile, 8, 4);
+
+        List<Connection<SurfaceNode>> connections = connectionsFrom(graph, start);
+
+        assertTrue(connections.stream().noneMatch(connection -> connection.to().sameSubcell(diagonal)));
+        assertEquals(1.0, connectionTo(graph, start, straight).cost());
+    }
+
+    @Test
     void headroomMustBeClearAboveTopSlabSurface() {
         BlockPosition slab = new BlockPosition(0, 63, 0);
         BlockPosition headBlock = new BlockPosition(1, 64, 0);
@@ -230,6 +266,20 @@ class SurfaceTraversalGraphTest {
     }
 
     @Test
+    void refusesClimbWhenClimbTargetBodyIntersectsCollisionShape() {
+        SurfaceNode start = new SurfaceNode(new BlockPosition(0, 63, 0), 1, 1, 64.0);
+        SurfaceNode top = new SurfaceNode(new BlockPosition(0, 65, 0), 1, 1, 66.0);
+        FakeSurfaceWorldLayer world = new FakeSurfaceWorldLayer(Map.of(
+                start.blockPosition(), fullBlock(),
+                top.blockPosition(), fullBlock(),
+                new BlockPosition(1, 64, 0), ladder(HorizontalFacing.WEST, BlockShape.fullCube()),
+                new BlockPosition(1, 65, 0), ladder(HorizontalFacing.WEST, BlockShape.fullCube())));
+        SurfaceTraversalGraph graph = new SurfaceTraversalGraph(world, start, top, PLAYER, 8, 4);
+
+        assertFalse(graph.canReachClimb(start, top));
+    }
+
+    @Test
     void customConnectionProviderCanExtendSurfaceExpansion() {
         BlockPosition startBlock = new BlockPosition(0, 63, 0);
         BlockPosition destinationBlock = new BlockPosition(2, 63, 0);
@@ -249,6 +299,28 @@ class SurfaceTraversalGraphTest {
         Connection<SurfaceNode> connection = connectionTo(graph, start, destination);
 
         assertEquals(0.25, connection.cost());
+    }
+
+    @Test
+    void customTransitionResolverCanRejectSurfaceExpansion() {
+        BlockPosition startBlock = new BlockPosition(0, 63, 0);
+        BlockPosition destinationBlock = new BlockPosition(1, 63, 0);
+        SurfaceNode start = new SurfaceNode(startBlock, 1, 1, 64.0);
+        SurfaceNode destination = new SurfaceNode(destinationBlock, 0, 1, 64.0);
+        FakeSurfaceWorldLayer world =
+                new FakeSurfaceWorldLayer(Map.of(startBlock, fullBlock(), destinationBlock, fullBlock()));
+        SurfaceTransitionResolver rejectAll =
+                new SurfaceTransitionResolver(List.of(context -> java.util.Optional.of(MovementDecision.blocked())));
+        SurfaceTraversalGraph graph = new SurfaceTraversalGraph(
+                world,
+                start,
+                destination,
+                PLAYER,
+                SurfaceTraversalGraphSettings.basic(8, 4).withTransitionResolver(rejectAll));
+
+        List<Connection<SurfaceNode>> connections = connectionsFrom(graph, start);
+
+        assertTrue(connections.stream().noneMatch(connection -> connection.to().sameSubcell(destination)));
     }
 
     @ParameterizedTest
@@ -292,6 +364,13 @@ class SurfaceTraversalGraphTest {
         for (int z = -2; z <= 0; z++) {
             blocks.put(new BlockPosition(x, 63, z), fullBlock());
         }
+    }
+
+    private static SurfaceBlock ladder(HorizontalFacing facing, BlockShape shape) {
+        return new SurfaceBlock(
+                new BlockClassification(BlockPassability.PASSABLE, FluidHandling.AVOID),
+                shape,
+                new LadderBlockBehavior(facing));
     }
 
     private static SurfaceNode nodeAt(int x, int z) {

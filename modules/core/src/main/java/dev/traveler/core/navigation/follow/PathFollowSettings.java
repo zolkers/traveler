@@ -1,5 +1,7 @@
 package dev.traveler.core.navigation.follow;
 
+import dev.traveler.core.settings.TravelerSettings;
+
 public record PathFollowSettings(
         double reachedDistance,
         double lookAheadDistance,
@@ -15,7 +17,7 @@ public record PathFollowSettings(
     }
 
     public static PathFollowSettings standard() {
-        return new PathFollowSettings(0.45, 2.0, 2.5, 0.35);
+        return TravelerSettings.standard().pathFollowSettings();
     }
 
     private static void requirePositive(double value, String name) {

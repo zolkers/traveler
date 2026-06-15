@@ -6,6 +6,8 @@ import dev.traveler.core.world.movement.EntityDimensions;
 import dev.traveler.core.world.movement.MovementCapabilities;
 import dev.traveler.core.world.movement.MovementProfile;
 import dev.traveler.core.world.movement.MovementProfiles;
+import dev.traveler.core.world.movement.TraversalRules;
+import dev.traveler.core.world.movement.FluidHandling;
 import dev.traveler.core.world.surface.SurfaceNode;
 import dev.traveler.core.graph.Connection;
 import dev.traveler.core.graph.KeyedGraph;
@@ -27,9 +29,10 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
     private final SearchBounds bounds;
     private final EntityDimensions dimensions;
     private final MovementCapabilities capabilities;
+    private final TraversalRules rules;
     private final SurfaceClearanceScorer clearanceScorer;
     private final SurfaceBodyClearanceMode bodyClearanceMode;
-    private final SurfaceMovementEvaluator movementEvaluator;
+    private final SurfaceTransitionEvaluator transitionEvaluator;
     private final List<SurfaceConnectionProvider> connectionProviders;
     private final SurfaceNodeIndex nodeIndex;
     private final double[] clearanceScores;
@@ -99,9 +102,10 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
         this.surfaceBlocks = new SurfaceBlockCache(this.worldLayer, searchBounds);
         this.dimensions = profile.dimensions();
         this.capabilities = profile.capabilities();
+        this.rules = profile.rules();
         this.clearanceScorer = safeSettings.clearanceScorer();
         this.bodyClearanceMode = safeSettings.bodyClearanceMode();
-        this.movementEvaluator = new SurfaceMovementEvaluator(capabilities);
+        this.transitionEvaluator = new SurfaceTransitionEvaluator(capabilities, safeSettings.transitionResolver());
         this.connectionProviders = safeSettings.connectionProviders();
         this.nodeIndex = new SurfaceNodeIndex(searchBounds);
         this.clearanceScores = new double[nodeIndex.size()];
@@ -115,7 +119,7 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
     @Override
     public Iterable<Connection<SurfaceNode>> outgoingConnections(SurfaceNode node) {
         Objects.requireNonNull(node, "node");
-        if (!insideBounds(node) || !canStandOn(node)) {
+        if (!insideBounds(node) || !canUseAsExpansionOrigin(node)) {
             return List.of();
         }
         return connectionsFrom(node);
@@ -138,6 +142,7 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
     public boolean canReach(SurfaceNode from, SurfaceNode to, MovementDirection direction) {
         SurfaceBlock block = surfaceBlock(to.blockPosition());
         return insideBounds(to)
+                && canUseVerticalTransition(from, to)
                 && hasBodyClearance(to)
                 && destinationAllowsMovement(from, to, block, direction)
                 && canUseDirection(from, to, direction);
@@ -147,6 +152,7 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
     public boolean canReachDrop(SurfaceNode from, SurfaceNode to, MovementDirection direction) {
         SurfaceBlock block = surfaceBlock(to.blockPosition());
         return insideBounds(to)
+                && rules.allowVertical()
                 && isDropDown(from, to)
                 && hasBodyClearance(to)
                 && destinationAllowsMovement(from, to, block, direction);
@@ -162,6 +168,7 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
     public boolean canReachJump(SurfaceNode from, SurfaceNode to, MovementDirection direction) {
         SurfaceBlock block = surfaceBlock(to.blockPosition());
         return insideBounds(to)
+                && rules.allowVertical()
                 && isJumpUp(from, to)
                 && hasBodyClearance(to)
                 && destinationAllowsMovement(from, to, block, direction);
@@ -170,14 +177,46 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
     @Override
     public boolean canReachClimb(SurfaceNode from, SurfaceNode to) {
         return insideBounds(to)
+                && rules.allowVertical()
                 && hasBodyClearance(to)
-                && SurfaceClimbTraversal.canClimbWithLookup(surfaceBlocks::get, from, to, capabilities);
+                && SurfaceClimbTraversal.canClimbWithLookup(surfaceBlocks::get, from, to, capabilities)
+                && hasClimbTargetClearance(from, to);
+    }
+
+    private boolean hasClimbTargetClearance(SurfaceNode from, SurfaceNode to) {
+        List<SurfaceNode> climbNodes = SurfaceClimbTraversal.climbRouteNodes(worldLayer, from, to, capabilities)
+                .orElseGet(List::of);
+        SurfaceNode current = from;
+        for (SurfaceNode climbNode : climbNodes) {
+            if (!hasClimbStepTargetClearance(current, climbNode)) {
+                return false;
+            }
+            current = climbNode;
+        }
+        return hasClimbStepTargetClearance(current, to);
+    }
+
+    private boolean hasClimbStepTargetClearance(SurfaceNode from, SurfaceNode to) {
+        if (!SurfaceClimbTraversal.isClimbable(surfaceBlock(to.blockPosition()), capabilities)) {
+            return true;
+        }
+        return SurfaceClimbTraversal.climbFaceTarget(worldLayer, from, to, capabilities)
+                .filter(target -> SurfaceBodyClearance.hasClearance(worldLayer, target, dimensions))
+                .isPresent();
     }
 
     @Override
     public boolean hasClimbableAtGlobalCell(int globalX, int blockY, int globalZ) {
         SurfaceBlock block = surfaceBlock(blockCoordinate(globalX), blockY, blockCoordinate(globalZ));
         return SurfaceClimbTraversal.isClimbable(block, capabilities);
+    }
+
+    @Override
+    public List<SurfaceNode> climbNodesAt(int blockX, int blockY, int blockZ) {
+        return SurfaceClimbTraversal.climbStartNodes(
+                worldLayer,
+                new BlockPosition(blockX, blockY, blockZ),
+                capabilities);
     }
 
     private boolean isJumpUp(SurfaceNode from, SurfaceNode to) {
@@ -189,6 +228,9 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
     private boolean canUseDirection(SurfaceNode from, SurfaceNode to, MovementDirection direction) {
         if (!direction.isDiagonal()) {
             return true;
+        }
+        if (!rules.allowDiagonal()) {
+            return false;
         }
         return canMoveDiagonally(from, to, direction);
     }
@@ -231,15 +273,39 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
         int cellX = cellCoordinate(globalX);
         int cellZ = cellCoordinate(globalZ);
         SurfaceBlock block = surfaceBlock(blockX, blockY, blockZ);
-        if (!block.behavior().supportsStanding(capabilities)) {
-            return null;
-        }
         double floorHeight = block.shape().floorHeightForCellOrNaN(cellX, cellZ);
         if (Double.isNaN(floorHeight)) {
+            return swimSurfaceNode(block, blockX, blockY, blockZ, cellX, cellZ);
+        }
+        if (!block.behavior().supportsStanding(capabilities)) {
             return null;
         }
         BlockPosition position = new BlockPosition(blockX, blockY, blockZ);
         return new SurfaceNode(position, cellX, cellZ, blockY + floorHeight);
+    }
+
+    private SurfaceNode swimSurfaceNode(
+            SurfaceBlock block,
+            int blockX,
+            int blockY,
+            int blockZ,
+            int cellX,
+            int cellZ) {
+        BlockPosition position = new BlockPosition(blockX, blockY, blockZ);
+        if (!isTopFluidSurface(block, position)) {
+            return null;
+        }
+        return new SurfaceNode(position, cellX, cellZ, blockY + 1.0);
+    }
+
+    private boolean isTopFluidSurface(SurfaceBlock block, BlockPosition position) {
+        return capabilities.canSwim()
+                && hasFluid(block)
+                && !hasFluid(surfaceBlock(position.above()));
+    }
+
+    private static boolean hasFluid(SurfaceBlock block) {
+        return block.classification().fluidHandling() == FluidHandling.ALLOW;
     }
 
     @Override
@@ -263,6 +329,16 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
     private boolean canStandOn(SurfaceNode node) {
         SurfaceNode surface = surfaceNode(globalX(node), node.blockPosition().y(), globalZ(node));
         return surface != null && sameFloor(surface, node) && hasBodyClearance(node);
+    }
+
+    private boolean canUseAsExpansionOrigin(SurfaceNode node) {
+        return canStandOn(node) || canOccupyClimbNode(node);
+    }
+
+    private boolean canOccupyClimbNode(SurfaceNode node) {
+        return SurfaceClimbTraversal.climbStartTarget(worldLayer, node, capabilities)
+                .filter(target -> SurfaceBodyClearance.hasClearance(worldLayer, target, dimensions))
+                .isPresent();
     }
 
     private boolean hasBodyClearance(SurfaceNode node) {
@@ -358,7 +434,7 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
         double horizontalCost = horizontalCost(from, to);
         double climbCost = climbCost(to.floorY() - from.floorY());
         double clearanceCost = clearanceCost(to);
-        return horizontalCost + climbCost + clearanceCost;
+        return (horizontalCost + climbCost) * rules.defaultCost().value() + clearanceCost;
     }
 
     private double clearanceCost(SurfaceNode node) {
@@ -396,7 +472,11 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
             SurfaceNode to,
             SurfaceBlock block,
             MovementDirection direction) {
-        return movementEvaluator.decision(from, to, block, direction).allowed();
+        return transitionEvaluator.decision(worldLayer, from, to, block, direction).allowed();
+    }
+
+    private boolean canUseVerticalTransition(SurfaceNode from, SurfaceNode to) {
+        return rules.allowVertical() || sameFloor(from, to);
     }
 
     private double upwardClearance() {

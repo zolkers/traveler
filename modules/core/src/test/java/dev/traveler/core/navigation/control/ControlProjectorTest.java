@@ -17,7 +17,6 @@ import dev.traveler.core.navigation.plan.NavigationFramePlan;
 import dev.traveler.core.navigation.plan.NavigationPhase;
 import dev.traveler.core.navigation.plan.PlannedMovementMode;
 import dev.traveler.core.navigation.plan.SpeedIntent;
-import dev.traveler.core.navigation.plan.ToleranceProfile;
 import dev.traveler.core.navigation.spatial.HorizontalVector;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import org.junit.jupiter.api.Test;
@@ -89,6 +88,22 @@ class ControlProjectorTest {
 
         assertTrue(frame.intent().forward());
         assertTrue(frame.intent().jump());
+    }
+
+    @Test
+    void climbDownDoesNotProjectToSneak() {
+        NavigationFramePlan plan = plan(
+                new MovementVectorIntent(new HorizontalVector(0.0, 0.0), PlannedMovementMode.WAIT_FOR_CAMERA, true),
+                ActionIntent.climbDown(),
+                new NavigationPoint(0.0, 63.0, 0.0));
+
+        ControlProjectionFrame frame = projector.project(
+                plan,
+                frameInput(new CameraAngles(0.0, 0.0)),
+                MovementIntent.idle());
+
+        assertFalse(frame.intent().jump());
+        assertEquals(MovementIntent.idle(), frame.intent());
     }
 
     @Test
@@ -182,7 +197,6 @@ class ControlProjectorTest {
                 cameraTarget,
                 actionIntent,
                 new SpeedIntent(1.0, true),
-                ToleranceProfile.standard(),
                 LocomotionExecutionState.start(),
                 false);
     }

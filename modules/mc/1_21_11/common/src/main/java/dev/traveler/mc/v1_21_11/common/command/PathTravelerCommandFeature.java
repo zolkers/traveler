@@ -1,16 +1,18 @@
 package dev.traveler.mc.v1_21_11.common.command;
 
-import dev.traveler.core.command.TravelerCommand;
-import dev.traveler.core.command.TravelerCommandContext;
-import dev.traveler.core.command.TravelerCommandResult;
-import dev.traveler.core.command.TravelerSubcommand;
+import dev.riege.buildmycommand.annotation.Command;
+import dev.riege.buildmycommand.annotation.Description;
+import dev.riege.buildmycommand.annotation.RouteCtx;
+import dev.riege.buildmycommand.annotation.SubRoute;
+import dev.riege.buildmycommand.api.CommandContext;
+import dev.riege.buildmycommand.api.CommandResult;
 import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.layer.WorldLayer;
 import dev.traveler.core.navigation.TravelerNavigationState;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-@TravelerCommand(root = "traveler path")
+@Command("traveler")
 public final class PathTravelerCommandFeature {
     private final PathfinderDebugState debugState;
     private final TravelerPathSearchService searchService;
@@ -38,17 +40,17 @@ public final class PathTravelerCommandFeature {
         this.jobService = Objects.requireNonNull(jobService, "jobService");
     }
 
-    @TravelerSubcommand(route = "test", description = "Runs a Traveler path debug search")
-    private TravelerCommandResult pathTest(TravelerCommandContext context) {
+    @SubRoute("path test")
+    @Description("Runs a Traveler path debug search")
+    CommandResult pathTest(@RouteCtx CommandContext context) {
         TravelerPathSearchResult result = searchService.testPath();
         result.updateDebug(debugState);
-        return TravelerCommandResult.success(result.message());
+        return TravelerCommandReplies.success(context, result.message());
     }
 
-    @TravelerSubcommand(
-            route = "block <x:int> <y:int> <z:int>",
-            description = "Runs a Traveler path debug search for a block")
-    private TravelerCommandResult pathBlock(TravelerCommandContext context) {
+    @SubRoute("path block <x:Integer> <y:Integer> <z:Integer>")
+    @Description("Runs a Traveler path debug search for a block")
+    CommandResult pathBlock(@RouteCtx CommandContext context) {
         return jobService.queuePathBlock(context, TravelerCommandTargets.blockPosition(context));
     }
 }

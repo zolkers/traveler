@@ -12,10 +12,6 @@ public interface SurfaceConnectionProvider {
             List<Connection<SurfaceNode>> connections);
 
     static List<SurfaceConnectionProvider> standard() {
-        return List.of(
-                new AdjacentSurfaceConnectionProvider(),
-                new DropSurfaceConnectionProvider(),
-                new JumpSurfaceConnectionProvider(),
-                new ClimbSurfaceConnectionProvider());
+        return SurfaceConnectionProviders.standard();
     }
 }

@@ -3,6 +3,7 @@ package dev.traveler.core.world.navigation;
 import dev.traveler.core.world.behavior.context.MovementDirection;
 import dev.traveler.core.world.movement.MovementCapabilities;
 import dev.traveler.core.world.surface.SurfaceNode;
+import java.util.List;
 
 public interface SurfaceTraversalContext {
     int globalXOf(SurfaceNode node);
@@ -20,6 +21,8 @@ public interface SurfaceTraversalContext {
     boolean canReachClimb(SurfaceNode from, SurfaceNode to);
 
     boolean hasClimbableAtGlobalCell(int globalX, int blockY, int globalZ);
+
+    List<SurfaceNode> climbNodesAt(int blockX, int blockY, int blockZ);
 
     MovementCapabilities capabilities();
 

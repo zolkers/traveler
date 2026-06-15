@@ -1,5 +1,7 @@
 package dev.traveler.core.navigation.camera;
 
+import dev.traveler.core.settings.TravelerSettings;
+
 public record CameraAimSettings(
         double maxYawDegreesPerSecond,
         double maxPitchDegreesPerSecond,
@@ -30,7 +32,7 @@ public record CameraAimSettings(
     }
 
     public static CameraAimSettings standard() {
-        return new CameraAimSettings(540.0, 240.0, 18.0, 0.05);
+        return TravelerSettings.standard().cameraAimSettings();
     }
 
     public static CameraAimSettings preview() {

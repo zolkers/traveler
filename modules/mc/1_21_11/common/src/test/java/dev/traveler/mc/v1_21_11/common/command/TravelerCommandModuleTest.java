@@ -5,8 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.riege.buildmycommand.api.CommandResult;
 import dev.riege.buildmycommand.api.CommandSource;
-import dev.traveler.core.command.AnnotatedTravelerCommandFeature;
-import dev.traveler.core.command.TravelerCommandCatalog;
 import dev.traveler.core.debug.snapshots.PathfinderDebugSnapshot;
 import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.graph.GraphPath;
@@ -29,14 +27,18 @@ import dev.traveler.core.navigation.plan.NavigationFramePlan;
 import dev.traveler.core.navigation.plan.NavigationPhase;
 import dev.traveler.core.navigation.plan.PlannedMovementMode;
 import dev.traveler.core.navigation.plan.SpeedIntent;
-import dev.traveler.core.navigation.plan.ToleranceProfile;
 import dev.traveler.core.navigation.spatial.HorizontalVector;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import dev.traveler.core.path.PathfinderResult;
-import dev.traveler.core.world.geometry.BlockShape;
+import dev.traveler.core.world.behavior.BlockBehavior;
+import dev.traveler.core.world.behavior.context.HorizontalFacing;
+import dev.traveler.core.world.behavior.special.FluidBlockBehavior;
+import dev.traveler.core.world.behavior.special.LadderBlockBehavior;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.block.BlockPassability;
+import dev.traveler.core.world.geometry.BlockShape;
 import dev.traveler.core.world.movement.FluidHandling;
+import dev.traveler.core.world.behavior.decision.MovementAction;
 import dev.traveler.mc.v1_21_11.common.adapter.testing.AbstractTestBlockGetter;
 import dev.traveler.mc.v1_21_11.common.adapter.testing.MinecraftTestBootstrap;
 import java.time.Duration;
@@ -61,30 +63,31 @@ class TravelerCommandModuleTest {
     }
 
     @Test
-    void exposesModularCommandCatalog() {
+    void exposesModularBuildMyCommandRoutes() {
         TravelerCommandModule module = new TravelerCommandModule();
 
-        assertEquals(6, module.catalog().routes().size());
-        assertTrue(module.catalog().route("traveler path test").isPresent());
-        assertTrue(module.catalog().route("traveler path block <x:int> <y:int> <z:int>").isPresent());
-        assertTrue(module.catalog().route("traveler navigate block <x:int> <y:int> <z:int>").isPresent());
-        assertTrue(module.catalog().route("traveler navigate stop").isPresent());
-        assertTrue(module.catalog().route("traveler debug status").isPresent());
-        assertTrue(module.catalog().route("traveler debug clear").isPresent());
+        String schema = module.framework().schema();
+
+        assertTrue(schema.contains("command traveler path test"));
+        assertTrue(schema.contains("command traveler path block"));
+        assertTrue(schema.contains("command traveler navigate block"));
+        assertTrue(schema.contains("command traveler navigate stop"));
+        assertTrue(schema.contains("command traveler debug status"));
+        assertTrue(schema.contains("command traveler debug clear"));
     }
 
     @Test
-    void pathCommandFeatureCanBeRegisteredFromAnnotations() {
+    void pathCommandFeatureCanBeRegisteredWithBuildMyCommandAnnotations() {
         PathTravelerCommandFeature feature = new PathTravelerCommandFeature(
                 new PathfinderDebugState(),
                 () -> null);
+        dev.riege.buildmycommand.core.CommandFramework framework =
+                dev.riege.buildmycommand.core.CommandFramework.create();
 
-        TravelerCommandCatalog catalog =
-                TravelerCommandCatalog.fromFeatures(AnnotatedTravelerCommandFeature.from(feature));
+        dev.riege.buildmycommand.annotation.AnnotationCommandScanner.register(framework.registry(), feature);
 
-        assertEquals(2, catalog.routes().size());
-        assertTrue(catalog.route("traveler path test").isPresent());
-        assertTrue(catalog.route("traveler path block <x:int> <y:int> <z:int>").isPresent());
+        assertTrue(framework.schema().contains("command traveler path test"));
+        assertTrue(framework.schema().contains("command traveler path block"));
     }
 
     @Test
@@ -97,7 +100,7 @@ class TravelerCommandModuleTest {
         assertEquals(CommandResult.Status.SUCCESS, result.status());
         assertTrue(module.debugState().latestResult().isPresent());
         assertTrue(module.debugState().latestMessage().orElseThrow().contains("path test"));
-        assertEquals(List.of(result.reply().orElseThrow()), source.replies());
+        assertEquals("path test status=FOUND nodes=2", result.reply().orElseThrow());
     }
 
     @Test
@@ -251,6 +254,39 @@ class TravelerCommandModuleTest {
     }
 
     @Test
+    void navigateBlockResolvesLadderBlockTargetToClimbLandingInRealCommandFlow() {
+        BlockPosition startFeet = new BlockPosition(0, 64, 0);
+        TravelerCommandModule module = new TravelerCommandModule(new TestSurfaceWorldLayer(tallLadderSurface()));
+
+        dispatchAndDrain(module, new TestSource(startFeet), "traveler navigate block 1 82 0");
+
+        NavigationSession session = module.navigationState().activeSession().orElseThrow();
+        assertTrue(session.path().segmentActions().contains(MovementAction.CLIMB));
+        assertEquals(20, session.path().segmentActions().stream()
+                .filter(action -> action == MovementAction.CLIMB)
+                .count());
+        assertEquals(83.0, session.path().lastNode().y());
+        PathfinderDebugSnapshot snapshot = module.debugState().latestSnapshot().orElseThrow();
+        assertHasSurfaceNodes(snapshot);
+        assertEquals(new BlockPosition(1, 82, 1), snapshot.surfaceNodes().getLast().blockPosition());
+    }
+
+    @Test
+    void navigateBlockUsesSwimSurfacePathInRealCommandFlow() {
+        BlockPosition startFeet = new BlockPosition(0, 64, 0);
+        TravelerCommandModule module = new TravelerCommandModule(new TestSurfaceWorldLayer(waterLane(0, 4, 63)));
+
+        dispatchAndDrain(module, new TestSource(startFeet), "traveler navigate block 4 64 0");
+
+        NavigationSession session = module.navigationState().activeSession().orElseThrow();
+        assertTrue(session.path().segmentActions().contains(MovementAction.SWIM));
+        assertTrue(session.path().nodes().stream().allMatch(point -> point.y() == 64.0));
+        PathfinderDebugSnapshot snapshot = module.debugState().latestSnapshot().orElseThrow();
+        assertHasSurfaceNodes(snapshot);
+        assertTrue(snapshot.surfaceNodes().stream().allMatch(node -> node.floorY() == 64.0));
+    }
+
+    @Test
     void pathBlockSearchesCapturedMinecraftSnapshot() {
         SnapshotOnlyBlockGetter blockGetter = new SnapshotOnlyBlockGetter();
         TravelerCommandModule module = new TravelerCommandModule(new PathfinderDebugState(), () -> blockGetter);
@@ -307,7 +343,8 @@ class TravelerCommandModuleTest {
         assertEquals(CommandResult.Status.SUCCESS, result.status());
         assertTrue(result.reply().orElseThrow().contains("navigate queued id="));
 
-        waitForJobs(module, () -> source.replies().getLast().contains("already at target"));
+        waitForJobs(module, () -> !source.replies().isEmpty()
+                && source.replies().getLast().contains("already at target"));
 
         assertTrue(module.navigationState().activeSession().isEmpty());
     }
@@ -405,7 +442,7 @@ class TravelerCommandModuleTest {
         CommandResult result = module.framework().dispatch(source, "traveler debug status");
 
         assertEquals(CommandResult.Status.SUCCESS, result.status());
-        String reply = source.replies().getLast();
+        String reply = result.reply().orElseThrow();
         assertTrue(reply.startsWith("traveler debug\n"));
         assertTrue(reply.contains("nav phase=APPROACH"));
         assertTrue(reply.contains("path status=FOUND"));
@@ -479,7 +516,6 @@ class TravelerCommandModuleTest {
                 new CameraAngles(0.0, 0.0),
                 ActionIntent.none(),
                 new SpeedIntent(1.0, true),
-                ToleranceProfile.standard(),
                 LocomotionExecutionState.start(),
                 false);
         return new NavigationControlFrame(
@@ -546,6 +582,39 @@ class TravelerCommandModuleTest {
 
     private static SurfaceBlock surfaceBlock(BlockShape shape) {
         return SurfaceBlock.solid(shape);
+    }
+
+    private static SurfaceBlock passableBlock(BlockShape shape, BlockBehavior behavior, FluidHandling fluidHandling) {
+        return new SurfaceBlock(
+                new BlockClassification(BlockPassability.PASSABLE, fluidHandling),
+                shape,
+                behavior);
+    }
+
+    private static SurfaceBlock ladderBlock(HorizontalFacing facing) {
+        return passableBlock(BlockShape.empty(), new LadderBlockBehavior(facing), FluidHandling.AVOID);
+    }
+
+    private static SurfaceBlock waterBlock() {
+        return passableBlock(BlockShape.empty(), new FluidBlockBehavior(), FluidHandling.ALLOW);
+    }
+
+    private static Map<BlockPosition, SurfaceBlock> tallLadderSurface() {
+        Map<BlockPosition, SurfaceBlock> blocks = new java.util.HashMap<>();
+        blocks.put(new BlockPosition(0, 63, 0), surfaceBlock(BlockShape.fullCube()));
+        for (int y = 64; y <= 82; y++) {
+            blocks.put(new BlockPosition(1, y, 0), ladderBlock(HorizontalFacing.WEST));
+        }
+        blocks.put(new BlockPosition(1, 82, 1), surfaceBlock(BlockShape.fullCube()));
+        return blocks;
+    }
+
+    private static Map<BlockPosition, SurfaceBlock> waterLane(int minX, int maxX, int y) {
+        Map<BlockPosition, SurfaceBlock> blocks = new java.util.HashMap<>();
+        for (int x = minX; x <= maxX; x++) {
+            blocks.put(new BlockPosition(x, y, 0), waterBlock());
+        }
+        return blocks;
     }
 
     private static Map<BlockPosition, SurfaceBlock> walledSurface() {

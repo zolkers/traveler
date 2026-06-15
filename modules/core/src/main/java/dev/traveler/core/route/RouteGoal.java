@@ -32,6 +32,14 @@ public record RouteGoal(Optional<BlockPosition> requestedTarget) {
         if (!targetSurfaces.isEmpty()) {
             return targetSurfaces;
         }
+        List<SurfaceNode> climbLandings = safeResolver.climbLandingSurfaces(target);
+        if (!climbLandings.isEmpty()) {
+            return climbLandings;
+        }
+        List<SurfaceNode> climbSurfaces = safeResolver.climbSurfaces(target);
+        if (!climbSurfaces.isEmpty()) {
+            return climbSurfaces;
+        }
         return safeResolver.standingSurface(target).map(List::of).orElseGet(List::of);
     }
 

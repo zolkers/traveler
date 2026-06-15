@@ -24,7 +24,6 @@ class NavigationFramePlanTest {
                 new CameraAngles(0.0, 0.0),
                 ActionIntent.jump(),
                 new SpeedIntent(1.0, true),
-                ToleranceProfile.standard(),
                 LocomotionExecutionState.start(),
                 false);
 

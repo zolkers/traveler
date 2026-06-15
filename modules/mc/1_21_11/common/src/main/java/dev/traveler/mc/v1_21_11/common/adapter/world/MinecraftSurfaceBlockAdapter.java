@@ -8,6 +8,8 @@ import dev.traveler.core.world.behavior.BlockBehavior;
 import dev.traveler.core.world.behavior.BlockBehaviorKey;
 import dev.traveler.core.world.behavior.BlockBehaviorClassificationPolicy;
 import dev.traveler.core.world.behavior.BlockBehaviorRegistry;
+import dev.traveler.core.world.behavior.special.ClimbableBlockBehavior;
+import dev.traveler.core.world.behavior.special.WaterloggedBlockBehavior;
 import dev.traveler.core.world.geometry.BlockShape;
 import dev.traveler.core.world.geometry.CollisionBox;
 import java.util.ArrayList;
@@ -54,8 +56,9 @@ public final class MinecraftSurfaceBlockAdapter {
 
     public SurfaceBlock surfaceBlock(MinecraftBlockContext context) {
         MinecraftBlockContext safeContext = Objects.requireNonNull(context, "context");
-        BlockShape shape = shapeOf(safeContext);
-        BlockBehavior behavior = behaviorFor(safeContext, shape);
+        BlockShape rawShape = shapeOf(safeContext);
+        BlockBehavior behavior = behaviorFor(safeContext, rawShape);
+        BlockShape shape = navigationShape(rawShape, behavior);
         BlockClassification classification = classificationFor(safeContext, behavior);
         return new SurfaceBlock(classification, shape, behavior);
     }
@@ -97,6 +100,23 @@ public final class MinecraftSurfaceBlockAdapter {
             }
         }
         throw new IllegalStateException("No Minecraft block behavior resolver accepted the block state.");
+    }
+
+    private static BlockShape navigationShape(BlockShape rawShape, BlockBehavior behavior) {
+        if (isClimbable(behavior)) {
+            return BlockShape.empty();
+        }
+        return rawShape;
+    }
+
+    private static boolean isClimbable(BlockBehavior behavior) {
+        if (behavior instanceof ClimbableBlockBehavior) {
+            return true;
+        }
+        if (behavior instanceof WaterloggedBlockBehavior waterlogged) {
+            return isClimbable(waterlogged.delegate());
+        }
+        return false;
     }
 
     private BlockClassification classificationFor(MinecraftBlockContext context, BlockBehavior behavior) {

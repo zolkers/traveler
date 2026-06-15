@@ -1,31 +1,48 @@
 package dev.traveler.core.navigation.follow;
 
 import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.world.behavior.decision.MovementAction;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public record NavigationPath(List<NavigationPoint> nodes, List<NavigationSegmentAction> segmentActions) {
+public record NavigationPath(
+        List<NavigationPoint> nodes,
+        List<NavigationSegmentIntent> segmentIntents) {
     public NavigationPath {
         nodes = List.copyOf(Objects.requireNonNull(nodes, "nodes"));
-        segmentActions = List.copyOf(Objects.requireNonNull(segmentActions, "segmentActions"));
+        segmentIntents = List.copyOf(Objects.requireNonNull(segmentIntents, "segmentIntents"));
         if (nodes.size() < 2) {
             throw new IllegalArgumentException("A navigation path needs at least two nodes.");
         }
-        if (segmentActions.size() != nodes.size() - 1) {
-            throw new IllegalArgumentException("A navigation path needs one action per segment.");
+        if (segmentIntents.size() != nodes.size() - 1) {
+            throw new IllegalArgumentException("A navigation path needs one intent per segment.");
         }
     }
 
     public static NavigationPath of(List<NavigationPoint> nodes) {
         List<NavigationPoint> safeNodes = List.copyOf(Objects.requireNonNull(nodes, "nodes"));
-        return new NavigationPath(safeNodes, inferredActions(safeNodes.size() - 1));
+        return new NavigationPath(safeNodes, inferredIntents(safeNodes));
     }
 
     public static NavigationPath of(
             List<NavigationPoint> nodes,
-            List<NavigationSegmentAction> segmentActions) {
-        return new NavigationPath(nodes, segmentActions);
+            List<MovementAction> segmentActions) {
+        List<NavigationPoint> safeNodes = List.copyOf(Objects.requireNonNull(nodes, "nodes"));
+        return new NavigationPath(safeNodes, intentsFromActions(safeNodes, segmentActions));
+    }
+
+    public static NavigationPath of(
+            List<NavigationPoint> nodes,
+            List<MovementAction> segmentActions,
+            List<NavigationPoint> actionTargets) {
+        return new NavigationPath(nodes, intentsFromActionsAndTargets(segmentActions, actionTargets));
+    }
+
+    public static NavigationPath withIntents(
+            List<NavigationPoint> nodes,
+            List<NavigationSegmentIntent> segmentIntents) {
+        return new NavigationPath(nodes, segmentIntents);
     }
 
     public int nodeCount() {
@@ -40,14 +57,60 @@ public record NavigationPath(List<NavigationPoint> nodes, List<NavigationSegment
         return nodes.getLast();
     }
 
-    public NavigationSegmentAction actionBeforeNode(int nodeIndex) {
+    public MovementAction actionBeforeNode(int nodeIndex) {
+        return segmentIntentBeforeNode(nodeIndex).action();
+    }
+
+    public NavigationPoint actionTargetBeforeNode(int nodeIndex) {
+        return segmentIntentBeforeNode(nodeIndex).actionTarget();
+    }
+
+    public NavigationSegmentIntent segmentIntentBeforeNode(int nodeIndex) {
         if (nodeIndex <= 0 || nodeIndex >= nodes.size()) {
             throw new IndexOutOfBoundsException("Node index must target an existing segment end.");
         }
-        return segmentActions.get(nodeIndex - 1);
+        return segmentIntents.get(nodeIndex - 1);
     }
 
-    private static List<NavigationSegmentAction> inferredActions(int count) {
-        return Collections.nCopies(Math.max(count, 0), NavigationSegmentAction.INFER);
+    public List<MovementAction> segmentActions() {
+        return segmentIntents.stream().map(NavigationSegmentIntent::action).toList();
+    }
+
+    public List<NavigationPoint> actionTargets() {
+        return segmentIntents.stream().map(NavigationSegmentIntent::actionTarget).toList();
+    }
+
+    private static List<NavigationSegmentIntent> inferredIntents(List<NavigationPoint> nodes) {
+        List<MovementAction> actions = Collections.nCopies(Math.max(nodes.size() - 1, 0),
+                MovementAction.WALK);
+        return intentsFromActions(nodes, actions);
+    }
+
+    private static List<NavigationSegmentIntent> intentsFromActions(
+            List<NavigationPoint> nodes,
+            List<MovementAction> segmentActions) {
+        return intentsFromActionsAndTargets(segmentActions, segmentEnds(nodes));
+    }
+
+    private static List<NavigationSegmentIntent> intentsFromActionsAndTargets(
+            List<MovementAction> segmentActions,
+            List<NavigationPoint> actionTargets) {
+        List<MovementAction> actions = List.copyOf(Objects.requireNonNull(segmentActions, "segmentActions"));
+        List<NavigationPoint> targets = List.copyOf(Objects.requireNonNull(actionTargets, "actionTargets"));
+        if (actions.size() != targets.size()) {
+            throw new IllegalArgumentException("A navigation path needs one action target per segment action.");
+        }
+        java.util.ArrayList<NavigationSegmentIntent> intents = new java.util.ArrayList<>(actions.size());
+        for (int index = 0; index < actions.size(); index++) {
+            intents.add(NavigationSegmentIntent.of(actions.get(index), targets.get(index)));
+        }
+        return List.copyOf(intents);
+    }
+
+    private static List<NavigationPoint> segmentEnds(List<NavigationPoint> nodes) {
+        if (nodes.size() <= 1) {
+            return List.of();
+        }
+        return nodes.subList(1, nodes.size());
     }
 }

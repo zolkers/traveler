@@ -15,8 +15,25 @@ final class ClimbSurfaceConnectionProvider implements SurfaceConnectionProvider 
             SurfaceNode node,
             List<Connection<SurfaceNode>> connections) {
         Set<SurfaceNode> connected = new HashSet<>();
+        addCurrentColumnLandings(context, node, connected, connections);
         for (HorizontalOffset climbOffset : HorizontalDirections.CARDINAL) {
             addColumnLandings(context, node, climbOffset, connected, connections);
+        }
+    }
+
+    private static void addCurrentColumnLandings(
+            SurfaceTraversalContext context,
+            SurfaceNode node,
+            Set<SurfaceNode> connected,
+            List<Connection<SurfaceNode>> connections) {
+        int climbGlobalX = context.globalXOf(node);
+        int climbGlobalZ = context.globalZOf(node);
+        if (!hasClimbStartAt(context, node, climbGlobalX, climbGlobalZ)) {
+            return;
+        }
+        addClimbColumnNodes(context, node, climbGlobalX, climbGlobalZ, connected, connections);
+        for (HorizontalOffset landingOffset : HorizontalDirections.CARDINAL) {
+            addLandingLine(context, node, climbGlobalX, climbGlobalZ, landingOffset, connected, connections);
         }
     }
 
@@ -31,6 +48,7 @@ final class ClimbSurfaceConnectionProvider implements SurfaceConnectionProvider 
         if (!hasAdjacentClimbStart(context, node, climbGlobalX, climbGlobalZ)) {
             return;
         }
+        addClimbColumnNodes(context, node, climbGlobalX, climbGlobalZ, connected, connections);
         for (HorizontalOffset landingOffset : HorizontalDirections.CARDINAL) {
             addLandingLine(context, node, climbGlobalX, climbGlobalZ, landingOffset, connected, connections);
         }
@@ -41,9 +59,54 @@ final class ClimbSurfaceConnectionProvider implements SurfaceConnectionProvider 
             SurfaceNode node,
             int climbGlobalX,
             int climbGlobalZ) {
+        return hasClimbStartAt(context, node, climbGlobalX, climbGlobalZ);
+    }
+
+    private static boolean hasClimbStartAt(
+            SurfaceTraversalContext context,
+            SurfaceNode node,
+            int climbGlobalX,
+            int climbGlobalZ) {
         int bodyY = (int) Math.floor(node.floorY() + FLOOR_EPSILON);
         return context.hasClimbableAtGlobalCell(climbGlobalX, bodyY, climbGlobalZ)
                 || context.hasClimbableAtGlobalCell(climbGlobalX, bodyY - 1, climbGlobalZ);
+    }
+
+    private static void addClimbColumnNodes(
+            SurfaceTraversalContext context,
+            SurfaceNode node,
+            int climbGlobalX,
+            int climbGlobalZ,
+            Set<SurfaceNode> connected,
+            List<Connection<SurfaceNode>> connections) {
+        int blockX = blockCoordinate(climbGlobalX);
+        int blockZ = blockCoordinate(climbGlobalZ);
+        for (int blockY = context.minBlockY(); blockY <= context.maxBlockY(); blockY++) {
+            for (SurfaceNode candidate : context.climbNodesAt(blockX, blockY, blockZ)) {
+                addClimbColumnNode(context, node, climbGlobalX, climbGlobalZ, candidate, connected, connections);
+            }
+        }
+    }
+
+    private static void addClimbColumnNode(
+            SurfaceTraversalContext context,
+            SurfaceNode node,
+            int climbGlobalX,
+            int climbGlobalZ,
+            SurfaceNode candidate,
+            Set<SurfaceNode> connected,
+            List<Connection<SurfaceNode>> connections) {
+        if (context.globalXOf(candidate) != climbGlobalX || context.globalZOf(candidate) != climbGlobalZ) {
+            return;
+        }
+        if (node.sameSubcell(candidate) || connected.contains(candidate)) {
+            return;
+        }
+        if (!context.canReachClimb(node, candidate)) {
+            return;
+        }
+        connected.add(candidate);
+        connections.add(new Connection<>(node, candidate, context.movementCost(node, candidate)));
     }
 
     private static void addLandingLine(
@@ -78,5 +141,9 @@ final class ClimbSurfaceConnectionProvider implements SurfaceConnectionProvider 
         }
         connected.add(candidate);
         connections.add(new Connection<>(node, candidate, context.movementCost(node, candidate)));
+    }
+
+    private static int blockCoordinate(int globalCoordinate) {
+        return Math.floorDiv(globalCoordinate, 2);
     }
 }

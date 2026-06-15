@@ -6,6 +6,7 @@ import dev.traveler.core.navigation.spatial.NavigationPoint;
 import dev.traveler.core.world.behavior.BlockBehavior;
 import dev.traveler.core.world.behavior.context.HorizontalFacing;
 import dev.traveler.core.world.behavior.special.ClimbableBlockBehavior;
+import dev.traveler.core.world.behavior.special.ClimbSurfaceGeometry;
 import dev.traveler.core.world.behavior.special.WaterloggedBlockBehavior;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.movement.MovementCapabilities;
@@ -19,7 +20,6 @@ import java.util.Set;
 
 public final class SurfaceClimbTraversal {
     private static final double FLOOR_EPSILON = 0.001;
-    private static final double CLIMB_FACE_DISTANCE = 0.3;
 
     private SurfaceClimbTraversal() {}
 
@@ -29,7 +29,7 @@ public final class SurfaceClimbTraversal {
             SurfaceNode to,
             MovementCapabilities capabilities) {
         SurfaceWorldLayer layer = Objects.requireNonNull(worldLayer, "worldLayer");
-        return canClimbWithLookup(layer::surfaceBlock, from, to, capabilities, SurfaceClimbTraversal::isClimbable);
+        return canClimbWithLookup(layer::surfaceBlock, from, to, capabilities, SurfaceClimbTraversal::climbSurface);
     }
 
     public static boolean preservesRouteGeometry(
@@ -43,7 +43,7 @@ public final class SurfaceClimbTraversal {
                 from,
                 to,
                 capabilities,
-                SurfaceClimbTraversal::preservesClimbRouteGeometry);
+                SurfaceClimbTraversal::preservedClimbSurface);
     }
 
     public static Optional<NavigationPoint> climbTarget(
@@ -55,12 +55,66 @@ public final class SurfaceClimbTraversal {
         return climbTargetWithLookup(layer::surfaceBlock, from, to, capabilities);
     }
 
+    public static Optional<NavigationPoint> climbFaceTarget(
+            SurfaceWorldLayer worldLayer,
+            SurfaceNode from,
+            SurfaceNode to,
+            MovementCapabilities capabilities) {
+        SurfaceWorldLayer layer = Objects.requireNonNull(worldLayer, "worldLayer");
+        return climbContactWithLookup(layer::surfaceBlock, from, to, capabilities, false)
+                .map(contact -> climbTargetPoint(contact, Objects.requireNonNull(to, "to").floorY()));
+    }
+
+    public static Optional<List<SurfaceNode>> climbRouteNodes(
+            SurfaceWorldLayer worldLayer,
+            SurfaceNode from,
+            SurfaceNode to,
+            MovementCapabilities capabilities) {
+        SurfaceWorldLayer layer = Objects.requireNonNull(worldLayer, "worldLayer");
+        return climbRouteNodesWithLookup(layer::surfaceBlock, from, to, capabilities);
+    }
+
+    public static List<SurfaceNode> climbStartNodes(
+            SurfaceWorldLayer worldLayer,
+            BlockPosition feetPosition,
+            MovementCapabilities capabilities) {
+        SurfaceWorldLayer layer = Objects.requireNonNull(worldLayer, "worldLayer");
+        BlockPosition position = Objects.requireNonNull(feetPosition, "feetPosition");
+        MovementCapabilities safeCapabilities = Objects.requireNonNull(capabilities, "capabilities");
+        Optional<ClimbableBlockBehavior> climbable =
+                climbableBehavior(layer.surfaceBlock(position).behavior());
+        if (climbable.isEmpty()) {
+            return List.of();
+        }
+        ClimbableBlockBehavior behavior = climbable.orElseThrow();
+        if (!behavior.supportsClimbing(safeCapabilities)) {
+            return List.of();
+        }
+        List<SurfaceNode> starts = new ArrayList<>();
+        for (HorizontalFacing face : HorizontalFacing.values()) {
+            behavior.climbSurface(face, safeCapabilities)
+                    .map(surface -> surface.node(position))
+                    .ifPresent(starts::add);
+        }
+        return List.copyOf(starts);
+    }
+
+    public static Optional<NavigationPoint> climbStartTarget(
+            SurfaceWorldLayer worldLayer,
+            SurfaceNode node,
+            MovementCapabilities capabilities) {
+        SurfaceWorldLayer layer = Objects.requireNonNull(worldLayer, "worldLayer");
+        SurfaceNode safeNode = Objects.requireNonNull(node, "node");
+        return climbStartContact(layer, safeNode, capabilities)
+                .map(contact -> climbTargetPoint(contact, safeNode.floorY()));
+    }
+
     static boolean canClimbWithLookup(
             BlockLookup blocks,
             SurfaceNode from,
             SurfaceNode to,
             MovementCapabilities capabilities) {
-        return canClimbWithLookup(blocks, from, to, capabilities, SurfaceClimbTraversal::isClimbable);
+        return canClimbWithLookup(blocks, from, to, capabilities, SurfaceClimbTraversal::climbSurface);
     }
 
     private static boolean canClimbWithLookup(
@@ -76,7 +130,7 @@ public final class SurfaceClimbTraversal {
         if (!requiresClimb(safeFrom, safeTo, safeCapabilities)) {
             return false;
         }
-        for (ClimbContact fromContact : climbContactsAdjacentTo(safeFrom)) {
+        for (ClimbFaceContact fromContact : climbContactsAdjacentTo(safeFrom)) {
             if (climbContactFrom(
                             safeBlocks,
                             fromContact,
@@ -97,14 +151,35 @@ public final class SurfaceClimbTraversal {
             SurfaceNode from,
             SurfaceNode to,
             MovementCapabilities capabilities) {
+        return climbContactWithLookup(blocks, from, to, capabilities, true)
+                .map(value -> climbTargetPoint(value, Objects.requireNonNull(to, "to").floorY()));
+    }
+
+    private static Optional<List<SurfaceNode>> climbRouteNodesWithLookup(
+            BlockLookup blocks,
+            SurfaceNode from,
+            SurfaceNode to,
+            MovementCapabilities capabilities) {
+        SurfaceNode safeFrom = Objects.requireNonNull(from, "from");
+        SurfaceNode safeTo = Objects.requireNonNull(to, "to");
+        return climbContactWithLookup(blocks, safeFrom, safeTo, capabilities, true)
+                .map(contact -> climbColumnNodes(contact, safeFrom.floorY(), safeTo.floorY()));
+    }
+
+    private static Optional<ClimbContact> climbContactWithLookup(
+            BlockLookup blocks,
+            SurfaceNode from,
+            SurfaceNode to,
+            MovementCapabilities capabilities,
+            boolean requiresVerticalClimb) {
         BlockLookup safeBlocks = Objects.requireNonNull(blocks, "blocks");
         SurfaceNode safeFrom = Objects.requireNonNull(from, "from");
         SurfaceNode safeTo = Objects.requireNonNull(to, "to");
         MovementCapabilities safeCapabilities = Objects.requireNonNull(capabilities, "capabilities");
-        if (!requiresClimb(safeFrom, safeTo, safeCapabilities)) {
+        if (requiresVerticalClimb && !requiresClimb(safeFrom, safeTo, safeCapabilities)) {
             return Optional.empty();
         }
-        for (ClimbContact fromContact : climbContactsAdjacentTo(safeFrom)) {
+        for (ClimbFaceContact fromContact : climbContactsAdjacentTo(safeFrom)) {
             Optional<ClimbContact> contact = climbContactFrom(
                     safeBlocks,
                     fromContact,
@@ -112,9 +187,64 @@ public final class SurfaceClimbTraversal {
                     safeFrom.floorY(),
                     safeTo.floorY(),
                     safeCapabilities,
-                    SurfaceClimbTraversal::isClimbable);
+                    SurfaceClimbTraversal::climbSurface);
             if (contact.isPresent()) {
-                return contact.map(value -> climbTargetPoint(value, safeTo.floorY()));
+                return contact;
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static List<SurfaceNode> climbColumnNodes(ClimbContact contact, double fromFloorY, double toFloorY) {
+        int minY = (int) Math.floor(Math.min(fromFloorY, toFloorY) + FLOOR_EPSILON);
+        int maxYExclusive = (int) Math.ceil(Math.max(fromFloorY, toFloorY) - FLOOR_EPSILON);
+        if (maxYExclusive <= minY) {
+            return List.of();
+        }
+        List<SurfaceNode> nodes = new ArrayList<>(maxYExclusive - minY);
+        if (toFloorY >= fromFloorY) {
+            for (int y = minY; y < maxYExclusive; y++) {
+                nodes.add(climbNode(contact, y));
+            }
+            return List.copyOf(nodes);
+        }
+        for (int y = maxYExclusive - 1; y >= minY; y--) {
+            nodes.add(climbNode(contact, y));
+        }
+        return List.copyOf(nodes);
+    }
+
+    private static SurfaceNode climbNode(ClimbContact contact, int y) {
+        BlockColumn column = contact.column();
+        return contact.geometry().node(new BlockPosition(column.x(), y, column.z()));
+    }
+
+    private static Optional<ClimbContact> climbStartContact(
+            SurfaceWorldLayer worldLayer,
+            SurfaceNode node,
+            MovementCapabilities capabilities) {
+        SurfaceNode safeNode = Objects.requireNonNull(node, "node");
+        MovementCapabilities safeCapabilities = Objects.requireNonNull(capabilities, "capabilities");
+        if (!sameFloor(safeNode.floorY(), safeNode.blockPosition().y())) {
+            return Optional.empty();
+        }
+        Optional<ClimbableBlockBehavior> climbable =
+                climbableBehavior(worldLayer.surfaceBlock(safeNode.blockPosition()).behavior());
+        if (climbable.isEmpty()) {
+            return Optional.empty();
+        }
+        ClimbableBlockBehavior behavior = climbable.orElseThrow();
+        if (!behavior.supportsClimbing(safeCapabilities)) {
+            return Optional.empty();
+        }
+        BlockPosition position = safeNode.blockPosition();
+        for (HorizontalFacing face : HorizontalFacing.values()) {
+            Optional<ClimbSurfaceGeometry> geometry = behavior.climbSurface(face, safeCapabilities);
+            if (geometry.isPresent() && geometry.orElseThrow().node(position).sameSubcell(safeNode)) {
+                return Optional.of(new ClimbContact(
+                        new BlockColumn(position.x(), position.z()),
+                        face,
+                        geometry.orElseThrow()));
             }
         }
         return Optional.empty();
@@ -130,13 +260,13 @@ public final class SurfaceClimbTraversal {
 
     private static Optional<ClimbContact> climbContactFrom(
             BlockLookup blocks,
-            ClimbContact fromContact,
+            ClimbFaceContact fromContact,
             SurfaceNode to,
             double fromFloorY,
             double toFloorY,
             MovementCapabilities capabilities,
             ClimbBlockRule climbBlockRule) {
-        for (ClimbContact toContact : climbContactsAdjacentTo(to)) {
+        for (ClimbFaceContact toContact : climbContactsAdjacentTo(to)) {
             Optional<ClimbContact> contact = climbContactBetween(
                     blocks,
                     fromContact,
@@ -154,8 +284,8 @@ public final class SurfaceClimbTraversal {
 
     private static Optional<ClimbContact> climbContactBetween(
             BlockLookup blocks,
-            ClimbContact fromContact,
-            ClimbContact toContact,
+            ClimbFaceContact fromContact,
+            ClimbFaceContact toContact,
             double fromFloorY,
             double toFloorY,
             MovementCapabilities capabilities,
@@ -163,34 +293,42 @@ public final class SurfaceClimbTraversal {
         if (!fromContact.column().equals(toContact.column())) {
             return Optional.empty();
         }
-        if (hasContinuousClimbColumn(
+        Optional<ClimbSurfaceGeometry> fromGeometry = continuousClimbSurface(
                         blocks,
                         fromContact.column(),
                         fromFloorY,
                         toFloorY,
                         capabilities,
                         fromContact.face(),
-                        climbBlockRule)) {
-            return Optional.of(fromContact);
+                        climbBlockRule);
+        if (fromGeometry.isPresent()) {
+            return Optional.of(new ClimbContact(
+                    fromContact.column(),
+                    fromContact.face(),
+                    fromGeometry.orElseThrow()));
         }
-        if (hasContinuousClimbColumn(
+        Optional<ClimbSurfaceGeometry> toGeometry = continuousClimbSurface(
                         blocks,
                         toContact.column(),
                         fromFloorY,
                         toFloorY,
                         capabilities,
                         toContact.face(),
-                        climbBlockRule)) {
-            return Optional.of(toContact);
+                        climbBlockRule);
+        if (toGeometry.isPresent()) {
+            return Optional.of(new ClimbContact(
+                    toContact.column(),
+                    toContact.face(),
+                    toGeometry.orElseThrow()));
         }
         return Optional.empty();
     }
 
-    private static List<ClimbContact> climbContactsAdjacentTo(SurfaceNode node) {
-        Set<ClimbContact> seen = new HashSet<>();
-        List<ClimbContact> contacts = new ArrayList<>(HorizontalDirections.CARDINAL.length);
+    private static List<ClimbFaceContact> climbContactsAdjacentTo(SurfaceNode node) {
+        Set<ClimbFaceContact> seen = new HashSet<>();
+        List<ClimbFaceContact> contacts = new ArrayList<>(HorizontalDirections.CARDINAL.length);
         for (HorizontalOffset offset : HorizontalDirections.CARDINAL) {
-            ClimbContact contact = climbContact(node, offset);
+            ClimbFaceContact contact = climbContact(node, offset);
             if (seen.add(contact)) {
                 contacts.add(contact);
             }
@@ -198,8 +336,8 @@ public final class SurfaceClimbTraversal {
         return List.copyOf(contacts);
     }
 
-    private static ClimbContact climbContact(SurfaceNode node, HorizontalOffset offset) {
-        return new ClimbContact(
+    private static ClimbFaceContact climbContact(SurfaceNode node, HorizontalOffset offset) {
+        return new ClimbFaceContact(
                 new BlockColumn(
                         blockCoordinate(SurfaceTraversalGraph.globalX(node) + offset.x()),
                         blockCoordinate(SurfaceTraversalGraph.globalZ(node) + offset.z())),
@@ -221,7 +359,7 @@ public final class SurfaceClimbTraversal {
         return HorizontalFacing.SOUTH;
     }
 
-    private static boolean hasContinuousClimbColumn(
+    private static Optional<ClimbSurfaceGeometry> continuousClimbSurface(
             BlockLookup blocks,
             BlockColumn column,
             double fromFloorY,
@@ -231,52 +369,56 @@ public final class SurfaceClimbTraversal {
             ClimbBlockRule climbBlockRule) {
         int minY = (int) Math.floor(Math.min(fromFloorY, toFloorY) + FLOOR_EPSILON);
         int maxYExclusive = (int) Math.ceil(Math.max(fromFloorY, toFloorY) - FLOOR_EPSILON);
-        for (int y = minY; y < maxYExclusive; y++) {
-            if (!climbBlockRule.matches(blocks.get(new BlockPosition(column.x(), y, column.z())), capabilities, face)) {
-                return false;
-            }
+        if (maxYExclusive <= minY) {
+            SurfaceBlock block = blocks.get(new BlockPosition(column.x(), minY, column.z()));
+            return climbBlockRule.surface(block, capabilities, face);
         }
-        return maxYExclusive > minY;
+        ClimbSurfaceGeometry geometry = null;
+        for (int y = minY; y < maxYExclusive; y++) {
+            Optional<ClimbSurfaceGeometry> current = climbBlockRule.surface(
+                    blocks.get(new BlockPosition(column.x(), y, column.z())),
+                    capabilities,
+                    face);
+            if (current.isEmpty()) {
+                return Optional.empty();
+            }
+            ClimbSurfaceGeometry currentGeometry = current.orElseThrow();
+            if (geometry != null && !geometry.equals(currentGeometry)) {
+                return Optional.empty();
+            }
+            geometry = currentGeometry;
+        }
+        return Optional.ofNullable(geometry);
     }
 
     private static NavigationPoint climbTargetPoint(ClimbContact contact, double floorY) {
         BlockColumn column = contact.column();
-        double x = switch (contact.face()) {
-            case WEST -> column.x() - CLIMB_FACE_DISTANCE;
-            case EAST -> column.x() + 1.0 + CLIMB_FACE_DISTANCE;
-            case NORTH, SOUTH -> column.x() + 0.5;
-        };
-        double z = switch (contact.face()) {
-            case NORTH -> column.z() - CLIMB_FACE_DISTANCE;
-            case SOUTH -> column.z() + 1.0 + CLIMB_FACE_DISTANCE;
-            case WEST, EAST -> column.z() + 0.5;
-        };
-        return new NavigationPoint(x, floorY, z);
+        return contact.geometry().target(
+                new BlockPosition(column.x(), (int) Math.floor(floorY + FLOOR_EPSILON), column.z()),
+                floorY);
     }
 
-    static boolean isClimbable(SurfaceBlock block, MovementCapabilities capabilities) {
+    public static boolean isClimbable(SurfaceBlock block, MovementCapabilities capabilities) {
         return climbableBehavior(block.behavior())
                 .map(behavior -> behavior.supportsClimbing(capabilities))
                 .orElse(false);
     }
 
-    private static boolean isClimbable(
+    private static Optional<ClimbSurfaceGeometry> climbSurface(
             SurfaceBlock block,
             MovementCapabilities capabilities,
             HorizontalFacing face) {
         return climbableBehavior(block.behavior())
-                .map(behavior -> behavior.supportsClimbingFrom(face, capabilities))
-                .orElse(false);
+                .flatMap(behavior -> behavior.climbSurface(face, capabilities));
     }
 
-    private static boolean preservesClimbRouteGeometry(
+    private static Optional<ClimbSurfaceGeometry> preservedClimbSurface(
             SurfaceBlock block,
             MovementCapabilities capabilities,
             HorizontalFacing face) {
         return climbableBehavior(block.behavior())
-                .map(behavior -> !behavior.allowsRouteSmoothing(capabilities)
-                        && behavior.supportsClimbingFrom(face, capabilities))
-                .orElse(false);
+                .filter(behavior -> !behavior.allowsRouteSmoothing(capabilities))
+                .flatMap(behavior -> behavior.climbSurface(face, capabilities));
     }
 
     private static Optional<ClimbableBlockBehavior> climbableBehavior(BlockBehavior behavior) {
@@ -293,6 +435,10 @@ public final class SurfaceClimbTraversal {
         return Math.floorDiv(globalCoordinate, 2);
     }
 
+    private static boolean sameFloor(double first, double second) {
+        return Math.abs(first - second) <= FLOOR_EPSILON;
+    }
+
     @FunctionalInterface
     interface BlockLookup {
         SurfaceBlock get(BlockPosition position);
@@ -300,10 +446,15 @@ public final class SurfaceClimbTraversal {
 
     @FunctionalInterface
     private interface ClimbBlockRule {
-        boolean matches(SurfaceBlock block, MovementCapabilities capabilities, HorizontalFacing face);
+        Optional<ClimbSurfaceGeometry> surface(
+                SurfaceBlock block,
+                MovementCapabilities capabilities,
+                HorizontalFacing face);
     }
 
     private record BlockColumn(int x, int z) {}
 
-    private record ClimbContact(BlockColumn column, HorizontalFacing face) {}
+    private record ClimbFaceContact(BlockColumn column, HorizontalFacing face) {}
+
+    private record ClimbContact(BlockColumn column, HorizontalFacing face, ClimbSurfaceGeometry geometry) {}
 }

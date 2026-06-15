@@ -28,15 +28,30 @@ class SurfaceClimbTraversalTest {
 
         boolean climb = SurfaceClimbTraversal.canClimbWithLookup(
                 position -> blocks.getOrDefault(position, SurfaceBlock.empty()),
-                westOfLadder(63, 64.0),
-                westOfLadder(65, 66.0),
+                eastOfLadder(63, 64.0),
+                eastOfLadder(65, 66.0),
                 PLAYER);
 
         assertTrue(climb);
     }
 
     @Test
-    void rejectsLadderClimbFromNonFacingSide() {
+    void rejectsLadderClimbFromOppositeFacingSide() {
+        Map<BlockPosition, SurfaceBlock> blocks = Map.of(
+                new BlockPosition(1, 64, 0), ladder(HorizontalFacing.EAST),
+                new BlockPosition(1, 65, 0), ladder(HorizontalFacing.EAST));
+
+        boolean climb = SurfaceClimbTraversal.canClimbWithLookup(
+                position -> blocks.getOrDefault(position, SurfaceBlock.empty()),
+                westOfLadder(63, 64.0),
+                westOfLadder(65, 66.0),
+                PLAYER);
+
+        assertFalse(climb);
+    }
+
+    @Test
+    void rejectsLadderClimbFromSideFaceThatIsNotFacing() {
         Map<BlockPosition, SurfaceBlock> blocks = Map.of(
                 new BlockPosition(1, 64, 0), ladder(HorizontalFacing.EAST),
                 new BlockPosition(1, 65, 0), ladder(HorizontalFacing.EAST));
@@ -52,6 +67,10 @@ class SurfaceClimbTraversalTest {
 
     private static SurfaceNode westOfLadder(int supportY, double floorY) {
         return new SurfaceNode(new BlockPosition(0, supportY, 0), 1, 1, floorY);
+    }
+
+    private static SurfaceNode eastOfLadder(int supportY, double floorY) {
+        return new SurfaceNode(new BlockPosition(2, supportY, 0), 0, 1, floorY);
     }
 
     private static SurfaceNode northOfLadder(int supportY, double floorY) {

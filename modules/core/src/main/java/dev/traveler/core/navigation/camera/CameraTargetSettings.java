@@ -1,5 +1,7 @@
 package dev.traveler.core.navigation.camera;
 
+import dev.traveler.core.settings.TravelerSettings;
+
 public record CameraTargetSettings(
         double lookAheadDistance,
         double minimumHorizontalDistance,
@@ -23,7 +25,7 @@ public record CameraTargetSettings(
     }
 
     public static CameraTargetSettings standard() {
-        return new CameraTargetSettings(3.5, 0.35, 0.0, 0.65, 18.0);
+        return TravelerSettings.standard().cameraTargetSettings();
     }
 
     private static void requirePositive(double value, String name) {

@@ -6,6 +6,7 @@ import dev.traveler.core.navigation.control.ControlProjector;
 import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.plan.NavigationFramePlan;
 import dev.traveler.core.navigation.plan.NavigationFramePlanner;
+import dev.traveler.core.settings.TravelerSettings;
 import java.util.Objects;
 
 public final class NavigationController {
@@ -20,7 +21,14 @@ public final class NavigationController {
     }
 
     public static NavigationController standard() {
-        return standard(CameraAimSettings.standard());
+        return standard(TravelerSettings.standard());
+    }
+
+    public static NavigationController standard(TravelerSettings travelerSettings) {
+        TravelerSettings settings = Objects.requireNonNull(travelerSettings, "travelerSettings");
+        return new NavigationController(
+                NavigationFramePlanner.standard(settings),
+                ControlProjector.standard(settings));
     }
 
     public static NavigationController standard(CameraAimSettings cameraAimSettings) {

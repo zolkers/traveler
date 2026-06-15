@@ -1,6 +1,6 @@
 package dev.traveler.mc.v1_21_11.common.command;
 
-import dev.traveler.core.command.TravelerCommandContext;
+import dev.riege.buildmycommand.api.CommandContext;
 import dev.traveler.core.job.PathJob;
 import dev.traveler.core.job.PathJobState;
 import dev.traveler.core.layer.BlockClassification;
@@ -38,7 +38,7 @@ final class TravelerPathSearchService {
     }
 
     TravelerPathSearchSubmission blockPathSubmission(
-            TravelerCommandContext context,
+            CommandContext context,
             BlockPosition target,
             String purpose) {
         BlockPosition start = startPosition(context, target);
@@ -98,7 +98,7 @@ final class TravelerPathSearchService {
         return new TravelerPathSearchResult(result, blockMessage(worldLayer, target, result));
     }
 
-    private static BlockPosition startPosition(TravelerCommandContext context, BlockPosition target) {
+    private static BlockPosition startPosition(CommandContext context, BlockPosition target) {
         return context.source()
                 .unwrap(TravelerCommandPosition.class)
                 .flatMap(TravelerCommandPosition::blockPosition)

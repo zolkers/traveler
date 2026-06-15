@@ -1,8 +1,7 @@
 package dev.traveler.mc.v1_21_11.common.command;
 
-import dev.traveler.core.command.TravelerCommandContext;
-import dev.traveler.core.command.TravelerCommandFeedback;
-import dev.traveler.core.command.TravelerCommandResult;
+import dev.riege.buildmycommand.api.CommandContext;
+import dev.riege.buildmycommand.api.CommandResult;
 import dev.traveler.core.debug.DebugTextFormatter;
 import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.job.PathJobExecutor;
@@ -49,32 +48,30 @@ final class TravelerPathJobService implements AutoCloseable {
         this.executor = Objects.requireNonNull(executor, "executor");
     }
 
-    TravelerCommandResult queuePathBlock(TravelerCommandContext context, BlockPosition target) {
+    CommandResult queuePathBlock(CommandContext context, BlockPosition target) {
         QueueOutcome outcome = submit(context, target, PATH_PURPOSE, this::completePath);
         if (outcome.immediateResult().isPresent()) {
             TravelerPathSearchResult result = outcome.immediateResult().orElseThrow();
             result.updateDebug(debugState);
-            return TravelerCommandResult.success(result.message());
+            return TravelerCommandReplies.success(context, result.message());
         }
-        return TravelerCommandResult.success("path queued id="
-                + outcome.queuedId().orElseThrow()
-                + " target="
-                + format(target));
+        return TravelerCommandReplies.success(
+                context,
+                "path queued id=" + outcome.queuedId().orElseThrow() + " target=" + format(target));
     }
 
-    TravelerCommandResult queueNavigateBlock(TravelerCommandContext context, BlockPosition target) {
+    CommandResult queueNavigateBlock(CommandContext context, BlockPosition target) {
         QueueOutcome outcome = submit(context, target, NAVIGATE_PURPOSE, this::completeNavigation);
         if (outcome.immediateResult().isPresent()) {
             TravelerPathSearchResult result = outcome.immediateResult().orElseThrow();
             result.updateDebug(debugState);
             String message = navigationFailureMessage(result);
             navigationState.stop(message);
-            return TravelerCommandResult.success(message);
+            return TravelerCommandReplies.success(context, message);
         }
-        return TravelerCommandResult.success("navigate queued id="
-                + outcome.queuedId().orElseThrow()
-                + " target="
-                + format(target));
+        return TravelerCommandReplies.success(
+                context,
+                "navigate queued id=" + outcome.queuedId().orElseThrow() + " target=" + format(target));
     }
 
     void drainCompleted() {
@@ -88,7 +85,7 @@ final class TravelerPathJobService implements AutoCloseable {
     }
 
     private synchronized QueueOutcome submit(
-            TravelerCommandContext context,
+            CommandContext context,
             BlockPosition target,
             String purpose,
             PathCompletion completion) {
@@ -102,7 +99,7 @@ final class TravelerPathJobService implements AutoCloseable {
         }
         PathJobHandle<TravelerPathSearchResult> handle =
                 executor.submit(submission.job().orElseThrow());
-        PendingPathJob pending = new PendingPathJob(handle, context.feedback(), completion);
+        PendingPathJob pending = new PendingPathJob(handle, context.source()::reply, completion);
         pendingJobs.add(pending);
         return QueueOutcome.queued(pending.id());
     }
@@ -116,12 +113,12 @@ final class TravelerPathJobService implements AutoCloseable {
     }
 
     private synchronized QueueOutcome queueSnapshotSearch(
-            TravelerCommandContext context,
+            CommandContext context,
             String purpose,
             PathCompletion completion,
             TravelerPathSearchService.SnapshotBlockSearch snapshotSearch) {
         PendingSnapshotJob pending =
-                new PendingSnapshotJob(nextSnapshotId++, purpose, snapshotSearch, context.feedback(), completion);
+                new PendingSnapshotJob(nextSnapshotId++, purpose, snapshotSearch, context.source()::reply, completion);
         pendingSnapshots.add(pending);
         return QueueOutcome.queued(pending.id());
     }
@@ -157,12 +154,12 @@ final class TravelerPathJobService implements AutoCloseable {
         return new PendingPathJob(handle, pending.feedback(), pending.completion());
     }
 
-    private void completePath(TravelerPathSearchResult result, TravelerCommandFeedback feedback) {
+    private void completePath(TravelerPathSearchResult result, CommandFeedback feedback) {
         result.updateDebug(debugState);
         feedback.reply(result.message());
     }
 
-    private void completeNavigation(TravelerPathSearchResult result, TravelerCommandFeedback feedback) {
+    private void completeNavigation(TravelerPathSearchResult result, CommandFeedback feedback) {
         result.updateDebug(debugState);
         Optional<NavigationPath> path = result.navigationPath();
         if (path.isEmpty()) {
@@ -174,7 +171,7 @@ final class TravelerPathJobService implements AutoCloseable {
         feedback.reply(message);
     }
 
-    private void completeEmptyNavigation(TravelerPathSearchResult result, TravelerCommandFeedback feedback) {
+    private void completeEmptyNavigation(TravelerPathSearchResult result, CommandFeedback feedback) {
         if (result.alreadyAtTarget()) {
             navigationAlreadyAtTarget(result, feedback);
             return;
@@ -182,13 +179,13 @@ final class TravelerPathJobService implements AutoCloseable {
         navigationFailure(result, feedback);
     }
 
-    private void navigationAlreadyAtTarget(TravelerPathSearchResult result, TravelerCommandFeedback feedback) {
+    private void navigationAlreadyAtTarget(TravelerPathSearchResult result, CommandFeedback feedback) {
         String message = "navigation already at target | " + result.message();
         navigationState.stop(message);
         feedback.reply(message);
     }
 
-    private void navigationFailure(TravelerPathSearchResult result, TravelerCommandFeedback feedback) {
+    private void navigationFailure(TravelerPathSearchResult result, CommandFeedback feedback) {
         String message = navigationFailureMessage(result);
         navigationState.stop(message);
         feedback.reply(message);
@@ -231,12 +228,17 @@ final class TravelerPathJobService implements AutoCloseable {
 
     @FunctionalInterface
     private interface PathCompletion {
-        void apply(TravelerPathSearchResult result, TravelerCommandFeedback feedback);
+        void apply(TravelerPathSearchResult result, CommandFeedback feedback);
+    }
+
+    @FunctionalInterface
+    private interface CommandFeedback {
+        void reply(String message);
     }
 
     private record PendingPathJob(
             PathJobHandle<TravelerPathSearchResult> handle,
-            TravelerCommandFeedback feedback,
+            CommandFeedback feedback,
             PathCompletion completion) {
         private PendingPathJob {
             Objects.requireNonNull(handle, "handle");
@@ -297,7 +299,7 @@ final class TravelerPathJobService implements AutoCloseable {
             long id,
             String purpose,
             TravelerPathSearchService.SnapshotBlockSearch snapshotSearch,
-            TravelerCommandFeedback feedback,
+            CommandFeedback feedback,
             PathCompletion completion) {
         private PendingSnapshotJob {
             Objects.requireNonNull(purpose, "purpose");

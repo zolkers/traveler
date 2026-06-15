@@ -20,13 +20,13 @@ import dev.traveler.core.navigation.plan.NavigationFramePlan;
 import dev.traveler.core.navigation.plan.NavigationPhase;
 import dev.traveler.core.navigation.plan.PlannedMovementMode;
 import dev.traveler.core.navigation.plan.SpeedIntent;
-import dev.traveler.core.navigation.plan.ToleranceProfile;
 import dev.traveler.core.navigation.spatial.HorizontalVector;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import dev.traveler.core.path.PathfinderResult;
 import dev.traveler.core.path.PathfinderStatus;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.surface.SurfaceNode;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class PathDebugRenderModelTest {
@@ -146,6 +146,27 @@ class PathDebugRenderModelTest {
     }
 
     @Test
+    void routePointsRenderExecutionLineWhileSurfaceNodesStillRenderSupportBoxes() {
+        PathDebugRenderModel model = new PathDebugRenderModel(new ColorRgba(0.1f, 0.6f, 1.0f, 0.85f), 0.5);
+        PathfinderDebugState state = new PathfinderDebugState();
+        state.updateSurface(
+                foundSurfacePath(
+                        new SurfaceNode(new BlockPosition(0, 63, 0), 1, 1, 64.0),
+                        new SurfaceNode(new BlockPosition(1, 64, 0), 0, 1, 64.0)),
+                List.of(
+                        new NavigationPoint(0.75, 64.0, 0.75),
+                        new NavigationPoint(1.3, 64.0, 0.5)),
+                "path");
+
+        DebugRenderFrame frame = model.frameFor(state.snapshot());
+
+        assertEquals(1, frame.lines().size());
+        assertEquals(new RenderVertex(0.75, 64.5, 0.75), frame.lines().getFirst().from());
+        assertEquals(new RenderVertex(1.3, 64.5, 0.5), frame.lines().getFirst().to());
+        assertEquals(2, frame.boxes().size());
+    }
+
+    @Test
     void navigationDebugAddsOnlyTargetMarkerOverlay() {
         PathDebugRenderModel model = PathDebugRenderModel.defaultModel();
         PathfinderDebugState state = new PathfinderDebugState();
@@ -205,7 +226,6 @@ class PathDebugRenderModelTest {
                 new CameraAngles(0.0, 0.0),
                 ActionIntent.none(),
                 new SpeedIntent(1.0, true),
-                ToleranceProfile.standard(),
                 LocomotionExecutionState.start(),
                 false);
         return new NavigationControlFrame(

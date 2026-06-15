@@ -7,6 +7,7 @@ public record LocomotionPlan(LocomotionAction action) {
     private static final LocomotionPlan STEP_UP = new LocomotionPlan(LocomotionAction.STEP_UP);
     private static final LocomotionPlan JUMP = new LocomotionPlan(LocomotionAction.JUMP);
     private static final LocomotionPlan DROP = new LocomotionPlan(LocomotionAction.DROP);
+    private static final LocomotionPlan SWIM = new LocomotionPlan(LocomotionAction.SWIM);
     private static final LocomotionPlan CLIMB = new LocomotionPlan(LocomotionAction.CLIMB);
     private static final LocomotionPlan RECOVER = new LocomotionPlan(LocomotionAction.RECOVER);
 
@@ -30,6 +31,10 @@ public record LocomotionPlan(LocomotionAction action) {
         return DROP;
     }
 
+    public static LocomotionPlan swim() {
+        return SWIM;
+    }
+
     public static LocomotionPlan climb() {
         return CLIMB;
     }
@@ -45,6 +50,7 @@ public record LocomotionPlan(LocomotionAction action) {
             case STEP_UP -> stepUp();
             case JUMP -> jump();
             case DROP -> drop();
+            case SWIM -> swim();
             case CLIMB -> climb();
             case RECOVER -> recover();
         };

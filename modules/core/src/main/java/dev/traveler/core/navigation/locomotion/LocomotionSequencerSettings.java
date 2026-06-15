@@ -1,5 +1,7 @@
 package dev.traveler.core.navigation.locomotion;
 
+import dev.traveler.core.settings.TravelerSettings;
+
 public record LocomotionSequencerSettings(
         int requiredStableGroundFrames,
         double verticalVelocityTolerance,
@@ -23,6 +25,6 @@ public record LocomotionSequencerSettings(
     }
 
     public static LocomotionSequencerSettings standard() {
-        return new LocomotionSequencerSettings(2, 0.08, 4);
+        return TravelerSettings.standard().locomotionSequencerSettings();
     }
 }

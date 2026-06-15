@@ -110,11 +110,13 @@ public record DebugReport(
     private static void addMovementAnomalies(
             List<DebugAnomaly> anomalies,
             NavigationDebugSnapshot snapshot) {
-        if (!snapshot.intent().moving()) {
+        if (!snapshot.intent().moving() && !snapshot.actionIntent().descendRequested()) {
             anomalies.add(DebugAnomaly.NO_MOVEMENT_KEYS_WHILE_ACTIVE);
         }
         if (snapshot.movementVector().isZero()) {
-            anomalies.add(DebugAnomaly.ZERO_VECTOR_WHILE_NOT_COMPLETED);
+            if (!snapshot.actionIntent().descendRequested()) {
+                anomalies.add(DebugAnomaly.ZERO_VECTOR_WHILE_NOT_COMPLETED);
+            }
             return;
         }
         if (targetDot(snapshot) < BEHIND_TARGET_DOT_THRESHOLD) {

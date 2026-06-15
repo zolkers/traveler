@@ -24,7 +24,6 @@ import dev.traveler.core.navigation.plan.NavigationFramePlan;
 import dev.traveler.core.navigation.plan.NavigationPhase;
 import dev.traveler.core.navigation.plan.PlannedMovementMode;
 import dev.traveler.core.navigation.plan.SpeedIntent;
-import dev.traveler.core.navigation.plan.ToleranceProfile;
 import dev.traveler.core.navigation.spatial.HorizontalVector;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import dev.traveler.core.world.block.BlockPosition;
@@ -121,7 +120,6 @@ class PathfinderDebugStateTest {
                 new CameraAngles(0.0, 0.0),
                 ActionIntent.none(),
                 new SpeedIntent(1.0, true),
-                ToleranceProfile.standard(),
                 LocomotionExecutionState.start(),
                 false);
         NavigationControllerState controllerState =

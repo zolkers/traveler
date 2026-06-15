@@ -1,12 +1,9 @@
 package dev.traveler.core.world.movement;
 
-import dev.traveler.core.world.block.BlockPassability;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import java.util.HashSet;
-import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 class MovementValueObjectsTest {
@@ -67,21 +64,22 @@ class MovementValueObjectsTest {
     }
 
     @Test
-    void traversalRulesExposeFluidHandlingAndAllowedPassability() {
-        Set<BlockPassability> passability = new HashSet<>();
-        passability.add(BlockPassability.WALKABLE);
-        passability.add(BlockPassability.PASSABLE);
+    void movementCapabilitiesCanReplaceSwimmingMode() {
+        MovementCapabilities capabilities = new MovementCapabilities(true, false, false, false, 0.6, 1.25, 3.0);
 
-        TraversalRules rules =
-                new TraversalRules(false, true, FluidHandling.AVOID, new TraversalCost(1.0), passability);
+        MovementCapabilities swimming = capabilities.withCanSwim(true);
 
-        passability.clear();
+        assertEquals(true, swimming.canSwim());
+        assertEquals(capabilities.maxSafeFallDistance(), swimming.maxSafeFallDistance());
+    }
+
+    @Test
+    void traversalRulesExposeRouteExpansionOptionsAndCost() {
+        TraversalRules rules = new TraversalRules(false, true, new TraversalCost(1.0));
 
         assertEquals(false, rules.allowDiagonal());
         assertEquals(true, rules.allowVertical());
-        assertEquals(FluidHandling.AVOID, rules.fluidHandling());
         assertEquals(new TraversalCost(1.0), rules.defaultCost());
-        assertEquals(Set.of(BlockPassability.WALKABLE, BlockPassability.PASSABLE), rules.allowedPassability());
     }
 
     @Test
@@ -95,6 +93,18 @@ class MovementValueObjectsTest {
         assertSame(dimensions, profile.dimensions());
         assertSame(capabilities, profile.capabilities());
         assertSame(rules, profile.rules());
+    }
+
+    @Test
+    void movementProfileCanReplaceIndividualSettingGroups() {
+        MovementProfile profile = MovementProfiles.defaultPlayer();
+        EntityDimensions dimensions = new EntityDimensions(0.9, 2.0);
+        MovementCapabilities capabilities = profile.capabilities().withMaxSafeFallDistance(10.0);
+        TraversalRules rules = new TraversalRules(false, true, new TraversalCost(2.0));
+
+        assertSame(dimensions, profile.withDimensions(dimensions).dimensions());
+        assertSame(capabilities, profile.withCapabilities(capabilities).capabilities());
+        assertSame(rules, profile.withRules(rules).rules());
     }
 
     @Test
@@ -113,35 +123,12 @@ class MovementValueObjectsTest {
         EntityDimensions dimensions = MovementProfiles.defaultPlayerDimensions();
         MovementCapabilities capabilities = MovementProfiles.defaultPlayerCapabilities();
         TraversalRules rules = MovementProfiles.defaultPlayerRules();
-        Set<BlockPassability> passabilityWithNull = new HashSet<>();
-        passabilityWithNull.add(null);
 
-        assertThrows(
-                NullPointerException.class,
-                () -> new TraversalRules(
-                        false, true, null, new TraversalCost(1.0), Set.of(BlockPassability.WALKABLE)));
-        assertThrows(
-                NullPointerException.class,
-                () -> new TraversalRules(
-                        false, true, FluidHandling.ALLOW, null, Set.of(BlockPassability.WALKABLE)));
-        assertThrows(
-                NullPointerException.class,
-                () -> new TraversalRules(false, true, FluidHandling.ALLOW, new TraversalCost(1.0), null));
-        assertThrows(
-                NullPointerException.class,
-                () -> new TraversalRules(
-                        false, true, FluidHandling.ALLOW, new TraversalCost(1.0), passabilityWithNull));
+        assertThrows(NullPointerException.class, () -> new TraversalRules(false, true, null));
         assertThrows(NullPointerException.class, () -> new MovementProfile(null, capabilities, rules));
         assertThrows(NullPointerException.class, () -> new MovementProfile(dimensions, null, rules));
         assertThrows(NullPointerException.class, () -> new MovementProfile(dimensions, capabilities, null));
         assertThrows(NullPointerException.class, () -> MovementProfiles.defaultPlayerWith(null));
         assertEquals(new TraversalCost(1.0), rules.defaultCost());
-    }
-
-    @Test
-    void traversalRulesRejectEmptyPassability() {
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> new TraversalRules(false, true, FluidHandling.ALLOW, new TraversalCost(1.0), Set.of()));
     }
 }

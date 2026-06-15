@@ -16,7 +16,7 @@ The core module owns the reusable Traveler engine:
 - route search and surface traversal;
 - movement models, traversal rules, block behavior contracts, and smoothing;
 - navigation intent, steering/control models, and debug data models;
-- event, command, render, and async job abstractions;
+- event, render, and async job abstractions;
 - tests for pathfinding, smoothing, architecture, and movement behavior.
 
 `core` must stay pure Java. It must not import Minecraft, Fabric, NeoForge, Brigadier, Mixin, or BuildMyCommand.
@@ -203,8 +203,7 @@ Avoid debug visuals attached directly to the player when they make the scene noi
 
 Commands should be modular and route-based:
 
-- core owns command metadata/catalog abstractions;
-- Minecraft common owns BuildMyCommand declarations and command use cases;
+- Minecraft common owns BuildMyCommand annotations and command use cases;
 - Fabric owns actual client registration;
 - each command group should have a base route and clean subroutes.
 

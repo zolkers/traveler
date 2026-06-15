@@ -8,7 +8,8 @@ public record SurfaceTraversalGraphSettings(
         int verticalMargin,
         SurfaceClearanceScorer clearanceScorer,
         SurfaceBodyClearanceMode bodyClearanceMode,
-        List<SurfaceConnectionProvider> connectionProviders) {
+        List<SurfaceConnectionProvider> connectionProviders,
+        SurfaceTransitionResolver transitionResolver) {
     public SurfaceTraversalGraphSettings {
         requirePositive(horizontalMargin, "horizontalMargin");
         requirePositive(verticalMargin, "verticalMargin");
@@ -18,6 +19,7 @@ public record SurfaceTraversalGraphSettings(
         if (connectionProviders.isEmpty()) {
             throw new IllegalArgumentException("connectionProviders must not be empty");
         }
+        Objects.requireNonNull(transitionResolver, "transitionResolver");
     }
 
     public SurfaceTraversalGraphSettings(
@@ -30,7 +32,8 @@ public record SurfaceTraversalGraphSettings(
                 verticalMargin,
                 clearanceScorer,
                 bodyClearanceMode,
-                SurfaceConnectionProvider.standard());
+                SurfaceConnectionProvider.standard(),
+                SurfaceTraversalFeatures.transitionResolver(SurfaceTraversalFeatures.standard()));
     }
 
     public static SurfaceTraversalGraphSettings basic(int horizontalMargin, int verticalMargin) {
@@ -63,7 +66,18 @@ public record SurfaceTraversalGraphSettings(
                 verticalMargin,
                 clearanceScorer,
                 bodyClearanceMode,
-                providers);
+                providers,
+                transitionResolver);
+    }
+
+    public SurfaceTraversalGraphSettings withTransitionResolver(SurfaceTransitionResolver resolver) {
+        return new SurfaceTraversalGraphSettings(
+                horizontalMargin,
+                verticalMargin,
+                clearanceScorer,
+                bodyClearanceMode,
+                connectionProviders,
+                resolver);
     }
 
     private static void requirePositive(int value, String name) {

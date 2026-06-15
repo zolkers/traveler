@@ -8,6 +8,7 @@ import dev.traveler.core.navigation.plan.NavigationFramePlan;
 import dev.traveler.core.navigation.plan.PlannedMovementMode;
 import dev.traveler.core.navigation.spatial.CameraMovementBasis;
 import dev.traveler.core.navigation.spatial.HorizontalVector;
+import dev.traveler.core.settings.TravelerSettings;
 import java.util.Objects;
 
 public final class ControlProjector {
@@ -22,7 +23,14 @@ public final class ControlProjector {
     }
 
     public static ControlProjector standard() {
-        return standard(CameraAimSettings.standard());
+        return standard(TravelerSettings.standard());
+    }
+
+    public static ControlProjector standard(TravelerSettings travelerSettings) {
+        TravelerSettings settings = Objects.requireNonNull(travelerSettings, "travelerSettings");
+        return new ControlProjector(
+                settings.controlProjectionSettings(),
+                new CameraAimController(settings.cameraAimSettings()));
     }
 
     public static ControlProjector standard(CameraAimSettings cameraAimSettings) {
@@ -58,7 +66,8 @@ public final class ControlProjector {
         boolean left = left(plan.movementVector().mode(), rightAmount, previous);
         boolean right = right(plan.movementVector().mode(), rightAmount, previous);
         boolean jump = plan.actionIntent().jumpRequested();
-        boolean sprint = plan.speedIntent().sprintRequested() && forward && !back;
+        boolean descend = plan.actionIntent().descendRequested();
+        boolean sprint = plan.speedIntent().sprintRequested() && forward && !back && !descend;
         return new MovementIntent(forward, back, left, right, jump, sprint);
     }
 

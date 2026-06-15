@@ -75,6 +75,9 @@ public final class PathDebugRenderModel {
         if (snapshot.result().status() != PathfinderStatus.FOUND) {
             return DebugRenderFrame.empty();
         }
+        if (snapshot.hasRoutePoints()) {
+            return routeFrameFor(snapshot.routePoints(), snapshot.surfaceNodes());
+        }
         if (snapshot.hasSurfaceNodes()) {
             return surfaceFrameFor(snapshot.surfaceNodes());
         }
@@ -96,6 +99,13 @@ public final class PathDebugRenderModel {
             return DebugRenderFrame.empty();
         }
         return new DebugRenderFrame(surfaceLinesFor(nodes), surfaceBoxesFor(nodes));
+    }
+
+    private DebugRenderFrame routeFrameFor(List<NavigationPoint> points, List<SurfaceNode> surfaceNodes) {
+        if (points.size() < 2) {
+            return DebugRenderFrame.empty();
+        }
+        return new DebugRenderFrame(routeLinesFor(points), surfaceBoxesFor(surfaceNodes));
     }
 
     private DebugRenderFrame navigationFrameFor(Optional<NavigationDebugSnapshot> snapshot) {
@@ -128,6 +138,14 @@ public final class PathDebugRenderModel {
         List<DebugLine> lines = new ArrayList<>();
         for (int index = 1; index < nodes.size(); index++) {
             addLine(lines, surfaceVertexFor(nodes.get(index - 1)), surfaceVertexFor(nodes.get(index)));
+        }
+        return lines;
+    }
+
+    private List<DebugLine> routeLinesFor(List<NavigationPoint> points) {
+        List<DebugLine> lines = new ArrayList<>();
+        for (int index = 1; index < points.size(); index++) {
+            addLine(lines, routeVertexFor(points.get(index - 1)), routeVertexFor(points.get(index)));
         }
         return lines;
     }
@@ -203,6 +221,10 @@ public final class PathDebugRenderModel {
 
     private RenderVertex surfaceVertexFor(SurfaceNode node) {
         return new RenderVertex(node.centerX(), node.floorY() + yOffset, node.centerZ());
+    }
+
+    private RenderVertex routeVertexFor(NavigationPoint point) {
+        return new RenderVertex(point.x(), point.y() + yOffset, point.z());
     }
 
     private static DebugRenderFrame combine(DebugRenderFrame first, DebugRenderFrame second) {

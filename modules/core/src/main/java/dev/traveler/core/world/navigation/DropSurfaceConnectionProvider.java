@@ -24,13 +24,16 @@ final class DropSurfaceConnectionProvider implements SurfaceConnectionProvider {
         if (context.capabilities().maxSafeFallDistance() <= context.capabilities().maxStepUp()) {
             return;
         }
-        SurfaceNode candidate = context.surfaceNodeAt(
-                context.globalXOf(node) + direction.x() * 2,
-                node.blockPosition().y() - 1,
-                context.globalZOf(node) + direction.z() * 2);
-        if (candidate == null || !context.canReachDrop(node, candidate, direction)) {
-            return;
+        int destinationX = context.globalXOf(node) + direction.x() * 2;
+        int destinationZ = context.globalZOf(node) + direction.z() * 2;
+        int lowestY = Math.max(
+                context.minBlockY(),
+                (int) Math.floor(node.floorY() - context.capabilities().maxSafeFallDistance()));
+        for (int supportY = node.blockPosition().y() - 1; supportY >= lowestY; supportY--) {
+            SurfaceNode candidate = context.surfaceNodeAt(destinationX, supportY, destinationZ);
+            if (candidate != null && context.canReachDrop(node, candidate, direction)) {
+                connections.add(new Connection<>(node, candidate, context.movementCost(node, candidate)));
+            }
         }
-        connections.add(new Connection<>(node, candidate, context.movementCost(node, candidate)));
     }
 }

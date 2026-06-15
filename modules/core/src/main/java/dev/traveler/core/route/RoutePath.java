@@ -33,6 +33,19 @@ public record RoutePath(List<RouteStep> steps) {
         List<NavigationPoint> points = new ArrayList<>(steps.size() + 1);
         points.add(pointOf(steps.getFirst().from()));
         for (RouteStep step : steps) {
+            points.add(pointOf(step.to()));
+        }
+        return List.copyOf(points);
+    }
+
+    public List<NavigationPoint> actionTargets() {
+        return steps.stream().map(RouteStep::targetPoint).toList();
+    }
+
+    public List<NavigationPoint> executionPoints() {
+        List<NavigationPoint> points = new ArrayList<>(steps.size() + 1);
+        points.add(pointOf(steps.getFirst().from()));
+        for (RouteStep step : steps) {
             points.add(step.targetPoint());
         }
         return List.copyOf(points);

@@ -8,4 +8,5 @@ description = "Traveler Fabric client runtime for Minecraft 1.21.11."
 
 dependencies {
     implementation(project(path = ":mc_1_21_11_common", configuration = "namedElements"))
+    testImplementation(testFixtures(project(":core")))
 }

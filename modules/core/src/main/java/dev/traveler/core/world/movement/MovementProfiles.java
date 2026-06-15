@@ -1,8 +1,7 @@
 package dev.traveler.core.world.movement;
 
-import dev.traveler.core.world.block.BlockPassability;
+import dev.traveler.core.settings.TravelerSettings;
 import java.util.Objects;
-import java.util.Set;
 
 public final class MovementProfiles {
     private MovementProfiles() {}
@@ -19,19 +18,14 @@ public final class MovementProfiles {
     }
 
     public static EntityDimensions defaultPlayerDimensions() {
-        return new EntityDimensions(0.6, 1.8);
+        return TravelerSettings.standard().entityDimensions();
     }
 
     public static MovementCapabilities defaultPlayerCapabilities() {
-        return new MovementCapabilities(true, true, false, true, 0.6, 1.25, 3.0);
+        return TravelerSettings.standard().movementCapabilities();
     }
 
     public static TraversalRules defaultPlayerRules() {
-        return new TraversalRules(
-                false,
-                true,
-                FluidHandling.ALLOW,
-                new TraversalCost(1.0),
-                Set.of(BlockPassability.WALKABLE, BlockPassability.PASSABLE));
+        return TravelerSettings.standard().traversalRules();
     }
 }

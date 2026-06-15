@@ -138,7 +138,7 @@ class SurfaceSmoothingPolicyTest {
         return new SurfaceBlock(
                 new BlockClassification(BlockPassability.PASSABLE, FluidHandling.AVOID),
                 BlockShape.empty(),
-                new LadderBlockBehavior(HorizontalFacing.EAST));
+                new LadderBlockBehavior(HorizontalFacing.WEST));
     }
 
     private record TestSurfaceWorldLayer(Map<BlockPosition, SurfaceBlock> blocks) implements SurfaceWorldLayer {

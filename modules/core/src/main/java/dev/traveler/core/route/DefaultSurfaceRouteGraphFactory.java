@@ -2,11 +2,35 @@ package dev.traveler.core.route;
 
 import dev.traveler.core.graph.Graph;
 import dev.traveler.core.layer.SurfaceWorldLayer;
+import dev.traveler.core.world.navigation.SurfaceConnectionProvider;
+import dev.traveler.core.world.navigation.SurfaceTransitionResolver;
+import dev.traveler.core.world.navigation.SurfaceTraversalFeatures;
 import dev.traveler.core.world.navigation.SurfaceTraversalGraph;
 import dev.traveler.core.world.navigation.SurfaceTraversalGraphSettings;
 import dev.traveler.core.world.surface.SurfaceNode;
+import java.util.List;
+import java.util.Objects;
 
 final class DefaultSurfaceRouteGraphFactory implements SurfaceRouteGraphFactory {
+    private final List<SurfaceConnectionProvider> connectionProviders;
+    private final SurfaceTransitionResolver transitionResolver;
+
+    DefaultSurfaceRouteGraphFactory() {
+        this(
+                SurfaceConnectionProvider.standard(),
+                SurfaceTraversalFeatures.transitionResolver(SurfaceTraversalFeatures.standard()));
+    }
+
+    DefaultSurfaceRouteGraphFactory(
+            List<SurfaceConnectionProvider> connectionProviders,
+            SurfaceTransitionResolver transitionResolver) {
+        this.connectionProviders = List.copyOf(Objects.requireNonNull(connectionProviders, "connectionProviders"));
+        if (this.connectionProviders.isEmpty()) {
+            throw new IllegalArgumentException("connectionProviders must not be empty");
+        }
+        this.transitionResolver = Objects.requireNonNull(transitionResolver, "transitionResolver");
+    }
+
     @Override
     public Graph<SurfaceNode> create(
             SurfaceWorldLayer worldLayer,
@@ -20,6 +44,8 @@ final class DefaultSurfaceRouteGraphFactory implements SurfaceRouteGraphFactory 
                 settings.movementProfile(),
                 SurfaceTraversalGraphSettings.standard(
                         settings.horizontalMargin(),
-                        settings.verticalMargin()));
+                        settings.verticalMargin())
+                        .withConnectionProviders(connectionProviders)
+                        .withTransitionResolver(transitionResolver));
     }
 }

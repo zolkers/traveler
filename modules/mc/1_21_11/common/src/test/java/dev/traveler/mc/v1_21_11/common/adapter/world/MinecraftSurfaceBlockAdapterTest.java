@@ -8,10 +8,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.traveler.core.layer.SurfaceBlock;
 import dev.traveler.core.layer.SurfaceWorldLayer;
+import dev.traveler.core.path.PathfinderStatus;
+import dev.traveler.core.route.RoutePath;
+import dev.traveler.core.route.RouteSearchResult;
+import dev.traveler.core.route.RouteSearchService;
+import dev.traveler.core.route.RouteSearchSettings;
 import dev.traveler.core.world.behavior.BlockBehaviorClassificationPolicy;
 import dev.traveler.core.world.behavior.BlockBehaviorKey;
 import dev.traveler.core.world.behavior.BlockBehaviorRegistry;
 import dev.traveler.core.world.behavior.context.HorizontalFacing;
+import dev.traveler.core.world.behavior.decision.MovementAction;
 import dev.traveler.core.world.behavior.special.LadderBlockBehavior;
 import dev.traveler.core.world.behavior.special.StairBlockBehavior;
 import dev.traveler.core.world.behavior.special.VineBlockBehavior;
@@ -20,6 +26,9 @@ import dev.traveler.core.world.block.BlockPassability;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.mc.v1_21_11.common.adapter.block.MinecraftBlockClassifier;
 import dev.traveler.mc.v1_21_11.common.adapter.block.MinecraftBlockContext;
+import dev.traveler.mc.v1_21_11.common.adapter.testing.AbstractTestBlockGetter;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -155,6 +164,38 @@ class MinecraftSurfaceBlockAdapterTest {
     }
 
     @Test
+    void ladderBlockStateExposesVisibleFacingAsClimbableFace() {
+        SurfaceBlock ladder = surfaceBlock(
+                Blocks.LADDER.defaultBlockState().setValue(LadderBlock.FACING, Direction.EAST));
+
+        LadderBlockBehavior behavior = assertInstanceOf(LadderBlockBehavior.class, ladder.behavior());
+
+        assertEquals(Set.of(HorizontalFacing.EAST), behavior.climbableFaces());
+    }
+
+    @Test
+    void ladderDoesNotExposeCollisionShapeAsStandingSurface() {
+        SurfaceBlock ladder = surfaceBlock(
+                Blocks.LADDER.defaultBlockState().setValue(LadderBlock.FACING, Direction.EAST));
+
+        assertTrue(ladder.shape().isEmpty());
+    }
+
+    @Test
+    void minecraftWallLadderRouteClimbsFromOpenSideToLadderTarget() {
+        MinecraftWorldSnapshot world = new MinecraftWorldSnapshot(new WallLadderBlockGetter(Direction.EAST, 64, 82));
+        RouteSearchService service = new RouteSearchService(RouteSearchSettings.standardClient());
+
+        RouteSearchResult result =
+                service.search(world, new BlockPosition(1, 64, 0), new BlockPosition(0, 82, 0));
+
+        assertEquals(PathfinderStatus.FOUND, result.status());
+        RoutePath route = result.route().orElseThrow();
+        assertTrue(route.actions().contains(MovementAction.CLIMB));
+        assertEquals(new BlockPosition(1, 82, 0), route.nodes().getLast().blockPosition());
+    }
+
+    @Test
     void waterloggedLadderKeepsDryLadderDelegate() {
         SurfaceBlock ladder = surfaceBlock(Blocks.LADDER
                 .defaultBlockState()
@@ -226,6 +267,36 @@ class MinecraftSurfaceBlockAdapterTest {
 
     private static MinecraftBlockContext contextFor(BlockState state) {
         return new MinecraftBlockContext(state, new SingleStateBlockGetter(state), BlockPos.ZERO);
+    }
+
+    private static final class WallLadderBlockGetter extends AbstractTestBlockGetter {
+        private final Map<BlockPos, BlockState> blocks;
+
+        private WallLadderBlockGetter(Direction facing, int minY, int maxY) {
+            Direction supportDirection = facing.getOpposite();
+            Map<BlockPos, BlockState> mutableBlocks = new HashMap<>();
+            mutableBlocks.put(new BlockPos(facing.getStepX(), minY - 1, facing.getStepZ()),
+                    Blocks.STONE.defaultBlockState());
+            mutableBlocks.put(new BlockPos(facing.getStepX(), maxY, facing.getStepZ()),
+                    Blocks.STONE.defaultBlockState());
+            for (int y = minY; y <= maxY; y++) {
+                mutableBlocks.put(new BlockPos(supportDirection.getStepX(), y, supportDirection.getStepZ()),
+                        Blocks.STONE.defaultBlockState());
+                mutableBlocks.put(BlockPos.ZERO.atY(y),
+                        Blocks.LADDER.defaultBlockState().setValue(LadderBlock.FACING, facing));
+            }
+            blocks = Map.copyOf(mutableBlocks);
+        }
+
+        @Override
+        public BlockState getBlockState(BlockPos position) {
+            return blocks.getOrDefault(position, Blocks.AIR.defaultBlockState());
+        }
+
+        @Override
+        public net.minecraft.world.level.material.FluidState getFluidState(BlockPos position) {
+            return getBlockState(position).getFluidState();
+        }
     }
 
     private static Stream<Arguments> surfaceClassifications() {

@@ -7,19 +7,16 @@ import dev.traveler.core.layer.WorldLayer;
 import dev.traveler.core.path.PathfinderRequest;
 import dev.traveler.core.path.PathfinderResult;
 import dev.traveler.core.path.PathfinderStatus;
+import dev.traveler.core.route.start.SurfaceRouteStartContext;
+import dev.traveler.core.route.step.SurfaceRouteStepContext;
 import dev.traveler.core.smooth.PathNodePreservation;
 import dev.traveler.core.smooth.PathSmoother;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
-import dev.traveler.core.world.behavior.decision.MovementDecision;
-import dev.traveler.core.world.behavior.decision.MovementAction;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.navigation.BlockLineOfWalk;
 import dev.traveler.core.world.navigation.SurfaceLineOfWalk;
 import dev.traveler.core.world.navigation.SurfaceLineOfWalkSettings;
-import dev.traveler.core.world.navigation.SurfaceClimbTraversal;
 import dev.traveler.core.world.navigation.SurfaceSmoothingPolicy;
 import dev.traveler.core.world.navigation.SurfaceTransitionEvaluator;
-import dev.traveler.core.world.movement.MovementCapabilities;
 import dev.traveler.core.world.surface.SurfaceNode;
 import dev.traveler.core.world.surface.SurfaceNodeResolver;
 import java.util.ArrayList;
@@ -66,8 +63,12 @@ public final class RouteSearchService {
             SurfaceWorldLayer worldLayer,
             BlockPosition start,
             RouteGoal goal) {
-        SurfaceNodeResolver resolver = new SurfaceNodeResolver(worldLayer);
-        List<SurfaceNode> startNodes = resolver.standingSurfaces(start);
+        SurfaceNodeResolver resolver = new SurfaceNodeResolver(worldLayer, settings.movementProfile().capabilities());
+        List<SurfaceNode> startNodes = components.surfaceStartResolver().startNodes(new SurfaceRouteStartContext(
+                worldLayer,
+                resolver,
+                start,
+                settings.movementProfile()));
         List<SurfaceNode> goalNodes = goal.surfaceGoals(resolver);
         if (startNodes.isEmpty()) {
             return surfaceRejected(goal, goalNodes.size(), RouteSearchDiagnostics::noStartSurface);
@@ -170,7 +171,7 @@ public final class RouteSearchService {
             SurfaceNode goal) {
         Graph<SurfaceNode> graph = components.surfaceGraphFactory().create(worldLayer, start, goal, settings);
         PathfinderRequest<SurfaceNode> request =
-                new PathfinderRequest<>(graph, start, goal, RouteSearchService::surfaceDistance);
+                new PathfinderRequest<>(graph, start, goal, SurfaceRouteStepContext::surfaceDistance);
         PathfinderResult<SurfaceNode> result = components.surfacePathfinder().search(request);
         return smoothedSurfaceResult(worldLayer, result);
     }
@@ -186,44 +187,19 @@ public final class RouteSearchService {
 
     private RoutePath routeFromNodes(SurfaceWorldLayer worldLayer, List<SurfaceNode> nodes) {
         List<RouteStep> steps = new ArrayList<>(nodes.size() - 1);
-        MovementCapabilities capabilities = settings.movementProfile().capabilities();
-        SurfaceTransitionEvaluator evaluator = new SurfaceTransitionEvaluator(capabilities);
+        SurfaceTransitionEvaluator evaluator =
+                new SurfaceTransitionEvaluator(
+                        settings.movementProfile().capabilities(),
+                        components.surfaceTransitionResolver());
         for (int index = 1; index < nodes.size(); index++) {
-            steps.add(routeStep(worldLayer, evaluator, capabilities, nodes.get(index - 1), nodes.get(index)));
+            steps.addAll(components.surfaceRouteStepResolver().routeSteps(new SurfaceRouteStepContext(
+                    worldLayer,
+                    nodes.get(index - 1),
+                    nodes.get(index),
+                    settings.movementProfile(),
+                    evaluator)));
         }
         return RoutePath.of(steps);
-    }
-
-    private static RouteStep routeStep(
-            SurfaceWorldLayer worldLayer,
-            SurfaceTransitionEvaluator evaluator,
-            MovementCapabilities capabilities,
-            SurfaceNode from,
-            SurfaceNode to) {
-        MovementDecision decision = evaluator.decision(worldLayer, from, to);
-        return new RouteStep(
-                from,
-                to,
-                decision.action(),
-                surfaceDistance(from, to),
-                targetPoint(worldLayer, capabilities, decision.action(), from, to));
-    }
-
-    private static NavigationPoint targetPoint(
-            SurfaceWorldLayer worldLayer,
-            MovementCapabilities capabilities,
-            MovementAction action,
-            SurfaceNode from,
-            SurfaceNode to) {
-        if (action != MovementAction.CLIMB) {
-            return pointOf(to);
-        }
-        return SurfaceClimbTraversal.climbTarget(
-                        worldLayer,
-                        from,
-                        to,
-                        capabilities)
-                .orElseGet(() -> pointOf(to));
     }
 
     private RouteSearchResult surfaceRejected(
@@ -358,15 +334,6 @@ public final class RouteSearchService {
         return straight + Math.min(deltaX, deltaZ) * Math.sqrt(2.0) + Math.abs(from.y() - to.y()) * 0.5;
     }
 
-    private static double surfaceDistance(SurfaceNode from, SurfaceNode to) {
-        double deltaX = Math.abs(from.centerX() - to.centerX());
-        double deltaZ = Math.abs(from.centerZ() - to.centerZ());
-        return Math.hypot(deltaX, deltaZ) + Math.abs(from.floorY() - to.floorY()) * 0.5;
-    }
-
-    private static NavigationPoint pointOf(SurfaceNode node) {
-        return new NavigationPoint(node.centerX(), node.floorY(), node.centerZ());
-    }
     @FunctionalInterface
     private interface SurfaceDiagnosticsFactory {
         RouteSearchDiagnostics create(int knownSurfaceCount);

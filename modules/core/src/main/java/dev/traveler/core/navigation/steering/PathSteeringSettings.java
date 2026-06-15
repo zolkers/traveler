@@ -1,5 +1,7 @@
 package dev.traveler.core.navigation.steering;
 
+import dev.traveler.core.settings.TravelerSettings;
+
 public record PathSteeringSettings(
         double pathOffset,
         double predictionSeconds,
@@ -26,11 +28,18 @@ public record PathSteeringSettings(
     }
 
     public static PathSteeringSettings standard() {
-        return standard(2.0);
+        return TravelerSettings.standard().pathSteeringSettings();
     }
 
     public static PathSteeringSettings standard(double pathOffset) {
-        return new PathSteeringSettings(pathOffset, 0.25, 0.35, 1.0, 0.75, 0.65);
+        TravelerSettings settings = TravelerSettings.standard();
+        return new PathSteeringSettings(
+                pathOffset,
+                settings.get(TravelerSettings.STEERING_PREDICTION_SECONDS),
+                settings.get(TravelerSettings.STEERING_CORRIDOR_RADIUS),
+                settings.get(TravelerSettings.STEERING_LATERAL_CORRECTION_GAIN),
+                settings.get(TravelerSettings.STEERING_MAX_CORRECTION_DISTANCE),
+                settings.get(TravelerSettings.STEERING_CLEARANCE_WARNING_LATERAL_ERROR));
     }
 
     private static void requireNonNegative(double value, String name) {

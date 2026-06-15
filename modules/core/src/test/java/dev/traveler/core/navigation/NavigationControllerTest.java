@@ -13,6 +13,7 @@ import dev.traveler.core.navigation.plan.NavigationPhase;
 import dev.traveler.core.navigation.plan.PlannedMovementMode;
 import dev.traveler.core.navigation.spatial.HorizontalVector;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.world.behavior.decision.MovementAction;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -75,7 +76,7 @@ class NavigationControllerTest {
     void keepsForwardAndJumpPressedForOneBlockRise() {
         NavigationPath path = NavigationPath.of(List.of(
                 new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(0.0, 65.0, 1.0)));
+                new NavigationPoint(0.0, 65.0, 1.0)), List.of(MovementAction.JUMP));
         NavigationFrameInput input = new NavigationFrameInput(
                 new NavigationPoint(0.0, 64.0, 0.0),
                 new CameraAngles(0.0, 0.0),
@@ -94,7 +95,7 @@ class NavigationControllerTest {
     void keepsForwardPressedForOneBlockDrop() {
         NavigationPath path = NavigationPath.of(List.of(
                 new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(0.0, 63.0, 1.0)));
+                new NavigationPoint(0.0, 63.0, 1.0)), List.of(MovementAction.DROP));
         NavigationFrameInput input = new NavigationFrameInput(
                 new NavigationPoint(0.0, 64.0, 0.0),
                 new CameraAngles(0.0, 0.0),
@@ -110,11 +111,33 @@ class NavigationControllerTest {
     }
 
     @Test
+    void climbDownAlreadyAlignedReleasesJumpAndSneak() {
+        NavigationPath path = NavigationPath.of(
+                List.of(
+                        new NavigationPoint(1.3, 70.0, 0.5),
+                        new NavigationPoint(1.3, 64.0, 0.5)),
+                List.of(MovementAction.CLIMB));
+        NavigationFrameInput input = new NavigationFrameInput(
+                new NavigationPoint(1.3, 70.0, 0.5),
+                new CameraAngles(0.0, 0.0),
+                0.016);
+
+        NavigationControlFrame frame =
+                controller.update(path, input, NavigationControllerState.start());
+
+        assertEquals(NavigationPhase.EXECUTE_ACTION, frame.plan().phase());
+        assertTrue(frame.plan().actionIntent().descendRequested());
+        assertFalse(frame.intent().jump());
+        assertEquals(MovementIntent.idle(), frame.intent());
+    }
+
+    @Test
     void aimsCameraSlightlyUpDuringJumpLookahead() {
         NavigationPath path = NavigationPath.of(List.of(
                 new NavigationPoint(0.0, 64.0, 0.0),
                 new NavigationPoint(0.0, 65.0, 0.0),
-                new NavigationPoint(0.0, 65.0, 4.0)));
+                new NavigationPoint(0.0, 65.0, 4.0)),
+                List.of(MovementAction.JUMP, MovementAction.WALK));
         NavigationFrameInput input = new NavigationFrameInput(
                 new NavigationPoint(0.0, 64.0, 0.0),
                 new CameraAngles(0.0, 0.0),
@@ -131,7 +154,7 @@ class NavigationControllerTest {
     void keepsCameraYawWhenActionHasNoHorizontalLookahead() {
         NavigationPath path = NavigationPath.of(List.of(
                 new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(0.0, 65.0, 0.0)));
+                new NavigationPoint(0.0, 65.0, 0.0)), List.of(MovementAction.JUMP));
         NavigationFrameInput input = new NavigationFrameInput(
                 new NavigationPoint(0.0, 64.0, 0.0),
                 new CameraAngles(90.0, 0.0),
@@ -147,7 +170,7 @@ class NavigationControllerTest {
     void keepsJumpPressedAcrossRenderFramesUntilMinecraftTickCanConsumeIt() {
         NavigationPath path = NavigationPath.of(List.of(
                 new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(0.0, 65.0, 1.0)));
+                new NavigationPoint(0.0, 65.0, 1.0)), List.of(MovementAction.JUMP));
         NavigationFrameInput input = new NavigationFrameInput(
                 new NavigationPoint(0.0, 64.0, 0.0),
                 new CameraAngles(0.0, 0.0),
@@ -165,7 +188,7 @@ class NavigationControllerTest {
     void keepsLatchedJumpPressedThroughTemporaryRecenterFrame() {
         NavigationPath path = NavigationPath.of(List.of(
                 new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(0.0, 65.0, 1.0)));
+                new NavigationPoint(0.0, 65.0, 1.0)), List.of(MovementAction.JUMP));
         NavigationFrameInput initial = new NavigationFrameInput(
                 new NavigationPoint(0.0, 64.0, 0.0),
                 new CameraAngles(0.0, 0.0),
@@ -192,7 +215,8 @@ class NavigationControllerTest {
         NavigationPath path = NavigationPath.of(List.of(
                 new NavigationPoint(0.0, 64.0, 0.0),
                 new NavigationPoint(0.0, 65.0, 0.0),
-                new NavigationPoint(0.0, 65.0, 4.0)));
+                new NavigationPoint(0.0, 65.0, 4.0)),
+                List.of(MovementAction.JUMP, MovementAction.WALK));
         NavigationFrameInput input = new NavigationFrameInput(
                 new NavigationPoint(0.0, 64.2, 0.3),
                 new CameraAngles(0.0, 0.0),
@@ -212,7 +236,8 @@ class NavigationControllerTest {
         NavigationPath path = NavigationPath.of(List.of(
                 new NavigationPoint(0.0, 64.0, 0.0),
                 new NavigationPoint(0.0, 65.0, 1.0),
-                new NavigationPoint(0.0, 66.0, 2.0)));
+                new NavigationPoint(0.0, 66.0, 2.0)),
+                List.of(MovementAction.JUMP, MovementAction.JUMP));
         NavigationControlFrame first = controller.update(
                 path,
                 new NavigationFrameInput(
@@ -293,7 +318,8 @@ class NavigationControllerTest {
         NavigationPath path = NavigationPath.of(List.of(
                 new NavigationPoint(0.0, 64.0, 0.0),
                 new NavigationPoint(0.0, 65.0, 1.0),
-                new NavigationPoint(0.0, 66.0, 2.0)));
+                new NavigationPoint(0.0, 66.0, 2.0)),
+                List.of(MovementAction.JUMP, MovementAction.JUMP));
         NavigationControlFrame first = controller.update(
                 path,
                 new NavigationFrameInput(

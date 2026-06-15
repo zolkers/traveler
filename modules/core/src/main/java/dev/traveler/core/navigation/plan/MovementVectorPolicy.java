@@ -99,14 +99,21 @@ public final class MovementVectorPolicy {
             LocomotionPlan action,
             SteeringPlan steering,
             MovementVectorDecision decision) {
-        return action.action() == LocomotionAction.WALK
+        if (action.action() == LocomotionAction.CLIMB) {
+            return nearEnoughForSpecialAction(action, steering);
+        }
+        return isContinuousMovement(action.action())
                 || decision.specialActionAllowed()
                 || nearEnoughForSpecialAction(action, steering);
     }
 
     private boolean nearEnoughForSpecialAction(LocomotionPlan action, SteeringPlan steering) {
-        return action.action() != LocomotionAction.WALK
+        return !isContinuousMovement(action.action())
                 && steering.lateralError() <= settings.specialActionLateralTolerance();
+    }
+
+    private static boolean isContinuousMovement(LocomotionAction action) {
+        return action == LocomotionAction.WALK || action == LocomotionAction.SWIM;
     }
 
     private record MovementVectorDecision(

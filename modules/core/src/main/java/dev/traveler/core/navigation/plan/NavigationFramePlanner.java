@@ -6,16 +6,22 @@ import dev.traveler.core.navigation.follow.MovementTarget;
 import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.follow.PathFollowSettings;
 import dev.traveler.core.navigation.follow.PathProgress;
+import dev.traveler.core.navigation.camera.CameraTargetPlanner;
 import dev.traveler.core.navigation.locomotion.LocomotionAction;
 import dev.traveler.core.navigation.locomotion.LocomotionDecision;
 import dev.traveler.core.navigation.locomotion.LocomotionPlan;
+import dev.traveler.core.navigation.locomotion.LocomotionSequencer;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import dev.traveler.core.navigation.steering.PathSteeringController;
 import dev.traveler.core.navigation.steering.PathSteeringSettings;
 import dev.traveler.core.navigation.steering.SteeringPlan;
+import dev.traveler.core.settings.TravelerSettings;
 import java.util.Objects;
 
 public final class NavigationFramePlanner {
+    private static final double CLIMB_UP_JUMP_THRESHOLD =
+            TravelerSettings.standard().get(TravelerSettings.CLIMB_UP_JUMP_THRESHOLD);
+
     private final PathFollowSettings settings;
     private final RouteProgressPolicy routeProgressPolicy;
     private final MovementActionPolicy actionPolicy;
@@ -42,16 +48,21 @@ public final class NavigationFramePlanner {
     }
 
     public static NavigationFramePlanner standard() {
-        PathFollowSettings settings = PathFollowSettings.standard();
-        PathSteeringSettings steeringSettings = PathSteeringSettings.standard(settings.lookAheadDistance());
+        return standard(TravelerSettings.standard());
+    }
+
+    public static NavigationFramePlanner standard(TravelerSettings travelerSettings) {
+        TravelerSettings traveler = Objects.requireNonNull(travelerSettings, "travelerSettings");
+        PathFollowSettings settings = traveler.pathFollowSettings();
+        PathSteeringSettings steeringSettings = traveler.pathSteeringSettings();
         return new NavigationFramePlanner(
                 settings,
                 new RouteProgressPolicy(settings.reachedDistance()),
                 new MovementActionPolicy(),
                 new PathSteeringController(steeringSettings),
-                MovementVectorPolicy.standard(),
-                ActionTimingPolicy.standard(),
-                CameraTargetPolicy.standard());
+                new MovementVectorPolicy(traveler.movementVectorSettings()),
+                new ActionTimingPolicy(new LocomotionSequencer(traveler.locomotionSequencerSettings())),
+                new CameraTargetPolicy(new CameraTargetPlanner(traveler.cameraTargetSettings())));
     }
 
     public NavigationFramePlan plan(
@@ -72,7 +83,7 @@ public final class NavigationFramePlanner {
             NavigationFrameInput input,
             NavigationControllerState state) {
         PathProgress progress = routeProgressPolicy.progress(path, input.position(), state.progress());
-        NavigationPoint actionTarget = path.nodeAt(progress.nextNodeIndex());
+        NavigationPoint actionTarget = path.actionTargetBeforeNode(progress.nextNodeIndex());
         LocomotionPlan requestedAction = actionPolicy.plan(
                 input.position(),
                 actionTarget,
@@ -83,21 +94,24 @@ public final class NavigationFramePlanner {
                 input.position(),
                 input.motionState(),
                 progress.nextNodeIndex());
+        SteeringPlan movementSteering =
+                movementSteering(requestedAction, input.position(), actionTarget, steering);
         MovementVectorIntent movementVector =
-                movementVectorPolicy.plan(input.position(), steering, input.cameraAngles(), requestedAction);
+                movementVectorPolicy.plan(input.position(), movementSteering, input.cameraAngles(), requestedAction);
         LocomotionPlan timedRequest = timedRequest(requestedAction, movementVector);
         LocomotionDecision timing = actionTimingPolicy.decide(state, progress, timedRequest, input.motionState());
-        ActionIntent actionIntent = ActionIntent.from(timing.plan().action());
+        ClimbDirection requestedClimbDirection =
+                climbDirection(requestedAction.action(), input.position(), actionTarget);
+        ActionIntent actionIntent = actionIntent(timing.plan().action(), requestedClimbDirection);
         SpeedIntent speedIntent = speedIntent(path, input.position(), movementVector);
         return new NavigationFramePlan(
                 phaseFor(actionIntent, movementVector),
                 progress,
-                movementTarget(timing.plan(), actionTarget, steering),
+                movementTarget(timing.plan(), actionTarget, movementSteering),
                 movementVector,
                 cameraTargetPolicy.target(path, input.position(), progress, input.cameraAngles()),
                 actionIntent,
                 speedIntent,
-                ToleranceProfile.standard(),
                 timing.state(),
                 false,
                 NavigationSteeringDebug.from(steering));
@@ -116,7 +130,6 @@ public final class NavigationFramePlanner {
                 input.cameraAngles(),
                 ActionIntent.none(),
                 SpeedIntent.stop(),
-                ToleranceProfile.standard(),
                 state.locomotionState(),
                 true);
     }
@@ -130,11 +143,22 @@ public final class NavigationFramePlanner {
         return LocomotionPlan.walk();
     }
 
+    private static SteeringPlan movementSteering(
+            LocomotionPlan action,
+            NavigationPoint position,
+            NavigationPoint actionTarget,
+            SteeringPlan steering) {
+        if (action.action() == LocomotionAction.CLIMB) {
+            return SteeringPlan.seek(actionTarget, position.horizontalDistanceTo(actionTarget));
+        }
+        return steering;
+    }
+
     private MovementTarget movementTarget(
             LocomotionPlan action,
             NavigationPoint actionTarget,
             SteeringPlan steering) {
-        if (action.action() == LocomotionAction.WALK) {
+        if (usesSteeringTarget(action.action())) {
             return MovementTarget.follow(steering.steeringTarget());
         }
         return MovementTarget.follow(actionTarget);
@@ -147,6 +171,35 @@ public final class NavigationFramePlanner {
         double scale = speedScale(position.horizontalDistanceTo(path.lastNode()));
         boolean sprint = scale >= 0.5 && movementVector.mode().forwardAllowed();
         return new SpeedIntent(scale, sprint);
+    }
+
+    private static ClimbDirection climbDirection(
+            LocomotionAction requestedAction,
+            NavigationPoint position,
+            NavigationPoint actionTarget) {
+        if (requestedAction != LocomotionAction.CLIMB) {
+            return ClimbDirection.NONE;
+        }
+        if (actionTarget.y() > position.y() + CLIMB_UP_JUMP_THRESHOLD) {
+            return ClimbDirection.UP;
+        }
+        if (actionTarget.y() < position.y() - CLIMB_UP_JUMP_THRESHOLD) {
+            return ClimbDirection.DOWN;
+        }
+        return ClimbDirection.LEVEL;
+    }
+
+    private static ActionIntent actionIntent(
+            LocomotionAction action,
+            ClimbDirection requestedClimbDirection) {
+        if (requestedClimbDirection != ClimbDirection.NONE && climbActionCanOverride(action)) {
+            return ActionIntent.climb(requestedClimbDirection);
+        }
+        return ActionIntent.from(action);
+    }
+
+    private static boolean climbActionCanOverride(LocomotionAction action) {
+        return action == LocomotionAction.CLIMB || action == LocomotionAction.JUMP;
     }
 
     private double speedScale(double distanceToGoal) {
@@ -162,7 +215,7 @@ public final class NavigationFramePlanner {
         if (actionIntent.recoveryRequested()) {
             return NavigationPhase.RECOVER;
         }
-        if (actionIntent.action() != LocomotionAction.WALK) {
+        if (!usesSteeringTarget(actionIntent.action())) {
             return NavigationPhase.EXECUTE_ACTION;
         }
         if (!movementVector.specialActionAllowed()) {
@@ -172,5 +225,9 @@ public final class NavigationFramePlanner {
             return NavigationPhase.APPROACH;
         }
         return NavigationPhase.ALIGN;
+    }
+
+    private static boolean usesSteeringTarget(LocomotionAction action) {
+        return action == LocomotionAction.WALK || action == LocomotionAction.SWIM;
     }
 }

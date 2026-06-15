@@ -2,12 +2,11 @@ package dev.traveler.mc.v1_21_11.common.command;
 
 import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.navigation.follow.NavigationPath;
-import dev.traveler.core.navigation.follow.NavigationSegmentAction;
+import dev.traveler.core.navigation.follow.NavigationSegmentIntent;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import dev.traveler.core.path.PathfinderStatus;
 import dev.traveler.core.route.RoutePath;
 import dev.traveler.core.route.RouteSearchResult;
-import dev.traveler.core.world.behavior.decision.MovementAction;
 import dev.traveler.core.world.surface.SurfaceNode;
 import java.util.List;
 import java.util.Objects;
@@ -24,6 +23,13 @@ record TravelerPathSearchResult(
     void updateDebug(PathfinderDebugState debugState) {
         PathfinderDebugState state = Objects.requireNonNull(debugState, "debugState");
         if (searchResult.surfaceResult().isPresent()) {
+            if (searchResult.route().isPresent()) {
+                state.updateSurface(
+                        searchResult.surfaceResult().orElseThrow(),
+                        searchResult.route().orElseThrow().executionPoints(),
+                        message);
+                return;
+            }
             state.updateSurface(searchResult.surfaceResult().orElseThrow(), message);
             return;
         }
@@ -75,23 +81,15 @@ record TravelerPathSearchResult(
     }
 
     private static NavigationPath navigationPathFromRoute(RoutePath route) {
-        return NavigationPath.of(
+        return NavigationPath.withIntents(
                 route.points(),
-                route.actions().stream()
-                        .map(TravelerPathSearchResult::segmentAction)
+                route.steps().stream()
+                        .map(TravelerPathSearchResult::segmentIntent)
                         .toList());
     }
 
-    private static NavigationSegmentAction segmentAction(MovementAction action) {
-        return switch (action) {
-            case WALK -> NavigationSegmentAction.WALK;
-            case STEP_UP -> NavigationSegmentAction.STEP_UP;
-            case JUMP -> NavigationSegmentAction.JUMP;
-            case DROP -> NavigationSegmentAction.DROP;
-            case CLIMB -> NavigationSegmentAction.CLIMB;
-            case SWIM -> NavigationSegmentAction.WALK;
-            case BLOCKED -> NavigationSegmentAction.INFER;
-        };
+    private static NavigationSegmentIntent segmentIntent(dev.traveler.core.route.RouteStep step) {
+        return NavigationSegmentIntent.of(step.action(), step.targetPoint());
     }
 
     private static NavigationPoint surfacePoint(SurfaceNode node) {

@@ -1,5 +1,7 @@
 package dev.traveler.core.navigation.plan;
 
+import dev.traveler.core.settings.TravelerSettings;
+
 public record MovementVectorSettings(
         double pressThreshold,
         double centeringCorrectionThreshold,
@@ -23,7 +25,7 @@ public record MovementVectorSettings(
     }
 
     public static MovementVectorSettings standard() {
-        return new MovementVectorSettings(0.32, 0.5, 0.32, 0.35, 0.8, 1.0);
+        return TravelerSettings.standard().movementVectorSettings();
     }
 
     private static void requireThreshold(double value, String name) {

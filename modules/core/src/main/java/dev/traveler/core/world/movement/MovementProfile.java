@@ -8,4 +8,16 @@ public record MovementProfile(EntityDimensions dimensions, MovementCapabilities 
         Objects.requireNonNull(capabilities, "capabilities");
         Objects.requireNonNull(rules, "rules");
     }
+
+    public MovementProfile withDimensions(EntityDimensions nextDimensions) {
+        return new MovementProfile(nextDimensions, capabilities, rules);
+    }
+
+    public MovementProfile withCapabilities(MovementCapabilities nextCapabilities) {
+        return new MovementProfile(dimensions, nextCapabilities, rules);
+    }
+
+    public MovementProfile withRules(TraversalRules nextRules) {
+        return new MovementProfile(dimensions, capabilities, nextRules);
+    }
 }
