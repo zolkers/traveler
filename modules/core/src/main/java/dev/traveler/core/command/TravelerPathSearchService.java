@@ -62,13 +62,22 @@ final class TravelerPathSearchService {
         LongDistanceRoutePlan plan = LONG_DISTANCE_PLANNER.plan(start, safeGoal);
         RouteGoal activeGoal = plan.activeGoal();
         BlockPosition activeBlockGoal = planningBlockGoal(worldLayer, activeGoal, start);
-        Optional<TravelerPathSearchResult> rejection = oversizedSnapshot(worldLayer, start, activeBlockGoal);
+        SnapshotMargins margins = snapshotMargins(plan);
+        Optional<TravelerPathSearchResult> rejection =
+                oversizedSnapshot(worldLayer, start, activeBlockGoal, margins);
         if (rejection.isPresent()) {
             return TravelerPathSearchSubmission.immediate(rejection.orElseThrow());
         }
         if (worldLayer instanceof SnapshotCapturableWorldLayer snapshotWorldLayer) {
             return TravelerPathSearchSubmission.snapshot(
-                    new SnapshotBlockSearch(snapshotWorldLayer, start, activeGoal, activeBlockGoal, plan, purpose));
+                    new SnapshotBlockSearch(
+                            snapshotWorldLayer,
+                            start,
+                            activeGoal,
+                            activeBlockGoal,
+                            margins,
+                            plan,
+                            purpose));
         }
         return TravelerPathSearchSubmission.queued(
                 pathJob(worldLayer, start, activeGoal, activeBlockGoal, plan, purpose));
@@ -84,11 +93,12 @@ final class TravelerPathSearchService {
     private static Optional<TravelerPathSearchResult> oversizedSnapshot(
             WorldLayer worldLayer,
             BlockPosition start,
-            BlockPosition target) {
+            BlockPosition target,
+            SnapshotMargins margins) {
         if (!(worldLayer instanceof SnapshotCapturableWorldLayer)) {
             return Optional.empty();
         }
-        SearchVolume volume = SearchVolume.around(start, target);
+        SearchVolume volume = SearchVolume.around(start, target, margins);
         if (volume.blockCount() <= MAX_SNAPSHOT_BLOCKS) {
             return Optional.empty();
         }
@@ -202,11 +212,28 @@ final class TravelerPathSearchService {
         return PathJobState.NOT_FOUND;
     }
 
+    private static SnapshotMargins snapshotMargins(LongDistanceRoutePlan plan) {
+        if (plan.finalSegment()) {
+            return new SnapshotMargins(SEARCH_SETTINGS.horizontalMargin(), SEARCH_SETTINGS.verticalMargin());
+        }
+        return new SnapshotMargins(
+                plan.settings().frontierCaptureHorizontalMargin(),
+                plan.settings().frontierCaptureVerticalMargin());
+    }
+
+    private record SnapshotMargins(int horizontal, int vertical) {
+        private SnapshotMargins {
+            if (horizontal < 0 || vertical < 0) {
+                throw new IllegalArgumentException("Snapshot margins must be non-negative.");
+            }
+        }
+    }
+
     private record SearchVolume(long width, long height, long depth) {
-        private static SearchVolume around(BlockPosition start, BlockPosition target) {
-            long width = span(start.x(), target.x(), SEARCH_SETTINGS.horizontalMargin());
-            long height = span(start.y(), target.y(), SEARCH_SETTINGS.verticalMargin());
-            long depth = span(start.z(), target.z(), SEARCH_SETTINGS.horizontalMargin());
+        private static SearchVolume around(BlockPosition start, BlockPosition target, SnapshotMargins margins) {
+            long width = span(start.x(), target.x(), margins.horizontal());
+            long height = span(start.y(), target.y(), margins.vertical());
+            long depth = span(start.z(), target.z(), margins.horizontal());
             return new SearchVolume(width, height, depth);
         }
 
@@ -224,6 +251,7 @@ final class TravelerPathSearchService {
         private final BlockPosition start;
         private final RouteGoal goal;
         private final BlockPosition target;
+        private final SnapshotMargins margins;
         private final LongDistanceRoutePlan plan;
         private final String purpose;
 
@@ -232,13 +260,15 @@ final class TravelerPathSearchService {
                 BlockPosition start,
                 RouteGoal goal,
                 BlockPosition target,
+                SnapshotMargins margins,
                 LongDistanceRoutePlan plan,
                 String purpose) {
             this.captureSession = worldLayer.captureSession(
-                    start, target, SEARCH_SETTINGS.horizontalMargin(), SEARCH_SETTINGS.verticalMargin());
+                    start, target, margins.horizontal(), margins.vertical());
             this.start = Objects.requireNonNull(start, "start");
             this.goal = Objects.requireNonNull(goal, "goal");
             this.target = Objects.requireNonNull(target, "target");
+            this.margins = Objects.requireNonNull(margins, "margins");
             this.plan = Objects.requireNonNull(plan, "plan");
             this.purpose = Objects.requireNonNull(purpose, "purpose");
         }

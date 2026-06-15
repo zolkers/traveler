@@ -54,7 +54,9 @@ class TravelerPathSearchServiceTest {
 
         assertTrue(submission.snapshotSearch().isPresent());
         assertTrue(layer.captureStarted);
-        assertEquals(new BlockPosition(72, 64, 72), layer.target);
+        assertEquals(new BlockPosition(32, 64, 32), layer.target);
+        assertEquals(8, layer.horizontalMargin);
+        assertEquals(8, layer.verticalMargin);
     }
 
     private static final class CapturableLayer implements SnapshotCapturableWorldLayer {

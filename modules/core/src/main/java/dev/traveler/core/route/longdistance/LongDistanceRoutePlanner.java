@@ -26,9 +26,9 @@ public final class LongDistanceRoutePlanner {
         int maxAxisDistance = Math.max(Math.abs(deltaX), Math.abs(deltaZ));
         if (horizontalDistance <= settings.directHorizontalDistance()
                 && maxAxisDistance <= settings.maxSegmentAxisDelta()) {
-            return new LongDistanceRoutePlan(safeGoal, safeGoal, true, horizontalDistance);
+            return new LongDistanceRoutePlan(safeGoal, safeGoal, true, horizontalDistance, settings);
         }
         RouteGoal activeGoal = new FrontierRouteGoal(finalPosition, settings);
-        return new LongDistanceRoutePlan(safeGoal, activeGoal, false, horizontalDistance);
+        return new LongDistanceRoutePlan(safeGoal, activeGoal, false, horizontalDistance, settings);
     }
 }

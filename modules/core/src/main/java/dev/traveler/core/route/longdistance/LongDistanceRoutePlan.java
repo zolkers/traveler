@@ -8,10 +8,12 @@ public record LongDistanceRoutePlan(
         RouteGoal requestedGoal,
         RouteGoal activeGoal,
         boolean finalSegment,
-        double remainingHorizontalDistance) {
+        double remainingHorizontalDistance,
+        LongDistanceRouteSettings settings) {
     public LongDistanceRoutePlan {
         Objects.requireNonNull(requestedGoal, "requestedGoal");
         Objects.requireNonNull(activeGoal, "activeGoal");
+        Objects.requireNonNull(settings, "settings");
         if (!Double.isFinite(remainingHorizontalDistance) || remainingHorizontalDistance < 0.0) {
             throw new IllegalArgumentException("remainingHorizontalDistance must be finite and non-negative.");
         }

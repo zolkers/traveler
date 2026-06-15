@@ -24,7 +24,7 @@ class LongDistanceRoutePlannerTest {
 
     @Test
     void clipsVeryLongGoalsToSnapshotSizedIntermediateGoals() {
-        LongDistanceRouteSettings settings = new LongDistanceRouteSettings(96.0, 128.0, 72, 12.0);
+        LongDistanceRouteSettings settings = new LongDistanceRouteSettings(96.0, 48.0, 32, 12.0);
         LongDistanceRoutePlanner planner = new LongDistanceRoutePlanner(settings);
 
         LongDistanceRoutePlan plan = planner.plan(
@@ -33,8 +33,8 @@ class LongDistanceRoutePlannerTest {
 
         BlockPosition activeBlockGoal = plan.activeGoal().blockGoal(null, new BlockPosition(0, 64, 0));
         assertFalse(plan.finalSegment());
-        assertEquals(72, Math.abs(activeBlockGoal.x()));
-        assertEquals(72, Math.abs(activeBlockGoal.z()));
+        assertEquals(32, Math.abs(activeBlockGoal.x()));
+        assertEquals(32, Math.abs(activeBlockGoal.z()));
         assertTrue(plan.activeGoal().displayName().startsWith("frontier"));
     }
 }

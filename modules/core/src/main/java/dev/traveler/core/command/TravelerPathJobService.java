@@ -299,10 +299,29 @@ final class TravelerPathJobService implements AutoCloseable {
 
         private void completeResult(dev.traveler.core.job.PathJobResult<TravelerPathSearchResult> result) {
             if (result.state() == PathJobState.FAILED) {
-                feedback.reply(handle.purpose() + " failed id=" + handle.id());
+                feedback.reply(handle.purpose()
+                        + " failed id="
+                        + handle.id()
+                        + " cause="
+                        + failureSummary(result));
                 return;
             }
             completion.apply(result.value(), feedback);
+        }
+
+        private static String failureSummary(
+                dev.traveler.core.job.PathJobResult<TravelerPathSearchResult> result) {
+            return result.failureCause()
+                    .map(PendingPathJob::failureSummary)
+                    .orElse("unknown");
+        }
+
+        private static String failureSummary(Throwable failure) {
+            String message = failure.getMessage();
+            if (message == null || message.isBlank()) {
+                return failure.getClass().getSimpleName();
+            }
+            return failure.getClass().getSimpleName() + ": " + message;
         }
 
         private void completeWithoutResult() {

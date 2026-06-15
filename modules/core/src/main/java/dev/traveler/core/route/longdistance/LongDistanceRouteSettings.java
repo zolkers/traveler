@@ -7,13 +7,15 @@ public record LongDistanceRouteSettings(
         double replanDistance,
         int frontierVerticalSearchRadius,
         int frontierLateralStep,
-        int frontierLateralSamples) {
+        int frontierLateralSamples,
+        int frontierCaptureHorizontalMargin,
+        int frontierCaptureVerticalMargin) {
     public LongDistanceRouteSettings(
             double directHorizontalDistance,
             double segmentHorizontalDistance,
             int maxSegmentAxisDelta,
             double replanDistance) {
-        this(directHorizontalDistance, segmentHorizontalDistance, maxSegmentAxisDelta, replanDistance, 16, 1, 8);
+        this(directHorizontalDistance, segmentHorizontalDistance, maxSegmentAxisDelta, replanDistance, 16, 1, 8, 8, 8);
     }
 
     public LongDistanceRouteSettings {
@@ -28,6 +30,8 @@ public record LongDistanceRouteSettings(
             throw new IllegalArgumentException("frontierLateralStep must be positive.");
         }
         requireNonNegative(frontierLateralSamples, "frontierLateralSamples");
+        requireNonNegative(frontierCaptureHorizontalMargin, "frontierCaptureHorizontalMargin");
+        requireNonNegative(frontierCaptureVerticalMargin, "frontierCaptureVerticalMargin");
     }
 
     private static void requirePositive(double value, String name) {
