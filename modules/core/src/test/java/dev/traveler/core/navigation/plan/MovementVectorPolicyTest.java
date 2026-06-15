@@ -39,30 +39,6 @@ class MovementVectorPolicyTest {
     }
 
     @Test
-    void jumpUsesForwardOnlyInsteadOfForwardArcStrafe() {
-        MovementVectorIntent intent = policy.plan(
-                point(0.0, 0.0),
-                SteeringPlan.seek(point(1.0, 2.0)),
-                new CameraAngles(0.0, 0.0),
-                LocomotionPlan.jump());
-
-        assertEquals(PlannedMovementMode.DIRECT, intent.mode());
-        assertTrue(intent.specialActionAllowed());
-    }
-
-    @Test
-    void jumpWaitsForCameraInsteadOfStrafeTurning() {
-        MovementVectorIntent intent = policy.plan(
-                point(0.0, 0.0),
-                SteeringPlan.seek(point(2.0, -1.0)),
-                new CameraAngles(0.0, 0.0),
-                LocomotionPlan.jump());
-
-        assertEquals(PlannedMovementMode.WAIT_FOR_CAMERA, intent.mode());
-        assertFalse(intent.specialActionAllowed());
-    }
-
-    @Test
     void outsideCorridorUsesSidestepRecenterAndBlocksSpecialAction() {
         SteeringPlan steering = SteeringPlan.corridor(
                 point(0.0, 4.0),

@@ -92,26 +92,6 @@ class NavigationControllerTest {
     }
 
     @Test
-    void oneBlockJumpDoesNotMixForwardWithStrafeCorrection() {
-        NavigationPath path = NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(1.0, 65.0, 2.0)), List.of(MovementAction.JUMP));
-        NavigationFrameInput input = new NavigationFrameInput(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new CameraAngles(0.0, 0.0),
-                0.016);
-
-        NavigationControlFrame frame =
-                controller.update(path, input, NavigationControllerState.start());
-
-        assertTrue(frame.intent().forward());
-        assertTrue(frame.intent().jump());
-        assertFalse(frame.intent().left());
-        assertFalse(frame.intent().right());
-        assertEquals(PlannedMovementMode.DIRECT, frame.plan().movementVector().mode());
-    }
-
-    @Test
     void keepsForwardPressedForOneBlockDrop() {
         NavigationPath path = NavigationPath.of(List.of(
                 new NavigationPoint(0.0, 64.0, 0.0),

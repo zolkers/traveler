@@ -96,7 +96,7 @@ public final class TravelerSettings {
     public static final Setting<Double> MOVEMENT_HEALTH_MINIMUM_PROGRESS_DISTANCE =
             nonNegativeDouble("movement-health.minimum-progress-distance", 0.05);
     public static final Setting<Double> MOVEMENT_HEALTH_STUCK_AFTER_SECONDS =
-            positiveDouble("movement-health.stuck-after-seconds", 0.5);
+            positiveDouble("movement-health.stuck-after-seconds", 1.5);
     public static final Setting<Double> MOVEMENT_HEALTH_RECOVERY_COOLDOWN_SECONDS =
             nonNegativeDouble("movement-health.recovery-cooldown-seconds", 1.0);
 

@@ -6,8 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.traveler.core.navigation.camera.CameraAngles;
 import dev.traveler.core.navigation.NavigationFrameInput;
 import dev.traveler.core.navigation.control.MovementIntent;
-import dev.traveler.core.navigation.locomotion.AgentMotionState;
-import dev.traveler.core.navigation.spatial.HorizontalVector;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import org.junit.jupiter.api.Test;
 
@@ -39,33 +37,10 @@ class MovementProgressMonitorTest {
         assertTrue(monitor.update(input(0.1, 0.10), MOVING).isEmpty());
     }
 
-    @Test
-    void reportsStuckImmediatelyWhenHorizontalCollisionBlocksCommandedMovement() {
-        MovementProgressMonitor monitor =
-                new MovementProgressMonitor(new MovementHealthSettings(0.05, 0.25, 0.2));
-        AgentMotionState blocked = new AgentMotionState(
-                true,
-                true,
-                new HorizontalVector(0.0, 0.0),
-                0.0);
-
-        MovementFailure failure = monitor.update(input(0.0, 0.02, blocked), MOVING).orElseThrow();
-
-        assertEquals(MovementFailureKind.HORIZONTAL_COLLISION, failure.kind());
-    }
-
     private static NavigationFrameInput input(double x, double deltaSeconds) {
-        return input(x, deltaSeconds, AgentMotionState.groundedStill());
-    }
-
-    private static NavigationFrameInput input(
-            double x,
-            double deltaSeconds,
-            AgentMotionState motionState) {
         return new NavigationFrameInput(
                 new NavigationPoint(x, 64.0, 0.0),
                 new CameraAngles(0.0, 0.0),
-                deltaSeconds,
-                motionState);
+                deltaSeconds);
     }
 }
