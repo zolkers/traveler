@@ -1,6 +1,7 @@
-package dev.traveler.core.route;
+package dev.traveler.core.route.goal;
 
 import dev.traveler.core.layer.WorldLayer;
+import dev.traveler.core.route.RouteGoal;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.surface.SurfaceNode;
 import dev.traveler.core.world.surface.SurfaceNodeResolver;
@@ -8,8 +9,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-record BlockRouteGoal(BlockPosition target) implements RouteGoal {
-    BlockRouteGoal {
+public record ExactBlockRouteGoal(BlockPosition target) implements RouteGoal {
+    public ExactBlockRouteGoal {
         Objects.requireNonNull(target, "target");
     }
 

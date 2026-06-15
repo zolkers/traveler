@@ -18,6 +18,16 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class RouteGoalTest {
+    private static final String STANDARD_GOAL_IMPLEMENTATION_PACKAGE = "dev.traveler.core.route.goal";
+
+    @Test
+    void standardFactoriesReturnDedicatedGoalImplementations() {
+        assertStandardGoalImplementation(RouteGoal.blockTarget(new BlockPosition(1, 64, 1)));
+        assertStandardGoalImplementation(RouteGoal.xz(8, -4));
+        assertStandardGoalImplementation(RouteGoal.yLevel(90));
+        assertStandardGoalImplementation(RouteGoal.unspecified());
+    }
+
     @Test
     void fallsBackFromRequestedAirBlockToStandingSurfaceBelowIt() {
         BlockPosition support = new BlockPosition(4, 63, 2);
@@ -105,5 +115,9 @@ class RouteGoalTest {
 
         assertEquals(new BlockPosition(2, 90, 3), goal.blockGoal(null, start));
         assertTrue(goal.isSatisfiedBy(new BlockPosition(-30, 90, 18)));
+    }
+
+    private static void assertStandardGoalImplementation(RouteGoal goal) {
+        assertEquals(STANDARD_GOAL_IMPLEMENTATION_PACKAGE, goal.getClass().getPackageName());
     }
 }

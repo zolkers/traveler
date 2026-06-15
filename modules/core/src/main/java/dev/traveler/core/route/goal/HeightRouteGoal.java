@@ -1,13 +1,14 @@
-package dev.traveler.core.route;
+package dev.traveler.core.route.goal;
 
 import dev.traveler.core.layer.WorldLayer;
+import dev.traveler.core.route.RouteGoal;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.surface.SurfaceNode;
 import dev.traveler.core.world.surface.SurfaceNodeResolver;
 import java.util.List;
 import java.util.Objects;
 
-record XzRouteGoal(int x, int z) implements RouteGoal {
+public record HeightRouteGoal(int y) implements RouteGoal {
     @Override
     public List<SurfaceNode> surfaceGoals(SurfaceNodeResolver resolver, BlockPosition start) {
         SurfaceNodeResolver safeResolver = Objects.requireNonNull(resolver, "resolver");
@@ -16,11 +17,7 @@ record XzRouteGoal(int x, int z) implements RouteGoal {
         if (!standing.isEmpty()) {
             return standing;
         }
-        List<SurfaceNode> support = safeResolver.surfaces(candidateFeet.below());
-        if (!support.isEmpty()) {
-            return support;
-        }
-        return safeResolver.surfaces(candidateFeet);
+        return safeResolver.surfaces(candidateFeet.below());
     }
 
     @Override
@@ -31,17 +28,16 @@ record XzRouteGoal(int x, int z) implements RouteGoal {
     @Override
     public BlockPosition preferredPosition(BlockPosition fallback) {
         BlockPosition safeFallback = Objects.requireNonNull(fallback, "fallback");
-        return new BlockPosition(x, safeFallback.y(), z);
+        return new BlockPosition(safeFallback.x(), y, safeFallback.z());
     }
 
     @Override
     public boolean isSatisfiedBy(BlockPosition position) {
-        BlockPosition safePosition = Objects.requireNonNull(position, "position");
-        return safePosition.x() == x && safePosition.z() == z;
+        return Objects.requireNonNull(position, "position").y() == y;
     }
 
     @Override
     public String displayName() {
-        return "xz " + x + "," + z;
+        return "y " + y;
     }
 }

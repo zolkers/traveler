@@ -1,6 +1,10 @@
 package dev.traveler.core.route;
 
 import dev.traveler.core.layer.WorldLayer;
+import dev.traveler.core.route.goal.ColumnRouteGoal;
+import dev.traveler.core.route.goal.ExactBlockRouteGoal;
+import dev.traveler.core.route.goal.HeightRouteGoal;
+import dev.traveler.core.route.goal.UnspecifiedRouteGoal;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.surface.SurfaceNode;
 import dev.traveler.core.world.surface.SurfaceNodeResolver;
@@ -11,7 +15,7 @@ import java.util.OptionalInt;
 
 public interface RouteGoal {
     static RouteGoal blockTarget(BlockPosition target) {
-        return new BlockRouteGoal(Objects.requireNonNull(target, "target"));
+        return new ExactBlockRouteGoal(Objects.requireNonNull(target, "target"));
     }
 
     static RouteGoal xyz(int x, int y, int z) {
@@ -19,11 +23,11 @@ public interface RouteGoal {
     }
 
     static RouteGoal xz(int x, int z) {
-        return new XzRouteGoal(x, z);
+        return new ColumnRouteGoal(x, z);
     }
 
     static RouteGoal yLevel(int y) {
-        return new YLevelRouteGoal(y);
+        return new HeightRouteGoal(y);
     }
 
     static RouteGoal unspecified() {

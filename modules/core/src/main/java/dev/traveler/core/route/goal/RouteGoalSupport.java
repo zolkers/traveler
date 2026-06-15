@@ -1,4 +1,4 @@
-package dev.traveler.core.route;
+package dev.traveler.core.route.goal;
 
 import dev.traveler.core.layer.WorldLayer;
 import dev.traveler.core.world.block.BlockPassability;
