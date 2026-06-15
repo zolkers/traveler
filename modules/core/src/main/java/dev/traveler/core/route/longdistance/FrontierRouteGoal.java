@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.OptionalInt;
 import java.util.Set;
 
 public final class FrontierRouteGoal implements RouteGoal {
@@ -32,6 +33,11 @@ public final class FrontierRouteGoal implements RouteGoal {
             addSurfaceGoalsAtDistance(safeResolver, safeStart, direction, distanceRatio, nodes);
         }
         return List.copyOf(nodes);
+    }
+
+    @Override
+    public OptionalInt surfaceFallbackGoalLimit() {
+        return OptionalInt.of(settings.frontierFallbackSurfaceGoalLimit());
     }
 
     @Override

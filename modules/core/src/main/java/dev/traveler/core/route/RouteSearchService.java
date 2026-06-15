@@ -125,7 +125,7 @@ public final class RouteSearchService {
         if (preferred.isPresent()) {
             return preferred.orElseThrow();
         }
-        return bestSurfacePath(worldLayer, starts, goals);
+        return bestSurfacePath(worldLayer, start, goal, starts, goals);
     }
 
     private Optional<PathfinderResult<SurfaceNode>> preferredSurfacePath(
@@ -146,11 +146,14 @@ public final class RouteSearchService {
 
     private PathfinderResult<SurfaceNode> bestSurfacePath(
             SurfaceWorldLayer worldLayer,
+            BlockPosition start,
+            RouteGoal goal,
             List<SurfaceNode> starts,
             List<SurfaceNode> goals) {
-        List<PathfinderResult<SurfaceNode>> results = new ArrayList<>(starts.size() * goals.size());
-        for (SurfaceNode start : starts) {
-            addSurfacePathResults(worldLayer, start, goals, results);
+        List<SurfaceNode> fallbackGoals = fallbackGoals(goal, goals, goal.preferredPosition(start));
+        List<PathfinderResult<SurfaceNode>> results = new ArrayList<>(starts.size() * fallbackGoals.size());
+        for (SurfaceNode startNode : starts) {
+            addSurfacePathResults(worldLayer, startNode, fallbackGoals, results);
         }
         return bestFoundSurfacePath(results);
     }
@@ -242,6 +245,20 @@ public final class RouteSearchService {
         return nodes.stream()
                 .min(Comparator.comparingDouble(node -> centerDistance(node, position)))
                 .orElseThrow();
+    }
+
+    private static List<SurfaceNode> fallbackGoals(
+            RouteGoal goal,
+            List<SurfaceNode> goals,
+            BlockPosition preferredPosition) {
+        if (goal.surfaceFallbackGoalLimit().isEmpty()) {
+            return goals;
+        }
+        int limit = goal.surfaceFallbackGoalLimit().orElseThrow();
+        return goals.stream()
+                .sorted(Comparator.comparingDouble(node -> centerDistance(node, preferredPosition)))
+                .limit(limit)
+                .toList();
     }
 
     private static double centerDistance(SurfaceNode node, BlockPosition position) {

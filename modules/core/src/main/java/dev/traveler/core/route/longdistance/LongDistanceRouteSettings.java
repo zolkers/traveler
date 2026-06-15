@@ -10,7 +10,8 @@ public record LongDistanceRouteSettings(
         int frontierLateralSamples,
         int frontierCaptureHorizontalMargin,
         int frontierCaptureVerticalMargin,
-        int visibilityEdgeSafetyBlocks) {
+        int visibilityEdgeSafetyBlocks,
+        int frontierFallbackSurfaceGoalLimit) {
     public LongDistanceRouteSettings(
             double directHorizontalDistance,
             double segmentHorizontalDistance,
@@ -26,7 +27,8 @@ public record LongDistanceRouteSettings(
                 8,
                 8,
                 16,
-                24);
+                24,
+                16);
     }
 
     public LongDistanceRouteSettings {
@@ -44,6 +46,9 @@ public record LongDistanceRouteSettings(
         requireNonNegative(frontierCaptureHorizontalMargin, "frontierCaptureHorizontalMargin");
         requireNonNegative(frontierCaptureVerticalMargin, "frontierCaptureVerticalMargin");
         requireNonNegative(visibilityEdgeSafetyBlocks, "visibilityEdgeSafetyBlocks");
+        if (frontierFallbackSurfaceGoalLimit <= 0) {
+            throw new IllegalArgumentException("frontierFallbackSurfaceGoalLimit must be positive.");
+        }
     }
 
     public LongDistanceRouteSettings withMaxSegmentAxisDelta(int axisDelta) {
@@ -57,7 +62,8 @@ public record LongDistanceRouteSettings(
                 frontierLateralSamples,
                 frontierCaptureHorizontalMargin,
                 frontierCaptureVerticalMargin,
-                visibilityEdgeSafetyBlocks);
+                visibilityEdgeSafetyBlocks,
+                frontierFallbackSurfaceGoalLimit);
     }
 
     private static void requirePositive(double value, String name) {

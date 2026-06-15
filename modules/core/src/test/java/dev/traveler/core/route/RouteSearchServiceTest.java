@@ -42,6 +42,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 class RouteSearchServiceTest {
@@ -243,6 +244,30 @@ class RouteSearchServiceTest {
 
         assertEquals(PathfinderStatus.FOUND, result.status());
         assertEquals(new BlockPosition(10, 63, 1), result.route().orElseThrow().nodes().getLast().blockPosition());
+    }
+
+    @Test
+    void longDistanceFrontierFallbackUsesBoundedGoalSearches() {
+        Map<BlockPosition, SurfaceBlock> blocks = frontierCandidateSurface(0, 10, 8);
+        TestSurfaceWorldLayer world = new TestSurfaceWorldLayer(blocks);
+        AtomicInteger graphCreations = new AtomicInteger();
+        RouteSearchComponents components = RouteSearchComponents.standard()
+                .withSurfaceGraphFactory((layer, start, goal, settings) -> {
+                    graphCreations.incrementAndGet();
+                    return node -> List.of();
+                });
+        RouteSearchService service = new RouteSearchService(RouteSearchSettings.standardClient(), components);
+        LongDistanceRoutePlanner planner = new LongDistanceRoutePlanner(
+                new LongDistanceRouteSettings(4.0, 10.0, 10, 3.0, 0, 1, 8, 8, 16, 24, 16));
+        RouteGoal frontierGoal = planner.plan(
+                        new BlockPosition(0, 64, 0),
+                        RouteGoal.xyz(10_000, 64, 0))
+                .activeGoal();
+
+        RouteSearchResult result = service.search(world, new BlockPosition(0, 64, 0), frontierGoal);
+
+        assertEquals(PathfinderStatus.NOT_FOUND, result.status());
+        assertTrue(graphCreations.get() <= 65, "graphCreations=" + graphCreations.get());
     }
 
     @Test
@@ -562,6 +587,20 @@ class RouteSearchServiceTest {
 
     private static Map<BlockPosition, SurfaceBlock> flatSurface(int minX, int maxX) {
         return surfaceRectangle(minX, maxX, 0, 0, SurfaceBlock.solid(BlockShape.fullCube()));
+    }
+
+    private static Map<BlockPosition, SurfaceBlock> frontierCandidateSurface(
+            int minX,
+            int maxX,
+            int lateralRadius) {
+        Map<BlockPosition, SurfaceBlock> blocks = new HashMap<>();
+        blocks.put(new BlockPosition(0, 63, 0), fullBlock());
+        for (int x = minX; x <= maxX; x++) {
+            for (int z = -lateralRadius; z <= lateralRadius; z++) {
+                blocks.put(new BlockPosition(x, 63, z), fullBlock());
+            }
+        }
+        return blocks;
     }
 
     private static Map<BlockPosition, SurfaceBlock> bottomSlabSurface(

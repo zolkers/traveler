@@ -7,6 +7,7 @@ import dev.traveler.core.world.surface.SurfaceNodeResolver;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalInt;
 
 public interface RouteGoal {
     static RouteGoal blockTarget(BlockPosition target) {
@@ -31,6 +32,10 @@ public interface RouteGoal {
 
     default Optional<BlockPosition> requestedTarget() {
         return Optional.empty();
+    }
+
+    default OptionalInt surfaceFallbackGoalLimit() {
+        return OptionalInt.empty();
     }
 
     default List<SurfaceNode> surfaceGoals(SurfaceNodeResolver resolver) {
