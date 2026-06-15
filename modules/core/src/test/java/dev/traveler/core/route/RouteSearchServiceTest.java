@@ -267,7 +267,7 @@ class RouteSearchServiceTest {
         RouteSearchResult result = service.search(world, new BlockPosition(0, 64, 0), frontierGoal);
 
         assertEquals(PathfinderStatus.NOT_FOUND, result.status());
-        assertTrue(graphCreations.get() <= 65, "graphCreations=" + graphCreations.get());
+        assertTrue(graphCreations.get() <= 69, "graphCreations=" + graphCreations.get());
     }
 
     @Test
@@ -296,6 +296,24 @@ class RouteSearchServiceTest {
 
         assertEquals(PathfinderStatus.FOUND, result.status());
         assertEquals(new BlockPosition(5, 63, 0), result.route().orElseThrow().nodes().getLast().blockPosition());
+    }
+
+    @Test
+    void longDistanceFrontierUsesBestReachableProgressWhenNoSampledGoalSurfaceExists() {
+        Map<BlockPosition, SurfaceBlock> blocks = flatSurface(0, 4);
+        TestSurfaceWorldLayer world = new TestSurfaceWorldLayer(blocks);
+        RouteSearchService service = new RouteSearchService(RouteSearchSettings.standardClient().withMargins(8, 16));
+        LongDistanceRoutePlanner planner = new LongDistanceRoutePlanner(
+                new LongDistanceRouteSettings(4.0, 10.0, 10, 3.0, 0, 1, 0, 8, 16, 24, 160_000, 1));
+        RouteGoal frontierGoal = planner.plan(
+                        new BlockPosition(0, 64, 0),
+                        RouteGoal.xyz(1_000, 64, 0))
+                .activeGoal();
+
+        RouteSearchResult result = service.search(world, new BlockPosition(0, 64, 0), frontierGoal);
+
+        assertEquals(PathfinderStatus.FOUND, result.status());
+        assertEquals(new BlockPosition(4, 63, 0), result.route().orElseThrow().nodes().getLast().blockPosition());
     }
 
     @Test

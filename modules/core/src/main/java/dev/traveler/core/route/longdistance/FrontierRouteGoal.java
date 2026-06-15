@@ -1,7 +1,7 @@
 package dev.traveler.core.route.longdistance;
 
 import dev.traveler.core.layer.WorldLayer;
-import dev.traveler.core.route.RouteGoal;
+import dev.traveler.core.route.SurfaceProgressRouteGoal;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.surface.SurfaceNode;
 import dev.traveler.core.world.surface.SurfaceNodeResolver;
@@ -12,7 +12,7 @@ import java.util.Objects;
 import java.util.OptionalInt;
 import java.util.Set;
 
-public final class FrontierRouteGoal implements RouteGoal {
+public final class FrontierRouteGoal implements SurfaceProgressRouteGoal {
     private static final double[] DISTANCE_RATIOS = {1.0, 0.875, 0.75, 0.625, 0.5};
 
     private final BlockPosition finalPosition;
@@ -38,6 +38,29 @@ public final class FrontierRouteGoal implements RouteGoal {
     @Override
     public OptionalInt surfaceFallbackGoalLimit() {
         return OptionalInt.of(settings.frontierFallbackSurfaceGoalLimit());
+    }
+
+    @Override
+    public SurfaceNode progressAnchor(BlockPosition start) {
+        BlockPosition preferredFeet = preferredPosition(start);
+        return new SurfaceNode(preferredFeet.below(), 0, 0, preferredFeet.y());
+    }
+
+    @Override
+    public boolean isProgressCandidate(SurfaceNode node, BlockPosition start) {
+        return progressScore(node, start) >= 1.0;
+    }
+
+    @Override
+    public double progressScore(SurfaceNode node, BlockPosition start) {
+        BlockPosition safeStart = Objects.requireNonNull(start, "start");
+        SurfaceNode safeNode = Objects.requireNonNull(node, "node");
+        return horizontalDistance(safeStart.x(), safeStart.z(), finalPosition.x(), finalPosition.z())
+                - horizontalDistance(
+                        safeNode.centerX(),
+                        safeNode.centerZ(),
+                        finalPosition.x() + 0.5,
+                        finalPosition.z() + 0.5);
     }
 
     @Override
@@ -113,6 +136,10 @@ public final class FrontierRouteGoal implements RouteGoal {
             offsets.add(offset);
         }
         return offsets;
+    }
+
+    private static double horizontalDistance(double x, double z, double targetX, double targetZ) {
+        return Math.hypot(x - targetX, z - targetZ);
     }
 
     private record Direction(double x, double z) {

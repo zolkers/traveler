@@ -1,6 +1,7 @@
 package dev.traveler.core.route;
 
 import dev.traveler.core.graph.Graph;
+import dev.traveler.core.graph.Connection;
 import dev.traveler.core.graph.MutableGraphPath;
 import dev.traveler.core.layer.SurfaceWorldLayer;
 import dev.traveler.core.layer.WorldLayer;
@@ -21,9 +22,12 @@ import dev.traveler.core.world.surface.SurfaceNode;
 import dev.traveler.core.world.surface.SurfaceNodeResolver;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.PriorityQueue;
 
 public final class RouteSearchService {
     private final RouteSearchSettings settings;
@@ -73,7 +77,7 @@ public final class RouteSearchService {
         if (startNodes.isEmpty()) {
             return surfaceRejected(goal, goalNodes.size(), RouteSearchDiagnostics::noStartSurface);
         }
-        if (goalNodes.isEmpty()) {
+        if (goalNodes.isEmpty() && !(goal instanceof SurfaceProgressRouteGoal)) {
             return surfaceRejected(goal, startNodes.size(), RouteSearchDiagnostics::noGoalSurface);
         }
         return surfaceSearch(worldLayer, start, goal, startNodes, goalNodes);
@@ -120,12 +124,19 @@ public final class RouteSearchService {
             RouteGoal goal,
             List<SurfaceNode> starts,
             List<SurfaceNode> goals) {
-        Optional<PathfinderResult<SurfaceNode>> preferred =
-                preferredSurfacePath(worldLayer, start, goal, starts, goals);
-        if (preferred.isPresent()) {
-            return preferred.orElseThrow();
+        if (!goals.isEmpty()) {
+            Optional<PathfinderResult<SurfaceNode>> preferred =
+                    preferredSurfacePath(worldLayer, start, goal, starts, goals);
+            if (preferred.isPresent()) {
+                return preferred.orElseThrow();
+            }
+            PathfinderResult<SurfaceNode> exactResult = bestSurfacePath(worldLayer, start, goal, starts, goals);
+            if (exactResult.status() == PathfinderStatus.FOUND) {
+                return exactResult;
+            }
         }
-        return bestSurfacePath(worldLayer, start, goal, starts, goals);
+        return bestReachableProgressPath(worldLayer, start, goal, starts)
+                .orElseGet(RouteSearchService::surfaceNotFound);
     }
 
     private Optional<PathfinderResult<SurfaceNode>> preferredSurfacePath(
@@ -177,6 +188,77 @@ public final class RouteSearchService {
                 new PathfinderRequest<>(graph, start, goal, SurfaceRouteStepContext::surfaceDistance);
         PathfinderResult<SurfaceNode> result = components.surfacePathfinder().search(request);
         return smoothedSurfaceResult(worldLayer, result);
+    }
+
+    private Optional<PathfinderResult<SurfaceNode>> bestReachableProgressPath(
+            SurfaceWorldLayer worldLayer,
+            BlockPosition start,
+            RouteGoal goal,
+            List<SurfaceNode> starts) {
+        if (!(goal instanceof SurfaceProgressRouteGoal progressGoal)) {
+            return Optional.empty();
+        }
+        SurfaceNode anchor = progressGoal.progressAnchor(start);
+        List<PathfinderResult<SurfaceNode>> results = new ArrayList<>(starts.size());
+        for (SurfaceNode startNode : starts) {
+            Graph<SurfaceNode> graph = components.surfaceGraphFactory().create(worldLayer, startNode, anchor, settings);
+            PathfinderResult<SurfaceNode> result = bestReachableProgressPath(graph, startNode, progressGoal, start);
+            if (result.status() == PathfinderStatus.FOUND) {
+                results.add(smoothedSurfaceResult(worldLayer, result));
+            }
+        }
+        return results.stream()
+                .max((first, second) -> compareProgressResults(progressGoal, start, first, second));
+    }
+
+    private static PathfinderResult<SurfaceNode> bestReachableProgressPath(
+            Graph<SurfaceNode> graph,
+            SurfaceNode startNode,
+            SurfaceProgressRouteGoal goal,
+            BlockPosition start) {
+        Map<SurfaceNode, Double> costs = new HashMap<>();
+        Map<SurfaceNode, Connection<SurfaceNode>> previousConnections = new HashMap<>();
+        PriorityQueue<ReachableSurfaceNode> open = new PriorityQueue<>(Comparator
+                .comparingDouble(ReachableSurfaceNode::cost)
+                .thenComparingLong(ReachableSurfaceNode::sequence));
+        long nextSequence = 0L;
+        costs.put(startNode, 0.0);
+        open.add(new ReachableSurfaceNode(startNode, 0.0, nextSequence));
+        nextSequence++;
+        SurfaceNode best = null;
+        double bestScore = 0.0;
+        while (!open.isEmpty()) {
+            ReachableSurfaceNode current = open.poll();
+            if (Double.compare(current.cost(), costs.getOrDefault(current.node(), Double.POSITIVE_INFINITY)) != 0) {
+                continue;
+            }
+            double score = goal.progressScore(current.node(), start);
+            if (goal.isProgressCandidate(current.node(), start)
+                    && (best == null || score > bestScore || score == bestScore && current.cost() < costs.get(best))) {
+                best = current.node();
+                bestScore = score;
+            }
+            for (Connection<SurfaceNode> connection : graph.outgoingConnections(current.node())) {
+                double cost = current.cost() + connection.cost();
+                if (costs.getOrDefault(connection.to(), Double.POSITIVE_INFINITY) <= cost) {
+                    continue;
+                }
+                costs.put(connection.to(), cost);
+                previousConnections.put(connection.to(), connection);
+                open.add(new ReachableSurfaceNode(connection.to(), cost, nextSequence));
+                nextSequence++;
+            }
+        }
+        if (best == null) {
+            return surfaceNotFound();
+        }
+        List<SurfaceNode> pathNodes = traceSurfaceNodes(startNode, best, previousConnections);
+        if (pathNodes.isEmpty()) {
+            return surfaceNotFound();
+        }
+        return new PathfinderResult<>(
+                PathfinderStatus.FOUND,
+                graphPath(pathNodes, costs.get(best)));
     }
 
     private Optional<RoutePath> routeFromSurfaceResult(
@@ -283,6 +365,41 @@ public final class RouteSearchService {
         return Double.compare(first.path().cost(), second.path().cost());
     }
 
+    private static int compareProgressResults(
+            SurfaceProgressRouteGoal goal,
+            BlockPosition start,
+            PathfinderResult<SurfaceNode> first,
+            PathfinderResult<SurfaceNode> second) {
+        SurfaceNode firstNode = first.path().nodes().getLast();
+        SurfaceNode secondNode = second.path().nodes().getLast();
+        int progress = Double.compare(
+                goal.progressScore(firstNode, start),
+                goal.progressScore(secondNode, start));
+        if (progress != 0) {
+            return progress;
+        }
+        return -Double.compare(first.path().cost(), second.path().cost());
+    }
+
+    private static List<SurfaceNode> traceSurfaceNodes(
+            SurfaceNode start,
+            SurfaceNode end,
+            Map<SurfaceNode, Connection<SurfaceNode>> previousConnections) {
+        List<SurfaceNode> nodes = new ArrayList<>();
+        SurfaceNode current = end;
+        nodes.add(current);
+        while (!current.equals(start)) {
+            Connection<SurfaceNode> connection = previousConnections.get(current);
+            if (connection == null) {
+                return List.of();
+            }
+            current = connection.from();
+            nodes.add(current);
+        }
+        java.util.Collections.reverse(nodes);
+        return nodes;
+    }
+
     private static PathfinderResult<SurfaceNode> surfaceNotFound() {
         return new PathfinderResult<>(PathfinderStatus.NOT_FOUND, new MutableGraphPath<>());
     }
@@ -356,5 +473,8 @@ public final class RouteSearchService {
     @FunctionalInterface
     private interface SurfaceDiagnosticsFactory {
         RouteSearchDiagnostics create(int knownSurfaceCount);
+    }
+
+    private record ReachableSurfaceNode(SurfaceNode node, double cost, long sequence) {
     }
 }
