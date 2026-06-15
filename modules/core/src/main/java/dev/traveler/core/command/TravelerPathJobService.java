@@ -214,16 +214,33 @@ final class TravelerPathJobService implements AutoCloseable {
     }
 
     private void completeNavigationLookahead(TravelerPathSearchResult result, CommandFeedback feedback) {
-        if (result.navigationPath().isPresent()) {
-            completeNavigation(result, feedback);
+        if (navigationState.activeSession().isEmpty()) {
+            result.updateDebug(debugState);
+            feedback.reply(navigationFailureMessage(result) + " | stale lookahead ignored");
             return;
         }
-        if (navigationState.activeSession().isEmpty()) {
-            completeEmptyNavigation(result, feedback);
+        Optional<NavigationPath> path = result.navigationPath();
+        if (path.isPresent()) {
+            prepareNavigationLookahead(result, feedback, path.orElseThrow());
             return;
         }
         result.updateDebug(debugState);
         feedback.reply(navigationFailureMessage(result) + " | keeping current segment");
+    }
+
+    private void prepareNavigationLookahead(
+            TravelerPathSearchResult result,
+            CommandFeedback feedback,
+            NavigationPath path) {
+        result.updateDebug(debugState);
+        Optional<NavigationGoalPlan> goalPlan = result.navigationGoalPlan();
+        if (goalPlan.isEmpty()) {
+            feedback.reply(navigationFailureMessage(result) + " | missing goal plan; keeping current segment");
+            return;
+        }
+        String message = result.message().replaceFirst("^path", "navigate") + " | lookahead ready | " + pathSummary();
+        navigationState.prepareLookahead(path, message, goalPlan.orElseThrow());
+        feedback.reply(message);
     }
 
     private void completeEmptyNavigation(TravelerPathSearchResult result, CommandFeedback feedback) {

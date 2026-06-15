@@ -117,9 +117,11 @@ public final class NavigationRuntime {
     private void applyFrame(NavigationSession session, NavigationControlFrame frame) {
         if (frame.completed()) {
             if (session.goalPlan().filter(NavigationGoalPlan::needsReplanAfterCompletion).isPresent()) {
-                navigationState.requestReplan(
-                        session.goalPlan().orElseThrow(),
-                        "navigation segment completed; replan requested");
+                if (!navigationState.activatePreparedLookahead()) {
+                    navigationState.requestReplan(
+                            session.goalPlan().orElseThrow(),
+                            "navigation segment completed; replan requested");
+                }
             } else {
                 navigationState.stop("navigation completed");
             }

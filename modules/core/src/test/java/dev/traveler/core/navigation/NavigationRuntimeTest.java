@@ -156,6 +156,35 @@ class NavigationRuntimeTest {
         assertFalse(agent.intents.isEmpty());
     }
 
+    @Test
+    void activatesPreparedLookaheadAtSegmentCompletionInsteadOfRequestingFreshReplan() {
+        TravelerNavigationState navigationState = new TravelerNavigationState();
+        TestAgentPort agent = new TestAgentPort(new NavigationPoint(20.0, 64.0, 0.0), new CameraAngles(0.0, 0.0));
+        NavigationRuntime runtime = new NavigationRuntime(navigationState, agent);
+        NavigationGoalPlan currentPlan = new NavigationGoalPlan(
+                RouteGoal.xz(100, 0),
+                RouteGoal.xz(20, 0),
+                false,
+                8.0);
+        NavigationGoalPlan preparedPlan = new NavigationGoalPlan(
+                RouteGoal.xz(100, 0),
+                RouteGoal.xz(40, 0),
+                false,
+                8.0);
+        NavigationPath preparedPath = NavigationPath.of(List.of(
+                new NavigationPoint(20.0, 64.0, 0.0),
+                new NavigationPoint(40.0, 64.0, 0.0)));
+        navigationState.start(NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(20.0, 64.0, 0.0))), "current", currentPlan);
+        navigationState.prepareLookahead(preparedPath, "prepared", preparedPlan);
+
+        runtime.update(1_000_000_000L);
+
+        assertEquals(preparedPath, navigationState.activeSession().orElseThrow().path());
+        assertTrue(navigationState.pendingReplanRequest().isEmpty());
+    }
+
     private static final class TestAgentPort implements NavigationAgentPort {
         private final List<NavigationFrameInput> frames = new ArrayList<>();
         private final List<NavigationControlFrame> controlFrames = new ArrayList<>();

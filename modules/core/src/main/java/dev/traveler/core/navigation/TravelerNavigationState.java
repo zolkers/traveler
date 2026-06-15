@@ -7,6 +7,7 @@ import java.util.Optional;
 
 public final class TravelerNavigationState {
     private NavigationSession activeSession;
+    private NavigationSession preparedLookaheadSession;
     private NavigationReplanRequest pendingReplanRequest;
     private String latestMessage;
 
@@ -15,6 +16,7 @@ public final class TravelerNavigationState {
                 Objects.requireNonNull(path, "path"),
                 message,
                 Instant.now());
+        preparedLookaheadSession = null;
         pendingReplanRequest = null;
         latestMessage = message;
     }
@@ -25,12 +27,14 @@ public final class TravelerNavigationState {
                 message,
                 Instant.now(),
                 Objects.requireNonNull(goalPlan, "goalPlan"));
+        preparedLookaheadSession = null;
         pendingReplanRequest = null;
         latestMessage = message;
     }
 
     public synchronized void stop(String message) {
         activeSession = null;
+        preparedLookaheadSession = null;
         pendingReplanRequest = null;
         latestMessage = message;
     }
@@ -38,21 +42,50 @@ public final class TravelerNavigationState {
     public synchronized void requestReplan(NavigationGoalPlan goalPlan, String message) {
         NavigationGoalPlan plan = Objects.requireNonNull(goalPlan, "goalPlan");
         activeSession = null;
+        preparedLookaheadSession = null;
         pendingReplanRequest = new NavigationReplanRequest(plan.requestedGoal(), message, Instant.now());
         latestMessage = message;
     }
 
     public synchronized void requestLookaheadReplan(NavigationGoalPlan goalPlan, String message) {
         NavigationGoalPlan plan = Objects.requireNonNull(goalPlan, "goalPlan");
-        if (pendingReplanRequest != null) {
+        if (pendingReplanRequest != null || preparedLookaheadSession != null) {
             return;
         }
         pendingReplanRequest = new NavigationReplanRequest(plan.requestedGoal(), message, Instant.now(), true);
         latestMessage = message;
     }
 
+    public synchronized void prepareLookahead(NavigationPath path, String message, NavigationGoalPlan goalPlan) {
+        if (activeSession == null) {
+            return;
+        }
+        preparedLookaheadSession = new NavigationSession(
+                Objects.requireNonNull(path, "path"),
+                message,
+                Instant.now(),
+                Objects.requireNonNull(goalPlan, "goalPlan"));
+        pendingReplanRequest = null;
+        latestMessage = message;
+    }
+
+    public synchronized boolean activatePreparedLookahead() {
+        if (preparedLookaheadSession == null) {
+            return false;
+        }
+        activeSession = preparedLookaheadSession;
+        preparedLookaheadSession = null;
+        pendingReplanRequest = null;
+        latestMessage = activeSession.message();
+        return true;
+    }
+
     public synchronized Optional<NavigationSession> activeSession() {
         return Optional.ofNullable(activeSession);
+    }
+
+    public synchronized Optional<NavigationSession> preparedLookaheadSession() {
+        return Optional.ofNullable(preparedLookaheadSession);
     }
 
     public synchronized Optional<NavigationReplanRequest> pendingReplanRequest() {
