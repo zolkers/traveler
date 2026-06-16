@@ -4,6 +4,7 @@ import dev.traveler.core.navigation.api.NavigationSnapshot;
 import dev.traveler.core.navigation.api.NavigationSnapshot.NavigationGoalPlanSnapshot;
 import dev.traveler.core.navigation.api.NavigationSnapshot.NavigationReplanRequestSnapshot;
 import dev.traveler.core.navigation.api.NavigationSnapshot.NavigationSessionSnapshot;
+import dev.traveler.core.navigation.api.NavigationSnapshot.ReplanActivation;
 import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import java.time.Instant;
@@ -18,39 +19,30 @@ public final class TravelerNavigationState {
     private String latestMessage;
 
     public synchronized void start(NavigationPath path, String message) {
-        activeSession = new NavigationSession(
+        activate(new NavigationSession(
                 Objects.requireNonNull(path, "path"),
-                message,
-                Instant.now());
-        preparedLookaheadSession = null;
-        pendingReplanRequest = null;
-        latestMessage = message;
+                requireMessage(message),
+                Instant.now()));
     }
 
     public synchronized void start(NavigationPath path, String message, NavigationGoalPlan goalPlan) {
-        activeSession = new NavigationSession(
+        activate(new NavigationSession(
                 Objects.requireNonNull(path, "path"),
-                message,
+                requireMessage(message),
                 Instant.now(),
-                Objects.requireNonNull(goalPlan, "goalPlan"));
-        preparedLookaheadSession = null;
-        pendingReplanRequest = null;
-        latestMessage = message;
+                Objects.requireNonNull(goalPlan, "goalPlan")));
     }
 
     public synchronized void stop(String message) {
-        activeSession = null;
-        preparedLookaheadSession = null;
-        pendingReplanRequest = null;
-        latestMessage = message;
+        clearState(requireMessage(message));
     }
 
     public synchronized void requestReplan(NavigationGoalPlan goalPlan, String message) {
         NavigationGoalPlan plan = Objects.requireNonNull(goalPlan, "goalPlan");
-        activeSession = null;
-        preparedLookaheadSession = null;
-        pendingReplanRequest = new NavigationReplanRequest(plan.requestedGoal(), message, Instant.now());
-        latestMessage = message;
+        String safeMessage = requireMessage(message);
+        clearActiveNavigation();
+        pendingReplanRequest = new NavigationReplanRequest(plan.requestedGoal(), safeMessage, Instant.now());
+        latestMessage = safeMessage;
     }
 
     public synchronized void requestReplan(
@@ -58,14 +50,14 @@ public final class TravelerNavigationState {
             String message,
             NavigationPoint startOverride) {
         NavigationGoalPlan plan = Objects.requireNonNull(goalPlan, "goalPlan");
-        activeSession = null;
-        preparedLookaheadSession = null;
+        String safeMessage = requireMessage(message);
+        clearActiveNavigation();
         pendingReplanRequest = new NavigationReplanRequest(
                 plan.requestedGoal(),
-                message,
+                safeMessage,
                 Instant.now(),
                 Objects.requireNonNull(startOverride, "startOverride"));
-        latestMessage = message;
+        latestMessage = safeMessage;
     }
 
     public synchronized void requestSegmentRepair(
@@ -73,27 +65,29 @@ public final class TravelerNavigationState {
             String message,
             NavigationPoint startOverride) {
         NavigationGoalPlan plan = Objects.requireNonNull(goalPlan, "goalPlan");
+        String safeMessage = requireMessage(message);
         if (pendingReplanRequest != null || preparedLookaheadSession != null) {
-            latestMessage = message;
+            latestMessage = safeMessage;
             return;
         }
         pendingReplanRequest = new NavigationReplanRequest(
                 plan.activeGoal(),
-                message,
+                safeMessage,
                 Instant.now(),
                 NavigationReplanActivation.REPLACE_ACTIVE_SESSION,
                 Objects.requireNonNull(startOverride, "startOverride"),
                 plan);
-        latestMessage = message;
+        latestMessage = safeMessage;
     }
 
     public synchronized void requestLookaheadReplan(NavigationGoalPlan goalPlan, String message) {
         NavigationGoalPlan plan = Objects.requireNonNull(goalPlan, "goalPlan");
+        String safeMessage = requireMessage(message);
         if (pendingReplanRequest != null || preparedLookaheadSession != null) {
             return;
         }
-        pendingReplanRequest = new NavigationReplanRequest(plan.requestedGoal(), message, Instant.now(), true);
-        latestMessage = message;
+        pendingReplanRequest = new NavigationReplanRequest(plan.requestedGoal(), safeMessage, Instant.now(), true);
+        latestMessage = safeMessage;
     }
 
     public synchronized void requestLookaheadReplan(
@@ -101,43 +95,42 @@ public final class TravelerNavigationState {
             String message,
             NavigationPoint startOverride) {
         NavigationGoalPlan plan = Objects.requireNonNull(goalPlan, "goalPlan");
+        String safeMessage = requireMessage(message);
         if (pendingReplanRequest != null || preparedLookaheadSession != null) {
             return;
         }
         pendingReplanRequest = new NavigationReplanRequest(
                 plan.requestedGoal(),
-                message,
+                safeMessage,
                 Instant.now(),
                 true,
                 Objects.requireNonNull(startOverride, "startOverride"));
-        latestMessage = message;
+        latestMessage = safeMessage;
     }
 
     public synchronized void prepareLookahead(NavigationPath path, String message, NavigationGoalPlan goalPlan) {
         if (activeSession == null) {
             return;
         }
+        String safeMessage = requireMessage(message);
         preparedLookaheadSession = new NavigationSession(
                 Objects.requireNonNull(path, "path"),
-                message,
+                safeMessage,
                 Instant.now(),
                 Objects.requireNonNull(goalPlan, "goalPlan"));
         pendingReplanRequest = null;
-        latestMessage = message;
+        latestMessage = safeMessage;
     }
 
     public synchronized void replaceActiveSession(NavigationPath path, String message, NavigationGoalPlan goalPlan) {
         if (activeSession == null) {
             return;
         }
-        activeSession = new NavigationSession(
+        activate(new NavigationSession(
                 Objects.requireNonNull(path, "path"),
-                message,
+                requireMessage(message),
                 Instant.now(),
-                Objects.requireNonNull(goalPlan, "goalPlan"));
-        preparedLookaheadSession = null;
-        pendingReplanRequest = null;
-        latestMessage = message;
+                Objects.requireNonNull(goalPlan, "goalPlan")));
     }
 
     public synchronized boolean activatePreparedLookahead() {
@@ -204,7 +197,7 @@ public final class TravelerNavigationState {
                 request.goal(),
                 request.reason(),
                 request.requestedAt(),
-                request.activation(),
+                snapshotOf(request.activation()),
                 request.startOverride(),
                 request.goalPlanOverride().map(TravelerNavigationState::snapshotOf)));
     }
@@ -216,5 +209,35 @@ public final class TravelerNavigationState {
                 plan.activeGoal(),
                 plan.finalSegment(),
                 plan.lookaheadReplanDistance());
+    }
+
+    private static ReplanActivation snapshotOf(NavigationReplanActivation activation) {
+        return switch (Objects.requireNonNull(activation, "activation")) {
+            case START_NEW_SESSION -> ReplanActivation.START_NEW_SESSION;
+            case PREPARE_LOOKAHEAD -> ReplanActivation.PREPARE_LOOKAHEAD;
+            case REPLACE_ACTIVE_SESSION -> ReplanActivation.REPLACE_ACTIVE_SESSION;
+        };
+    }
+
+    private static String requireMessage(String message) {
+        return Objects.requireNonNull(message, "message");
+    }
+
+    private void activate(NavigationSession session) {
+        activeSession = Objects.requireNonNull(session, "session");
+        preparedLookaheadSession = null;
+        pendingReplanRequest = null;
+        latestMessage = session.message();
+    }
+
+    private void clearState(String message) {
+        clearActiveNavigation();
+        latestMessage = message;
+    }
+
+    private void clearActiveNavigation() {
+        activeSession = null;
+        preparedLookaheadSession = null;
+        pendingReplanRequest = null;
     }
 }

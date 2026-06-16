@@ -3,16 +3,21 @@ package dev.traveler.core.navigation.session;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.traveler.core.navigation.NavigationGoalPlan;
-import dev.traveler.core.navigation.NavigationReplanActivation;
 import dev.traveler.core.navigation.TravelerNavigationState;
 import dev.traveler.core.navigation.api.NavigationSnapshot;
 import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.navigation.api.TraversalKind;
+import dev.traveler.core.route.api.RoutePlan;
+import dev.traveler.core.route.api.RouteSegment;
 import dev.traveler.core.route.RouteGoal;
+import dev.traveler.core.world.block.BlockPosition;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -23,15 +28,17 @@ class NavigationSnapshotTest {
 
     @Test
     void navigationSnapshotPublicApiDoesNotMentionInternalNavigationTypes() {
-        for (Method method : NavigationSnapshot.class.getMethods()) {
-            assertFalse(method.toGenericString().contains(INTERNAL_SESSION));
-            assertFalse(method.toGenericString().contains(INTERNAL_REPLAN_REQUEST));
-            assertFalse(method.toGenericString().contains(INTERNAL_GOAL_PLAN));
-        }
-        for (Constructor<?> constructor : NavigationSnapshot.class.getConstructors()) {
-            assertFalse(constructor.toGenericString().contains(INTERNAL_SESSION));
-            assertFalse(constructor.toGenericString().contains(INTERNAL_REPLAN_REQUEST));
-            assertFalse(constructor.toGenericString().contains(INTERNAL_GOAL_PLAN));
+        for (Class<?> apiType : publicSnapshotTypes()) {
+            for (Method method : apiType.getMethods()) {
+                assertFalse(method.toGenericString().contains(INTERNAL_SESSION));
+                assertFalse(method.toGenericString().contains(INTERNAL_REPLAN_REQUEST));
+                assertFalse(method.toGenericString().contains(INTERNAL_GOAL_PLAN));
+            }
+            for (Constructor<?> constructor : apiType.getConstructors()) {
+                assertFalse(constructor.toGenericString().contains(INTERNAL_SESSION));
+                assertFalse(constructor.toGenericString().contains(INTERNAL_REPLAN_REQUEST));
+                assertFalse(constructor.toGenericString().contains(INTERNAL_GOAL_PLAN));
+            }
         }
     }
 
@@ -98,7 +105,7 @@ class NavigationSnapshotTest {
         assertTrue(pending.pending().isPresent());
         assertEquals(RouteGoal.xz(100, 0), pending.pending().orElseThrow().goal());
         assertEquals(
-                NavigationReplanActivation.PREPARE_LOOKAHEAD,
+                NavigationSnapshot.ReplanActivation.PREPARE_LOOKAHEAD,
                 pending.pending().orElseThrow().activation());
         assertEquals("lookahead requested", pending.pending().orElseThrow().reason());
         assertEquals(replanStart, pending.pending().orElseThrow().startOverride().orElseThrow());
@@ -111,6 +118,54 @@ class NavigationSnapshotTest {
         assertFalse(pending.prepared().isPresent());
         assertTrue(pending.pending().isPresent());
         assertEquals(activePath.nodes(), pending.active().orElseThrow().nodes());
+    }
+
+    @Test
+    void travelerNavigationStateRejectsNullMessagesAcrossTransitions() {
+        TravelerNavigationState state = new TravelerNavigationState();
+        NavigationPath path = navigationPath(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(4.0, 64.0, 0.0));
+        NavigationGoalPlan plan = goalPlan(100, 0, 4, 0);
+        NavigationPoint startOverride = new NavigationPoint(2.0, 64.0, 1.0);
+
+        assertThrows(NullPointerException.class, () -> state.start(path, null));
+        assertThrows(NullPointerException.class, () -> state.start(path, null, plan));
+        assertThrows(NullPointerException.class, () -> state.stop(null));
+        assertThrows(NullPointerException.class, () -> state.requestReplan(plan, null));
+        assertThrows(NullPointerException.class, () -> state.requestReplan(plan, null, startOverride));
+        assertThrows(NullPointerException.class, () -> state.requestSegmentRepair(plan, null, startOverride));
+        assertThrows(NullPointerException.class, () -> state.requestLookaheadReplan(plan, null));
+        assertThrows(NullPointerException.class, () -> state.requestLookaheadReplan(plan, null, startOverride));
+
+        state.start(path, "active", plan);
+        assertThrows(NullPointerException.class, () -> state.prepareLookahead(path, null, plan));
+        assertThrows(NullPointerException.class, () -> state.replaceActiveSession(path, null, plan));
+    }
+
+    @Test
+    void routePlanRequiresSegmentIndexesToMatchListOrder() {
+        RouteSegment first = new RouteSegment(0, new BlockPosition(0, 64, 0), new BlockPosition(1, 64, 0), TraversalKind.WALK);
+        RouteSegment second = new RouteSegment(1, new BlockPosition(1, 64, 0), new BlockPosition(2, 64, 0), TraversalKind.WALK);
+
+        RoutePlan plan = new RoutePlan(List.of(first, second));
+
+        assertEquals(List.of(first, second), plan.segments());
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new RoutePlan(List.of(
+                        first,
+                        new RouteSegment(2, new BlockPosition(1, 64, 0), new BlockPosition(2, 64, 0), TraversalKind.WALK))));
+    }
+
+    private static List<Class<?>> publicSnapshotTypes() {
+        List<Class<?>> nestedPublicTypes = java.util.Arrays.stream(NavigationSnapshot.class.getDeclaredClasses())
+                .filter(type -> Modifier.isPublic(type.getModifiers()))
+                .toList();
+        java.util.ArrayList<Class<?>> apiTypes = new java.util.ArrayList<>();
+        apiTypes.add(NavigationSnapshot.class);
+        apiTypes.addAll(nestedPublicTypes);
+        return List.copyOf(apiTypes);
     }
 
     private static NavigationPath navigationPath(NavigationPoint start, NavigationPoint end) {

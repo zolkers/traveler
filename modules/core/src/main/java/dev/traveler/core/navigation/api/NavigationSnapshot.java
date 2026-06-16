@@ -1,6 +1,5 @@
 package dev.traveler.core.navigation.api;
 
-import dev.traveler.core.navigation.NavigationReplanActivation;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import dev.traveler.core.route.RouteGoal;
 import java.time.Instant;
@@ -44,7 +43,7 @@ public record NavigationSnapshot(
             RouteGoal goal,
             String reason,
             Instant requestedAt,
-            NavigationReplanActivation activation,
+            ReplanActivation activation,
             Optional<NavigationPoint> startOverride,
             Optional<NavigationGoalPlanSnapshot> goalPlanOverride) {
         public NavigationReplanRequestSnapshot {
@@ -69,5 +68,11 @@ public record NavigationSnapshot(
                 throw new IllegalArgumentException("lookaheadReplanDistance must be finite and non-negative.");
             }
         }
+    }
+
+    public enum ReplanActivation {
+        START_NEW_SESSION,
+        PREPARE_LOOKAHEAD,
+        REPLACE_ACTIVE_SESSION
     }
 }
