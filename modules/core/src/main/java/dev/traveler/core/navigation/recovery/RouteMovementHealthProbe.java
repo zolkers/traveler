@@ -3,28 +3,44 @@ package dev.traveler.core.navigation.recovery;
 import dev.traveler.core.navigation.NavigationControlFrame;
 import dev.traveler.core.navigation.NavigationFrameInput;
 import dev.traveler.core.navigation.follow.NavigationPath;
+import dev.traveler.core.navigation.locomotion.LocomotionExecutionState;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import dev.traveler.core.world.behavior.decision.MovementAction;
 import java.util.Objects;
 
-public final class RouteActionProgressMetric implements MovementProgressMetric {
+public final class RouteMovementHealthProbe implements MovementHealthProbe {
     @Override
-    public ProgressSample sample(NavigationPath path, NavigationFrameInput input, NavigationControlFrame frame) {
+    public MovementHealthSnapshot sample(
+            NavigationPath path,
+            NavigationFrameInput input,
+            NavigationControlFrame frame) {
         NavigationPath navigationPath = Objects.requireNonNull(path, "path");
         NavigationFrameInput frameInput = Objects.requireNonNull(input, "input");
         NavigationControlFrame controlFrame = Objects.requireNonNull(frame, "frame");
         int nextNodeIndex = nextNodeIndex(navigationPath, controlFrame);
         NavigationPoint start = navigationPath.nodeAt(nextNodeIndex - 1);
         NavigationPoint end = navigationPath.nodeAt(nextNodeIndex);
-        MovementAction action = navigationPath.actionBeforeNode(nextNodeIndex);
         NavigationPoint actionTarget = navigationPath.actionTargetBeforeNode(nextNodeIndex);
-        NavigationPoint position = frameInput.position();
-        return new ProgressSample(
-                routeProgress(action, start, end, position),
-                lateralDistance(action, start, end, position),
-                position.distanceTo(actionTarget),
+        MovementAction action = navigationPath.actionBeforeNode(nextNodeIndex);
+        LocomotionExecutionState locomotionState = controlFrame.plan().locomotionState();
+        return new MovementHealthSnapshot(
+                nextNodeIndex,
+                frameInput.position(),
+                start,
+                end,
+                actionTarget,
                 action,
-                controlFrame.plan().phase());
+                controlFrame.plan().phase(),
+                controlFrame.plan().actionIntent().action(),
+                locomotionState,
+                controlFrame.intent().moving(),
+                frameInput.motionState().onGround(),
+                frameInput.motionState().horizontalCollision(),
+                frameInput.motionState().horizontalSpeed(),
+                frameInput.motionState().verticalVelocity(),
+                routeProgress(action, start, end, frameInput.position()),
+                lateralDistance(action, start, end, frameInput.position()),
+                frameInput.position().distanceTo(actionTarget));
     }
 
     private static int nextNodeIndex(NavigationPath path, NavigationControlFrame frame) {

@@ -1,17 +1,13 @@
 package dev.traveler.core.navigation.plan;
 
 import dev.traveler.core.navigation.locomotion.AgentMotionState;
+import dev.traveler.core.navigation.locomotion.JumpTraversalRules;
 import dev.traveler.core.navigation.locomotion.LocomotionPlan;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import dev.traveler.core.world.behavior.decision.MovementAction;
 import java.util.Objects;
 
 public final class MovementActionPolicy {
-    private static final double JUMP_LANDING_HEIGHT_TOLERANCE = 0.2;
-    private static final double JUMP_LANDING_DISTANCE_TOLERANCE = 1.0;
-    private static final double JUMP_TAKEOFF_EXIT_DISTANCE = 0.35;
-    private static final double JUMP_TAKEOFF_EXIT_HEIGHT = 0.35;
-
     public LocomotionPlan plan(
             NavigationPoint position,
             NavigationPoint target,
@@ -94,11 +90,11 @@ public final class MovementActionPolicy {
             return false;
         }
         if (!motionState.onGround()
-                || position.y() < target.y() - JUMP_LANDING_HEIGHT_TOLERANCE
-                || !hasLeftTakeoffZone(position, segmentStart)) {
+                || !JumpTraversalRules.hasReachedLandingHeight(position, target)
+                || !JumpTraversalRules.hasLeftTakeoffZone(position, segmentStart)) {
             return false;
         }
-        if (position.horizontalDistanceTo(target) <= JUMP_LANDING_DISTANCE_TOLERANCE) {
+        if (position.horizontalDistanceTo(target) <= JumpTraversalRules.LANDING_DISTANCE_TOLERANCE) {
             return true;
         }
         double segmentLength = segmentStart.horizontalDistanceTo(target);
@@ -108,13 +104,6 @@ public final class MovementActionPolicy {
         double along = segmentStart
                 .horizontalVectorTo(position)
                 .dot(segmentStart.horizontalVectorTo(target).normalized());
-        return along >= segmentLength - JUMP_LANDING_DISTANCE_TOLERANCE;
-    }
-
-    private static boolean hasLeftTakeoffZone(
-            NavigationPoint position,
-            NavigationPoint segmentStart) {
-        return position.horizontalDistanceTo(segmentStart) >= JUMP_TAKEOFF_EXIT_DISTANCE
-                || position.y() >= segmentStart.y() + JUMP_TAKEOFF_EXIT_HEIGHT;
+        return along >= segmentLength - JumpTraversalRules.LANDING_DISTANCE_TOLERANCE;
     }
 }

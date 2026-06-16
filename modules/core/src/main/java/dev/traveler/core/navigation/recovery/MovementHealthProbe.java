@@ -5,6 +5,6 @@ import dev.traveler.core.navigation.NavigationFrameInput;
 import dev.traveler.core.navigation.follow.NavigationPath;
 
 @FunctionalInterface
-public interface MovementProgressMetric {
-    ProgressSample sample(NavigationPath path, NavigationFrameInput input, NavigationControlFrame frame);
+public interface MovementHealthProbe {
+    MovementHealthSnapshot sample(NavigationPath path, NavigationFrameInput input, NavigationControlFrame frame);
 }

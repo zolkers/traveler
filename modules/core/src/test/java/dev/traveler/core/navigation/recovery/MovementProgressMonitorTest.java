@@ -11,6 +11,8 @@ import dev.traveler.core.navigation.control.MovementIntent;
 import dev.traveler.core.navigation.follow.MovementTarget;
 import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.follow.PathProgress;
+import dev.traveler.core.navigation.locomotion.AgentMotionState;
+import dev.traveler.core.navigation.locomotion.LocomotionAction;
 import dev.traveler.core.navigation.locomotion.LocomotionExecutionState;
 import dev.traveler.core.navigation.plan.ActionIntent;
 import dev.traveler.core.navigation.plan.MovementVectorIntent;
@@ -84,19 +86,86 @@ class MovementProgressMonitorTest {
     }
 
     @Test
-    void jumpSetupHasGraceBeforeStuckRecovery() {
+    void jumpSetupWaitsForSetupTimeoutBeforeRecovery() {
         MovementProgressMonitor monitor = new MovementProgressMonitor(healthSettings());
         NavigationPath path = path(MovementAction.JUMP,
                 new NavigationPoint(0.0, 64.0, 0.0),
                 new NavigationPoint(1.0, 65.0, 0.0));
-        NavigationControlFrame frame = NavigationDebugFrames.approachFrame(new NavigationPoint(1.0, 65.0, 0.0));
+        NavigationControlFrame frame = frame(
+                PathProgress.start(),
+                NavigationPhase.ALIGN,
+                ActionIntent.jump(),
+                new NavigationPoint(1.0, 65.0, 0.0),
+                LocomotionExecutionState.start());
 
         assertTrue(monitor.update(path, input(0.0, 64.0, 0.0, 0.10), frame).isEmpty());
         assertTrue(monitor.update(path, input(0.0, 64.0, 0.0, 0.10), frame).isEmpty());
         assertTrue(monitor.update(path, input(0.0, 64.0, 0.0, 0.10), frame).isEmpty());
 
         MovementFailure failure = monitor.update(path, input(0.0, 64.0, 0.0, 0.20), frame).orElseThrow();
-        assertEquals(MovementFailureKind.STUCK_NO_PROGRESS, failure.kind());
+        assertEquals(MovementFailureKind.ACTION_SETUP_TIMEOUT, failure.kind());
+    }
+
+    @Test
+    void jumpCommitDoesNotTriggerNoProgressRecoveryWhileAirborne() {
+        MovementProgressMonitor monitor = new MovementProgressMonitor(healthSettings());
+        NavigationPath path = path(MovementAction.JUMP,
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(1.0, 65.0, 0.0));
+        NavigationControlFrame frame = frame(
+                PathProgress.start(),
+                NavigationPhase.EXECUTE_ACTION,
+                ActionIntent.jump(),
+                new NavigationPoint(1.0, 65.0, 0.0),
+                LocomotionExecutionState.settling(2, LocomotionAction.JUMP));
+        NavigationFrameInput airborne = input(0.3, 64.5, 0.0, 0.20, false, 0.05, 0.18);
+
+        assertTrue(monitor.update(path, airborne, frame).isEmpty());
+        assertTrue(monitor.update(path, airborne, frame).isEmpty());
+        assertTrue(monitor.update(path, airborne, frame).isEmpty());
+    }
+
+    @Test
+    void jumpLandingFollowThroughUsesTargetDistanceProgress() {
+        MovementProgressMonitor monitor = new MovementProgressMonitor(healthSettings());
+        NavigationPath path = path(MovementAction.JUMP,
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(0.0, 65.0, 1.0));
+        NavigationControlFrame frame = frame(
+                PathProgress.start(),
+                NavigationPhase.APPROACH,
+                ActionIntent.none(),
+                new NavigationPoint(0.0, 65.0, 1.0),
+                LocomotionExecutionState.start());
+
+        assertTrue(monitor.update(path, input(0.70, 65.0, 1.20, 0.10), frame).isEmpty());
+        assertTrue(monitor.update(path, input(0.45, 65.0, 1.05, 0.10), frame).isEmpty());
+        assertTrue(monitor.update(path, input(0.20, 65.0, 0.95, 0.10), frame).isEmpty());
+    }
+
+    @Test
+    void segmentChangeResetsProgressEvenWhenActionTypeDoesNotChange() {
+        MovementProgressMonitor monitor = new MovementProgressMonitor(healthSettings());
+        NavigationPath path = NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(1.0, 64.0, 0.0),
+                new NavigationPoint(2.0, 64.0, 0.0)),
+                List.of(MovementAction.WALK, MovementAction.WALK));
+        NavigationControlFrame firstSegment = frame(
+                PathProgress.start(),
+                NavigationPhase.APPROACH,
+                ActionIntent.none(),
+                new NavigationPoint(1.0, 64.0, 0.0),
+                LocomotionExecutionState.start());
+        NavigationControlFrame secondSegment = frame(
+                new PathProgress(2),
+                NavigationPhase.APPROACH,
+                ActionIntent.none(),
+                new NavigationPoint(2.0, 64.0, 0.0),
+                LocomotionExecutionState.start());
+
+        assertTrue(monitor.update(path, input(0.0, 64.0, 0.0, 0.20), firstSegment).isEmpty());
+        assertTrue(monitor.update(path, input(1.0, 64.0, 0.0, 0.10), secondSegment).isEmpty());
     }
 
     @Test
@@ -148,10 +217,26 @@ class MovementProgressMonitorTest {
     }
 
     private static NavigationFrameInput input(double x, double y, double z, double deltaSeconds) {
+        return input(x, y, z, deltaSeconds, true, 0.0, 0.0);
+    }
+
+    private static NavigationFrameInput input(
+            double x,
+            double y,
+            double z,
+            double deltaSeconds,
+            boolean onGround,
+            double horizontalSpeed,
+            double verticalVelocity) {
         return new NavigationFrameInput(
                 new NavigationPoint(x, y, z),
                 new CameraAngles(0.0, 0.0),
-                deltaSeconds);
+                deltaSeconds,
+                new AgentMotionState(
+                        onGround,
+                        false,
+                        new HorizontalVector(horizontalSpeed, 0.0),
+                        verticalVelocity));
     }
 
     private static NavigationPath path(MovementAction action, NavigationPoint first, NavigationPoint second) {
@@ -159,20 +244,34 @@ class MovementProgressMonitorTest {
     }
 
     private static NavigationControlFrame frame(NavigationPhase phase) {
+        return frame(
+                PathProgress.start(),
+                phase,
+                phase == NavigationPhase.RECOVER ? ActionIntent.recover() : ActionIntent.none(),
+                new NavigationPoint(10.0, 64.0, 0.0),
+                LocomotionExecutionState.start());
+    }
+
+    private static NavigationControlFrame frame(
+            PathProgress progress,
+            NavigationPhase phase,
+            ActionIntent actionIntent,
+            NavigationPoint targetPoint,
+            LocomotionExecutionState locomotionState) {
         MovementIntent intent = new MovementIntent(true, false, false, false, false, true);
-        MovementTarget target = MovementTarget.follow(new NavigationPoint(10.0, 64.0, 0.0));
+        MovementTarget target = MovementTarget.follow(targetPoint);
         NavigationFramePlan plan = new NavigationFramePlan(
                 phase,
-                PathProgress.start(),
+                progress,
                 target,
                 new MovementVectorIntent(new HorizontalVector(1.0, 0.0), PlannedMovementMode.DIRECT, true),
                 new CameraAngles(0.0, 0.0),
-                phase == NavigationPhase.RECOVER ? ActionIntent.recover() : ActionIntent.none(),
+                actionIntent,
                 new SpeedIntent(1.0, true),
-                LocomotionExecutionState.start(),
+                locomotionState,
                 false);
         return new NavigationControlFrame(
-                new NavigationControllerState(PathProgress.start(), intent, LocomotionExecutionState.start()),
+                new NavigationControllerState(progress, intent, locomotionState),
                 intent,
                 new CameraAngles(0.0, 0.0),
                 target,
