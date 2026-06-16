@@ -2,9 +2,9 @@ package dev.traveler.core.world.behavior.special;
 
 import dev.traveler.core.world.behavior.BlockBehavior;
 import dev.traveler.core.world.behavior.BlockBehaviorKey;
+import dev.traveler.core.world.behavior.api.BlockSemantics;
 import dev.traveler.core.world.behavior.context.HorizontalFacing;
 import dev.traveler.core.world.behavior.context.SurfaceMovementContext;
-import dev.traveler.core.world.behavior.decision.MovementDecision;
 import dev.traveler.core.world.movement.MovementCapabilities;
 import java.util.Objects;
 
@@ -30,24 +30,24 @@ public final class StairBlockBehavior implements BlockBehavior {
     }
 
     @Override
-    public MovementDecision evaluateMovement(SurfaceMovementContext context) {
+    public BlockSemantics describe(SurfaceMovementContext context) {
         SurfaceMovementContext safeContext = Objects.requireNonNull(context, "context");
         if (!safeContext.capabilities().canWalk()) {
-            return MovementDecision.blocked();
+            return SurfaceMovementRules.blockedWalkableSemantics();
         }
         if (safeContext.floorDelta() <= 0.0) {
-            return SurfaceMovementRules.walkStepOrJump(safeContext);
+            return SurfaceMovementRules.walkStepOrJumpSemantics(safeContext);
         }
-        return raisedMovementDecision(safeContext);
+        return raisedMovementSemantics(safeContext);
     }
 
-    private MovementDecision raisedMovementDecision(SurfaceMovementContext context) {
+    private BlockSemantics raisedMovementSemantics(SurfaceMovementContext context) {
         if (context.direction().matches(facing.opposite())) {
-            return SurfaceMovementRules.walkStepOrJump(context);
+            return SurfaceMovementRules.walkStepOrJumpSemantics(context);
         }
         if (context.direction().isPerpendicularTo(facing)) {
-            return SurfaceMovementRules.walkOrJump(context);
+            return SurfaceMovementRules.walkOrJumpSemantics(context);
         }
-        return SurfaceMovementRules.walkStepOrJump(context);
+        return SurfaceMovementRules.walkStepOrJumpSemantics(context);
     }
 }

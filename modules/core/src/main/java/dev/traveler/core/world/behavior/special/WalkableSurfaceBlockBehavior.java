@@ -1,8 +1,8 @@
 package dev.traveler.core.world.behavior.special;
 
 import dev.traveler.core.world.behavior.BlockBehavior;
+import dev.traveler.core.world.behavior.api.BlockSemantics;
 import dev.traveler.core.world.behavior.context.SurfaceMovementContext;
-import dev.traveler.core.world.behavior.decision.MovementDecision;
 import dev.traveler.core.world.movement.MovementCapabilities;
 
 abstract class WalkableSurfaceBlockBehavior implements BlockBehavior {
@@ -12,7 +12,7 @@ abstract class WalkableSurfaceBlockBehavior implements BlockBehavior {
     }
 
     @Override
-    public final MovementDecision evaluateMovement(SurfaceMovementContext context) {
-        return SurfaceMovementRules.walkStepOrJump(context);
+    public final BlockSemantics describe(SurfaceMovementContext context) {
+        return SurfaceMovementRules.walkStepOrJumpSemantics(context);
     }
 }

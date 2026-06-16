@@ -2,10 +2,12 @@ package dev.traveler.core.world.behavior.special;
 
 import dev.traveler.core.world.behavior.BlockBehavior;
 import dev.traveler.core.world.behavior.BlockBehaviorKey;
+import dev.traveler.core.world.behavior.api.BehaviorTag;
+import dev.traveler.core.world.behavior.api.BlockSemantics;
 import dev.traveler.core.world.behavior.context.SurfaceMovementContext;
-import dev.traveler.core.world.behavior.decision.MovementDecision;
 import dev.traveler.core.world.movement.MovementCapabilities;
 import java.util.Objects;
+import java.util.Set;
 
 public final class WaterloggedBlockBehavior implements BlockBehavior {
     private final BlockBehavior delegate;
@@ -29,7 +31,19 @@ public final class WaterloggedBlockBehavior implements BlockBehavior {
     }
 
     @Override
-    public MovementDecision evaluateMovement(SurfaceMovementContext context) {
-        return delegate.evaluateMovement(context);
+    public BlockSemantics describe(SurfaceMovementContext context) {
+        BlockSemantics semantics = delegate.describe(context);
+        return new BlockSemantics(
+                semantics.collision(),
+                semantics.support(),
+                semantics.fluid(),
+                semantics.affordances(),
+                mergeTags(semantics.tags()));
+    }
+
+    private Set<BehaviorTag> mergeTags(Set<BehaviorTag> tags) {
+        java.util.EnumSet<BehaviorTag> merged = java.util.EnumSet.of(BehaviorTag.WATERLOGGED);
+        merged.addAll(tags);
+        return merged;
     }
 }

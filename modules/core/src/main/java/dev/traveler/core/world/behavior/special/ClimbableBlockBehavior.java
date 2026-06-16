@@ -1,9 +1,14 @@
 package dev.traveler.core.world.behavior.special;
 
 import dev.traveler.core.world.behavior.BlockBehavior;
+import dev.traveler.core.world.behavior.api.BehaviorTag;
+import dev.traveler.core.world.behavior.api.BlockSemantics;
+import dev.traveler.core.world.behavior.api.CollisionSemantics;
+import dev.traveler.core.world.behavior.api.FluidSemantics;
+import dev.traveler.core.world.behavior.api.SupportSemantics;
+import dev.traveler.core.world.behavior.api.TraversalAffordance;
 import dev.traveler.core.world.behavior.context.HorizontalFacing;
 import dev.traveler.core.world.behavior.context.SurfaceMovementContext;
-import dev.traveler.core.world.behavior.decision.MovementDecision;
 import dev.traveler.core.settings.TravelerSettings;
 import dev.traveler.core.world.movement.MovementCapabilities;
 import java.util.Objects;
@@ -51,11 +56,21 @@ public abstract class ClimbableBlockBehavior implements BlockBehavior {
     }
 
     @Override
-    public final MovementDecision evaluateMovement(SurfaceMovementContext context) {
+    public final BlockSemantics describe(SurfaceMovementContext context) {
         SurfaceMovementContext safeContext = Objects.requireNonNull(context, "context");
         if (!supportsClimbing(safeContext.capabilities())) {
-            return MovementDecision.blocked();
+            return new BlockSemantics(
+                    CollisionSemantics.PASSABLE,
+                    SupportSemantics.NONE,
+                    FluidSemantics.NONE,
+                    Set.of(),
+                    Set.of());
         }
-        return MovementDecision.climb();
+        return new BlockSemantics(
+                CollisionSemantics.PASSABLE,
+                SupportSemantics.NONE,
+                FluidSemantics.NONE,
+                Set.of(TraversalAffordance.CLIMB),
+                Set.of(BehaviorTag.PRESERVE_ROUTE_GEOMETRY));
     }
 }
