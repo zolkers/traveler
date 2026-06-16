@@ -13,13 +13,13 @@ import dev.traveler.core.navigation.plan.NavigationFramePlan;
 import dev.traveler.core.navigation.plan.NavigationPhase;
 import dev.traveler.core.navigation.plan.PlannedMovementMode;
 import dev.traveler.core.navigation.plan.SpeedIntent;
-import dev.traveler.core.navigation.spatial.HorizontalVector;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.HorizontalVector;
+import dev.traveler.core.common.geometry.WorldPoint;
 
 public final class NavigationDebugFrames {
     private NavigationDebugFrames() {}
 
-    public static NavigationControlFrame approachFrame(NavigationPoint targetPoint) {
+    public static NavigationControlFrame approachFrame(WorldPoint targetPoint) {
         MovementIntent intent = new MovementIntent(true, false, false, false, false, true);
         MovementTarget target = MovementTarget.follow(targetPoint);
         return new NavigationControlFrame(

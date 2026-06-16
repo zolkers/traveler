@@ -1,6 +1,6 @@
 package dev.traveler.core.navigation.locomotion;
 
-import dev.traveler.core.navigation.spatial.HorizontalVector;
+import dev.traveler.core.common.geometry.HorizontalVector;
 import java.util.Objects;
 
 public record AgentMotionState(

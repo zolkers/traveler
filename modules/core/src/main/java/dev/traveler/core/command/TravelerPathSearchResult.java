@@ -4,11 +4,12 @@ import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.follow.NavigationSegmentIntent;
 import dev.traveler.core.navigation.NavigationGoalPlan;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.path.PathfinderStatus;
 import dev.traveler.core.route.longdistance.LongDistanceRoutePlan;
 import dev.traveler.core.route.RoutePath;
 import dev.traveler.core.route.RouteSearchResult;
+import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.surface.SurfaceNode;
 import java.util.List;
 import java.util.Objects;
@@ -18,7 +19,7 @@ public record TravelerPathSearchResult(
         RouteSearchResult searchResult,
         String message,
         Optional<LongDistanceRoutePlan> routePlan,
-        Optional<NavigationPoint> navigationStartOverride) {
+        Optional<WorldPoint> navigationStartOverride) {
     public TravelerPathSearchResult(RouteSearchResult searchResult, String message) {
         this(searchResult, message, Optional.empty(), Optional.empty());
     }
@@ -70,11 +71,11 @@ public record TravelerPathSearchResult(
         if (routePath.isPresent()) {
             return routePath;
         }
-        return navigationPath(anchoredPoints(fallbackNavigationPoints(), navigationStartOverride));
+        return navigationPath(anchoredPoints(fallbackWorldPoints(), navigationStartOverride));
     }
 
     public Optional<NavigationGoalPlan> navigationGoalPlan() {
-        return routePlan.map(LongDistanceRoutePlan::navigationGoalPlan);
+        return routePlan.map(NavigationGoalPlan::from);
     }
 
     public boolean alreadyAtTarget() {
@@ -85,13 +86,13 @@ public record TravelerPathSearchResult(
         return searchResult.status();
     }
 
-    private List<NavigationPoint> fallbackNavigationPoints() {
+    private List<WorldPoint> fallbackWorldPoints() {
         return searchResult.surfaceResult()
                 .map(result -> result.path().nodes().stream()
                         .map(TravelerPathSearchResult::surfacePoint)
                         .toList())
                 .orElseGet(() -> searchResult.blockResult().path().nodes().stream()
-                        .map(NavigationPoint::blockCenter)
+                        .map(TravelerPathSearchResult::blockCenter)
                         .toList());
     }
 
@@ -102,7 +103,7 @@ public record TravelerPathSearchResult(
                 .orElseGet(() -> searchResult.blockResult().path().nodeCount());
     }
 
-    private static Optional<NavigationPath> navigationPath(List<NavigationPoint> points) {
+    private static Optional<NavigationPath> navigationPath(List<WorldPoint> points) {
         if (points.size() < 2) {
             return Optional.empty();
         }
@@ -111,7 +112,7 @@ public record TravelerPathSearchResult(
 
     private static NavigationPath navigationPathFromRoute(
             RoutePath route,
-            Optional<NavigationPoint> startOverride) {
+            Optional<WorldPoint> startOverride) {
         return NavigationPath.withIntents(
                 anchoredPoints(route.points(), startOverride),
                 route.steps().stream()
@@ -119,15 +120,15 @@ public record TravelerPathSearchResult(
                         .toList());
     }
 
-    private static List<NavigationPoint> anchoredPoints(
-            List<NavigationPoint> points,
-            Optional<NavigationPoint> startOverride) {
-        List<NavigationPoint> safePoints = List.copyOf(Objects.requireNonNull(points, "points"));
-        Optional<NavigationPoint> override = Objects.requireNonNull(startOverride, "startOverride");
+    private static List<WorldPoint> anchoredPoints(
+            List<WorldPoint> points,
+            Optional<WorldPoint> startOverride) {
+        List<WorldPoint> safePoints = List.copyOf(Objects.requireNonNull(points, "points"));
+        Optional<WorldPoint> override = Objects.requireNonNull(startOverride, "startOverride");
         if (override.isEmpty() || safePoints.isEmpty()) {
             return safePoints;
         }
-        java.util.ArrayList<NavigationPoint> anchored = new java.util.ArrayList<>(safePoints);
+        java.util.ArrayList<WorldPoint> anchored = new java.util.ArrayList<>(safePoints);
         anchored.set(0, override.orElseThrow());
         return List.copyOf(anchored);
     }
@@ -136,7 +137,11 @@ public record TravelerPathSearchResult(
         return NavigationSegmentIntent.of(step.action(), step.targetPoint());
     }
 
-    private static NavigationPoint surfacePoint(SurfaceNode node) {
-        return new NavigationPoint(node.centerX(), node.floorY(), node.centerZ());
+    private static WorldPoint surfacePoint(SurfaceNode node) {
+        return new WorldPoint(node.centerX(), node.floorY(), node.centerZ());
+    }
+
+    private static WorldPoint blockCenter(BlockPosition position) {
+        return new WorldPoint(position.x() + 0.5, position.y(), position.z() + 0.5);
     }
 }

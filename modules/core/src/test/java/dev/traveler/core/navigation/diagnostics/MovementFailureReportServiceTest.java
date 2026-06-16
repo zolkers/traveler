@@ -21,8 +21,8 @@ import dev.traveler.core.navigation.plan.PlannedMovementMode;
 import dev.traveler.core.navigation.plan.SpeedIntent;
 import dev.traveler.core.navigation.recovery.MovementFailure;
 import dev.traveler.core.navigation.recovery.MovementFailureKind;
-import dev.traveler.core.navigation.spatial.HorizontalVector;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.HorizontalVector;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.world.behavior.decision.MovementAction;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -61,8 +61,8 @@ class MovementFailureReportServiceTest {
         assertEquals(1, reports.size());
         String report = Files.readString(reports.getFirst());
         assertTrue(report.contains("failure=PATH_DIVERGENCE"));
-        assertTrue(report.contains("expected.position=NavigationPoint[x=1.0, y=65.0, z=1.0]"));
-        assertTrue(report.contains("got.position=NavigationPoint[x=1.25, y=64.0, z=1.25]"));
+        assertTrue(report.contains("expected.position=WorldPoint[x=1.0, y=65.0, z=1.0]"));
+        assertTrue(report.contains("got.position=WorldPoint[x=1.25, y=64.0, z=1.25]"));
         assertTrue(report.contains("possibleFailedMove=action=JUMP"));
         assertTrue(report.contains("blockScan.size=4096"));
         assertTrue(report.contains("block=-7,56,-7 test:block_-7_56_-7"));
@@ -70,20 +70,20 @@ class MovementFailureReportServiceTest {
 
     private static NavigationPath path() {
         return NavigationPath.of(
-                List.of(new NavigationPoint(0.0, 64.0, 0.0), new NavigationPoint(1.0, 65.0, 1.0)),
+                List.of(new WorldPoint(0.0, 64.0, 0.0), new WorldPoint(1.0, 65.0, 1.0)),
                 List.of(MovementAction.JUMP));
     }
 
     private static NavigationFrameInput input() {
         return new NavigationFrameInput(
-                new NavigationPoint(1.25, 64.0, 1.25),
+                new WorldPoint(1.25, 64.0, 1.25),
                 new CameraAngles(90.0, 15.0),
                 0.1);
     }
 
     private static NavigationControlFrame frame() {
         MovementIntent intent = new MovementIntent(true, false, false, true, true, true);
-        MovementTarget target = MovementTarget.follow(new NavigationPoint(1.0, 65.0, 1.0));
+        MovementTarget target = MovementTarget.follow(new WorldPoint(1.0, 65.0, 1.0));
         PathProgress progress = PathProgress.start();
         NavigationFramePlan plan = new NavigationFramePlan(
                 NavigationPhase.EXECUTE_ACTION,

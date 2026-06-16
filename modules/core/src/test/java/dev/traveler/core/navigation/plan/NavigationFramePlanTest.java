@@ -9,8 +9,8 @@ import dev.traveler.core.navigation.follow.MovementTarget;
 import dev.traveler.core.navigation.follow.PathProgress;
 import dev.traveler.core.navigation.locomotion.LocomotionAction;
 import dev.traveler.core.navigation.locomotion.LocomotionExecutionState;
-import dev.traveler.core.navigation.spatial.HorizontalVector;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.HorizontalVector;
+import dev.traveler.core.common.geometry.WorldPoint;
 import org.junit.jupiter.api.Test;
 
 class NavigationFramePlanTest {
@@ -19,7 +19,7 @@ class NavigationFramePlanTest {
         NavigationFramePlan plan = new NavigationFramePlan(
                 NavigationPhase.EXECUTE_ACTION,
                 new PathProgress(2),
-                MovementTarget.follow(new NavigationPoint(0.0, 65.0, 1.0)),
+                MovementTarget.follow(new WorldPoint(0.0, 65.0, 1.0)),
                 new MovementVectorIntent(new HorizontalVector(0.0, 1.0), PlannedMovementMode.DIRECT, true),
                 new CameraAngles(0.0, 0.0),
                 ActionIntent.jump(),

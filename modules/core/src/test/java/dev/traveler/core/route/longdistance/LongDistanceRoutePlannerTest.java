@@ -73,31 +73,4 @@ class LongDistanceRoutePlannerTest {
         assertEquals(52, Math.abs(activeBlockGoal.z()));
         assertEquals(52, plan.settings().maxSegmentAxisDelta());
     }
-
-    @Test
-    void navigationLookaheadDistanceScalesWithIntermediateSegmentLength() {
-        LongDistanceRouteSettings settings = new LongDistanceRouteSettings(96.0, 102.0, 72, 24.0);
-        LongDistanceRoutePlanner planner = new LongDistanceRoutePlanner(settings);
-
-        LongDistanceRoutePlan plan = planner.plan(
-                new BlockPosition(0, 64, 0),
-                RouteGoal.xyz(10_000, 64, 10_000));
-
-        assertEquals(48.0, plan.navigationGoalPlan().lookaheadReplanDistance(), 1.0E-6);
-    }
-
-    @Test
-    void navigationLookaheadDistanceIsBoundedByVisibleWorldBudget() {
-        LongDistanceRouteSettings settings = new LongDistanceRouteSettings(96.0, 102.0, 72, 24.0);
-        LongDistanceRoutePlanner planner = new LongDistanceRoutePlanner(settings);
-
-        LongDistanceRoutePlan plan = planner.plan(
-                new BlockPosition(0, 64, 0),
-                RouteGoal.xyz(10_000, 64, 10_000),
-                new WorldNavigationBudget(64));
-
-        assertEquals(Math.hypot(32, 32) * 0.75,
-                plan.navigationGoalPlan().lookaheadReplanDistance(),
-                1.0E-6);
-    }
 }

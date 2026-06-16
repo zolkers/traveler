@@ -2,8 +2,8 @@ package dev.traveler.core.navigation.plan;
 
 import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.follow.PathProgress;
-import dev.traveler.core.navigation.spatial.HorizontalVector;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.HorizontalVector;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.world.behavior.decision.MovementAction;
 import java.util.Objects;
 
@@ -21,9 +21,9 @@ public final class RouteProgressPolicy {
         this.reachedDistance = reachedDistance;
     }
 
-    public PathProgress progress(NavigationPath path, NavigationPoint position, PathProgress current) {
+    public PathProgress progress(NavigationPath path, WorldPoint position, PathProgress current) {
         NavigationPath navigationPath = Objects.requireNonNull(path, "path");
-        NavigationPoint currentPosition = Objects.requireNonNull(position, "position");
+        WorldPoint currentPosition = Objects.requireNonNull(position, "position");
         PathProgress progress = Objects.requireNonNull(current, "current");
         int nextIndex = Math.clamp(progress.nextNodeIndex(), 1, navigationPath.nodeCount() - 1);
         while (canAdvance(navigationPath, currentPosition, nextIndex)) {
@@ -32,13 +32,13 @@ public final class RouteProgressPolicy {
         return new PathProgress(nextIndex);
     }
 
-    public boolean completed(NavigationPath path, NavigationPoint position) {
+    public boolean completed(NavigationPath path, WorldPoint position) {
         NavigationPath navigationPath = Objects.requireNonNull(path, "path");
-        NavigationPoint currentPosition = Objects.requireNonNull(position, "position");
+        WorldPoint currentPosition = Objects.requireNonNull(position, "position");
         return currentPosition.distanceTo(navigationPath.lastNode()) <= reachedDistance;
     }
 
-    private boolean canAdvance(NavigationPath path, NavigationPoint position, int nextIndex) {
+    private boolean canAdvance(NavigationPath path, WorldPoint position, int nextIndex) {
         if (nextIndex >= path.nodeCount() - 1) {
             return false;
         }
@@ -57,9 +57,9 @@ public final class RouteProgressPolicy {
                 || action == MovementAction.DROP;
     }
 
-    private boolean hasClearlySkippedSpecialActionNode(NavigationPath path, NavigationPoint position, int nextIndex) {
-        NavigationPoint node = path.nodeAt(nextIndex);
-        NavigationPoint next = path.nodeAt(nextIndex + 1);
+    private boolean hasClearlySkippedSpecialActionNode(NavigationPath path, WorldPoint position, int nextIndex) {
+        WorldPoint node = path.nodeAt(nextIndex);
+        WorldPoint next = path.nodeAt(nextIndex + 1);
         HorizontalVector outgoing = node.horizontalVectorTo(next);
         if (!hasCompatibleHeight(position, node, next) || outgoing.isZero()) {
             return false;
@@ -71,9 +71,9 @@ public final class RouteProgressPolicy {
                 && lateralDistance(offset, outgoing) <= skippedNodeCorridorRadius();
     }
 
-    private boolean hasPassedNodeGate(NavigationPath path, NavigationPoint position, int nextIndex) {
-        NavigationPoint previous = path.nodeAt(nextIndex - 1);
-        NavigationPoint node = path.nodeAt(nextIndex);
+    private boolean hasPassedNodeGate(NavigationPath path, WorldPoint position, int nextIndex) {
+        WorldPoint previous = path.nodeAt(nextIndex - 1);
+        WorldPoint node = path.nodeAt(nextIndex);
         if (!isInsidePassedNodeGate(position, node)) {
             return false;
         }
@@ -84,7 +84,7 @@ public final class RouteProgressPolicy {
         return hasPassedAlongOutgoingSegment(path, node, position, nextIndex);
     }
 
-    private boolean isInsidePassedNodeGate(NavigationPoint position, NavigationPoint node) {
+    private boolean isInsidePassedNodeGate(WorldPoint position, WorldPoint node) {
         double allowedRadius = reachedDistance * PASSED_NODE_RADIUS_MULTIPLIER;
         double allowedHeight = Math.max(reachedDistance, PASSED_NODE_HEIGHT_TOLERANCE);
         return position.horizontalDistanceTo(node) <= allowedRadius
@@ -92,16 +92,16 @@ public final class RouteProgressPolicy {
     }
 
     private static boolean hasPassedAlongSegment(
-            NavigationPoint node,
-            NavigationPoint position,
+            WorldPoint node,
+            WorldPoint position,
             HorizontalVector direction) {
         return node.horizontalVectorTo(position).dot(direction.normalized()) >= 0.0;
     }
 
     private static boolean hasPassedAlongOutgoingSegment(
             NavigationPath path,
-            NavigationPoint node,
-            NavigationPoint position,
+            WorldPoint node,
+            WorldPoint position,
             int nextIndex) {
         HorizontalVector outgoing = node.horizontalVectorTo(path.nodeAt(nextIndex + 1));
         if (outgoing.isZero()) {
@@ -110,10 +110,10 @@ public final class RouteProgressPolicy {
         return node.horizontalVectorTo(position).dot(outgoing.normalized()) > 0.0;
     }
 
-    private boolean hasSkippedNodeOnCorridor(NavigationPath path, NavigationPoint position, int nextIndex) {
-        NavigationPoint previous = path.nodeAt(nextIndex - 1);
-        NavigationPoint node = path.nodeAt(nextIndex);
-        NavigationPoint next = path.nodeAt(nextIndex + 1);
+    private boolean hasSkippedNodeOnCorridor(NavigationPath path, WorldPoint position, int nextIndex) {
+        WorldPoint previous = path.nodeAt(nextIndex - 1);
+        WorldPoint node = path.nodeAt(nextIndex);
+        WorldPoint next = path.nodeAt(nextIndex + 1);
         HorizontalVector incoming = previous.horizontalVectorTo(node);
         HorizontalVector outgoing = node.horizontalVectorTo(next);
         if (!hasCompatibleHeight(position, node, next)) {
@@ -127,8 +127,8 @@ public final class RouteProgressPolicy {
     }
 
     private boolean hasAdvancedAlongOutgoing(
-            NavigationPoint position,
-            NavigationPoint node,
+            WorldPoint position,
+            WorldPoint node,
             HorizontalVector outgoing) {
         if (outgoing.isZero()) {
             return false;
@@ -139,16 +139,16 @@ public final class RouteProgressPolicy {
     }
 
     private static boolean hasCrossedIncoming(
-            NavigationPoint position,
-            NavigationPoint node,
+            WorldPoint position,
+            WorldPoint node,
             HorizontalVector incoming) {
         return node.horizontalVectorTo(position).dot(incoming.normalized()) >= 0.0;
     }
 
     private boolean hasCompatibleHeight(
-            NavigationPoint position,
-            NavigationPoint node,
-            NavigationPoint next) {
+            WorldPoint position,
+            WorldPoint node,
+            WorldPoint next) {
         double allowedHeight = Math.max(reachedDistance, PASSED_NODE_HEIGHT_TOLERANCE);
         return Math.abs(position.y() - node.y()) <= allowedHeight
                 || Math.abs(position.y() - next.y()) <= allowedHeight;

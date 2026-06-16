@@ -1,10 +1,13 @@
 package dev.traveler.core.world.navigation;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.layer.BlockClassification;
 import dev.traveler.core.layer.SurfaceBlock;
+import dev.traveler.core.layer.SurfaceWorldLayer;
 import dev.traveler.core.world.behavior.context.HorizontalFacing;
 import dev.traveler.core.world.behavior.special.LadderBlockBehavior;
 import dev.traveler.core.world.block.BlockPassability;
@@ -14,6 +17,7 @@ import dev.traveler.core.world.movement.FluidHandling;
 import dev.traveler.core.world.movement.MovementCapabilities;
 import dev.traveler.core.world.surface.SurfaceNode;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class SurfaceClimbTraversalTest {
@@ -65,6 +69,22 @@ class SurfaceClimbTraversalTest {
         assertFalse(climb);
     }
 
+    @Test
+    void climbFaceTargetStillUsesProjectedFaceTarget() {
+        Map<BlockPosition, SurfaceBlock> blocks = Map.of(
+                new BlockPosition(1, 64, 0), ladder(HorizontalFacing.EAST),
+                new BlockPosition(1, 65, 0), ladder(HorizontalFacing.EAST));
+        SurfaceWorldLayer world = new TestSurfaceWorldLayer(blocks);
+
+        Optional<WorldPoint> target = SurfaceClimbTraversal.climbFaceTarget(
+                world,
+                eastOfLadder(63, 64.0),
+                eastOfLadder(65, 66.0),
+                PLAYER);
+
+        assertEquals(Optional.of(new WorldPoint(1.7, 66.0, 0.5)), target);
+    }
+
     private static SurfaceNode westOfLadder(int supportY, double floorY) {
         return new SurfaceNode(new BlockPosition(0, supportY, 0), 1, 1, floorY);
     }
@@ -82,5 +102,12 @@ class SurfaceClimbTraversalTest {
                 new BlockClassification(BlockPassability.PASSABLE, FluidHandling.AVOID),
                 BlockShape.empty(),
                 new LadderBlockBehavior(facing));
+    }
+
+    private record TestSurfaceWorldLayer(Map<BlockPosition, SurfaceBlock> blocks) implements SurfaceWorldLayer {
+        @Override
+        public SurfaceBlock surfaceBlock(BlockPosition position) {
+            return blocks.getOrDefault(position, SurfaceBlock.empty());
+        }
     }
 }

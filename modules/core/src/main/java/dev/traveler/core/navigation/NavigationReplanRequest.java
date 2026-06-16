@@ -1,6 +1,6 @@
 package dev.traveler.core.navigation;
 
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.route.RouteGoal;
 import java.time.Instant;
 import java.util.Objects;
@@ -11,7 +11,7 @@ public record NavigationReplanRequest(
         String reason,
         Instant requestedAt,
         NavigationReplanActivation activation,
-        Optional<NavigationPoint> startOverride,
+        Optional<WorldPoint> startOverride,
         Optional<NavigationGoalPlan> goalPlanOverride) {
     public NavigationReplanRequest(RouteGoal goal, String reason, Instant requestedAt) {
         this(
@@ -27,7 +27,7 @@ public record NavigationReplanRequest(
             RouteGoal goal,
             String reason,
             Instant requestedAt,
-            NavigationPoint startOverride) {
+            WorldPoint startOverride) {
         this(
                 goal,
                 reason,
@@ -56,7 +56,7 @@ public record NavigationReplanRequest(
             String reason,
             Instant requestedAt,
             boolean preserveActiveSession,
-            NavigationPoint startOverride) {
+            WorldPoint startOverride) {
         this(
                 goal,
                 reason,
@@ -71,7 +71,7 @@ public record NavigationReplanRequest(
             String reason,
             Instant requestedAt,
             NavigationReplanActivation activation,
-            NavigationPoint startOverride,
+            WorldPoint startOverride,
             NavigationGoalPlan goalPlanOverride) {
         this(
                 goal,

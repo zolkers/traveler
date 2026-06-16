@@ -20,7 +20,7 @@ import dev.traveler.core.world.behavior.special.LadderBlockBehavior;
 import dev.traveler.core.world.behavior.special.SlabBlockBehavior;
 import dev.traveler.core.world.behavior.special.StairBlockBehavior;
 import dev.traveler.core.world.behavior.special.VineBlockBehavior;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.route.start.SurfaceRouteStartProvider;
 import dev.traveler.core.route.start.SurfaceRouteStartResolver;
 import dev.traveler.core.route.longdistance.LongDistanceRoutePlanner;
@@ -36,7 +36,7 @@ import dev.traveler.core.world.navigation.SurfaceConnectionProvider;
 import dev.traveler.core.route.step.DefaultSurfaceRouteStepProvider;
 import dev.traveler.core.route.step.SurfaceRouteStepProvider;
 import dev.traveler.core.world.navigation.SurfaceTransitionProvider;
-import dev.traveler.core.world.navigation.SurfaceTraversalFeature;
+import dev.traveler.core.route.internal.SurfaceTraversalFeature;
 import dev.traveler.core.world.surface.SurfaceNode;
 import java.util.HashMap;
 import java.util.List;
@@ -221,7 +221,7 @@ class RouteSearchServiceTest {
         assertEquals(injectedStart, result.route().orElseThrow().nodes().getFirst());
         assertEquals(injectedGoal, result.route().orElseThrow().nodes().getLast());
         assertEquals(List.of(MovementAction.SWIM), result.route().orElseThrow().actions());
-        assertEquals(List.of(new NavigationPoint(2.25, 64.0, 0.25)), result.route().orElseThrow().actionTargets());
+        assertEquals(List.of(new WorldPoint(2.25, 64.0, 0.25)), result.route().orElseThrow().actionTargets());
     }
 
     @Test
@@ -445,7 +445,7 @@ class RouteSearchServiceTest {
         List<RouteStep> columnClimbSteps = climbColumnSteps(route);
         assertEquals(19, columnClimbSteps.size());
         for (RouteStep step : columnClimbSteps) {
-            assertEquals(new NavigationPoint(1.42, step.to().floorY(), 0.37), step.targetPoint());
+            assertEquals(new WorldPoint(1.42, step.to().floorY(), 0.37), step.targetPoint());
         }
     }
 
@@ -598,6 +598,22 @@ class RouteSearchServiceTest {
     }
 
     @Test
+    void swimsUpFromSubmergedStartToReachWaterSurface() {
+        TestSurfaceWorldLayer world = new TestSurfaceWorldLayer(deepWaterLane(0, 0, 61, 63));
+        RouteSearchService service = new RouteSearchService(swimmingSettings());
+
+        RouteSearchResult result =
+                service.search(world, new BlockPosition(0, 62, 0), new BlockPosition(0, 64, 0));
+
+        assertEquals(PathfinderStatus.FOUND, result.status());
+        RoutePath route = result.route().orElseThrow();
+        assertEquals(new BlockPosition(0, 62, 0), route.nodes().getFirst().blockPosition());
+        assertEquals(new BlockPosition(0, 63, 0), route.nodes().getLast().blockPosition());
+        assertTrue(route.actions().stream().allMatch(action -> action == MovementAction.SWIM));
+        assertTrue(route.points().stream().anyMatch(point -> point.y() == 64.0));
+    }
+
+    @Test
     void refusesWaterRouteWhenSwimmingIsDisabled() {
         TestSurfaceWorldLayer world = new TestSurfaceWorldLayer(surfaceWaterLane(0, 4, 63));
         RouteSearchService service =
@@ -683,7 +699,7 @@ class RouteSearchServiceTest {
                 .filter(step -> step.action() == MovementAction.JUMP)
                 .findFirst()
                 .orElseThrow();
-        assertEquals(new NavigationPoint(0.5, 65.0, 1.5), jumpStep.targetPoint());
+        assertEquals(new WorldPoint(0.5, 65.0, 1.5), jumpStep.targetPoint());
     }
 
     private static Graph<SurfaceNode> directSurfaceGraph(SurfaceNode goal) {
@@ -759,7 +775,7 @@ class RouteSearchServiceTest {
         List<RouteStep> columnClimbSteps = climbColumnSteps(route);
         assertEquals(19, columnClimbSteps.size());
         for (RouteStep step : columnClimbSteps) {
-            assertEquals(new NavigationPoint(1.3, step.to().floorY(), 0.5), step.targetPoint());
+            assertEquals(new WorldPoint(1.3, step.to().floorY(), 0.5), step.targetPoint());
         }
     }
 

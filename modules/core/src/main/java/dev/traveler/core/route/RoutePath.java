@@ -1,6 +1,6 @@
 package dev.traveler.core.route;
 
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.world.behavior.decision.MovementAction;
 import dev.traveler.core.world.surface.SurfaceNode;
 import java.util.ArrayList;
@@ -29,8 +29,8 @@ public record RoutePath(List<RouteStep> steps) {
         return List.copyOf(nodes);
     }
 
-    public List<NavigationPoint> points() {
-        List<NavigationPoint> points = new ArrayList<>(steps.size() + 1);
+    public List<WorldPoint> points() {
+        List<WorldPoint> points = new ArrayList<>(steps.size() + 1);
         points.add(pointOf(steps.getFirst().from()));
         for (RouteStep step : steps) {
             points.add(pointOf(step.to()));
@@ -38,12 +38,12 @@ public record RoutePath(List<RouteStep> steps) {
         return List.copyOf(points);
     }
 
-    public List<NavigationPoint> actionTargets() {
+    public List<WorldPoint> actionTargets() {
         return steps.stream().map(RouteStep::targetPoint).toList();
     }
 
-    public List<NavigationPoint> executionPoints() {
-        List<NavigationPoint> points = new ArrayList<>(steps.size() + 1);
+    public List<WorldPoint> executionPoints() {
+        List<WorldPoint> points = new ArrayList<>(steps.size() + 1);
         points.add(pointOf(steps.getFirst().from()));
         for (RouteStep step : steps) {
             points.add(step.targetPoint());
@@ -78,7 +78,7 @@ public record RoutePath(List<RouteStep> steps) {
         return step.to();
     }
 
-    private static NavigationPoint pointOf(SurfaceNode node) {
-        return new NavigationPoint(node.centerX(), node.floorY(), node.centerZ());
+    private static WorldPoint pointOf(SurfaceNode node) {
+        return new WorldPoint(node.centerX(), node.floorY(), node.centerZ());
     }
 }

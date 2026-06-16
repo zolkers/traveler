@@ -1,6 +1,6 @@
 package dev.traveler.core.navigation.api;
 
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.route.RouteGoal;
 import java.time.Instant;
 import java.util.Objects;
@@ -27,7 +27,7 @@ public record NavigationSnapshot(
     }
 
     public record NavigationSessionSnapshot(
-            java.util.List<NavigationPoint> nodes,
+            java.util.List<WorldPoint> nodes,
             String message,
             Instant startedAt,
             Optional<NavigationGoalPlanSnapshot> goalPlan) {
@@ -44,7 +44,7 @@ public record NavigationSnapshot(
             String reason,
             Instant requestedAt,
             ReplanActivation activation,
-            Optional<NavigationPoint> startOverride,
+            Optional<WorldPoint> startOverride,
             Optional<NavigationGoalPlanSnapshot> goalPlanOverride) {
         public NavigationReplanRequestSnapshot {
             Objects.requireNonNull(goal, "goal");

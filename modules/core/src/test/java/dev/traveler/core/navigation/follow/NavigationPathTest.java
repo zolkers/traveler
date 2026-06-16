@@ -3,7 +3,7 @@ package dev.traveler.core.navigation.follow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.world.behavior.decision.MovementAction;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -29,8 +29,8 @@ class NavigationPathTest {
 
     @Test
     void explicitActionTargetsDoNotReplaceRouteNodes() {
-        NavigationPoint landing = point(1.0);
-        NavigationPoint climbFace = new NavigationPoint(0.7, 64.0, 0.5);
+        WorldPoint landing = point(1.0);
+        WorldPoint climbFace = new WorldPoint(0.7, 64.0, 0.5);
         NavigationPath path = NavigationPath.of(
                 List.of(point(0.0), landing),
                 List.of(MovementAction.CLIMB),
@@ -42,7 +42,7 @@ class NavigationPathTest {
 
     @Test
     void segmentIntentGroupsActionAndActionTarget() {
-        NavigationPoint climbFace = new NavigationPoint(0.7, 64.0, 0.5);
+        WorldPoint climbFace = new WorldPoint(0.7, 64.0, 0.5);
         NavigationPath path = NavigationPath.withIntents(
                 List.of(point(0.0), point(1.0)),
                 List.of(NavigationSegmentIntent.of(MovementAction.CLIMB, climbFace)));
@@ -62,7 +62,7 @@ class NavigationPathTest {
                         List.of(MovementAction.WALK, MovementAction.JUMP)));
     }
 
-    private static NavigationPoint point(double x) {
-        return new NavigationPoint(x, 64.0, 0.0);
+    private static WorldPoint point(double x) {
+        return new WorldPoint(x, 64.0, 0.0);
     }
 }

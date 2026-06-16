@@ -2,9 +2,11 @@ package dev.traveler.core.navigation.recovery;
 
 import dev.traveler.core.navigation.NavigationControlFrame;
 import dev.traveler.core.navigation.NavigationFrameInput;
+import dev.traveler.core.navigation.api.RecoveryAction;
 import dev.traveler.core.navigation.control.MovementIntent;
 import dev.traveler.core.navigation.follow.NavigationPath;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.navigation.internal.RecoveryPlanner;
+import dev.traveler.core.common.geometry.WorldPoint;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -12,8 +14,10 @@ public final class MovementProgressMonitor {
     private final MovementHealthSettings settings;
     private final MovementHealthProbe probe;
     private final MovementHealthPolicyRegistry policies;
-    private NavigationPoint lastProgressPosition;
+    private final RecoveryPlanner recoveryPlanner = new RecoveryPlanner();
+    private WorldPoint lastProgressPosition;
     private double positionStagnantSeconds;
+    private int positionStagnantTicks;
     private MovementHealthState state = MovementHealthState.empty();
 
     public MovementProgressMonitor(MovementHealthSettings settings) {
@@ -39,15 +43,22 @@ public final class MovementProgressMonitor {
         if (lastProgressPosition == null) {
             lastProgressPosition = frameInput.position();
             positionStagnantSeconds = frameInput.deltaSeconds();
+            positionStagnantTicks = 1;
             return failureIfPositionStuck();
         }
         if (lastProgressPosition.distanceTo(frameInput.position()) >= settings.minimumProgressDistance()) {
             lastProgressPosition = frameInput.position();
             positionStagnantSeconds = 0.0;
+            positionStagnantTicks = 0;
             return Optional.empty();
         }
         positionStagnantSeconds += frameInput.deltaSeconds();
+        positionStagnantTicks++;
         return failureIfPositionStuck();
+    }
+
+    public Optional<RecoveryAction> updateRecoveryAction(NavigationFrameInput input, MovementIntent intent) {
+        return update(input, intent).map(recoveryPlanner::plan);
     }
 
     public Optional<MovementFailure> update(
@@ -69,9 +80,17 @@ public final class MovementProgressMonitor {
         return update(snapshot, evaluation, frameInput.deltaSeconds());
     }
 
+    public Optional<RecoveryAction> updateRecoveryAction(
+            NavigationPath path,
+            NavigationFrameInput input,
+            NavigationControlFrame frame) {
+        return update(path, input, frame).map(recoveryPlanner::plan);
+    }
+
     public void reset() {
         lastProgressPosition = null;
         positionStagnantSeconds = 0.0;
+        positionStagnantTicks = 0;
         state = MovementHealthState.empty();
     }
 
@@ -89,6 +108,10 @@ public final class MovementProgressMonitor {
                 double divergentSeconds = evaluation.lateralDistance() <= evaluation.allowedLateralDistance()
                         ? 0.0
                         : state.divergentSeconds() + deltaSeconds;
+                int setupTicks = state.setupTicks() + 1;
+                int divergentTicks = evaluation.lateralDistance() <= evaluation.allowedLateralDistance()
+                        ? 0
+                        : state.divergentTicks() + 1;
                 state = new MovementHealthState(
                         snapshot.nextNodeIndex(),
                         snapshot.action(),
@@ -96,13 +119,24 @@ public final class MovementProgressMonitor {
                         null,
                         0.0,
                         divergentSeconds,
-                        setupSeconds);
-                if (divergentSeconds >= settings.pathDivergenceAfterSeconds()) {
+                        setupSeconds,
+                        0,
+                        divergentTicks,
+                        setupTicks);
+                if (timedOut(
+                        divergentSeconds,
+                        divergentTicks,
+                        settings.pathDivergenceAfterSeconds(),
+                        settings.pathDivergenceAfterTicks())) {
                     return Optional.of(new MovementFailure(
                             MovementFailureKind.PATH_DIVERGENCE,
                             "navigation drifted outside the path corridor"));
                 }
-                if (setupSeconds < settings.actionSetupTimeoutSeconds()) {
+                if (!timedOut(
+                        setupSeconds,
+                        setupTicks,
+                        settings.actionSetupTimeoutSeconds(),
+                        settings.actionSetupTimeoutTicks())) {
                     return Optional.empty();
                 }
                 return Optional.of(new MovementFailure(
@@ -127,7 +161,14 @@ public final class MovementProgressMonitor {
         double divergentSeconds = evaluation.lateralDistance() <= evaluation.allowedLateralDistance()
                 ? 0.0
                 : state.divergentSeconds() + deltaSeconds;
-        if (divergentSeconds >= settings.pathDivergenceAfterSeconds()) {
+        int divergentTicks = evaluation.lateralDistance() <= evaluation.allowedLateralDistance()
+                ? 0
+                : state.divergentTicks() + 1;
+        if (timedOut(
+                divergentSeconds,
+                divergentTicks,
+                settings.pathDivergenceAfterSeconds(),
+                settings.pathDivergenceAfterTicks())) {
             state = new MovementHealthState(
                     snapshot.nextNodeIndex(),
                     snapshot.action(),
@@ -135,7 +176,10 @@ public final class MovementProgressMonitor {
                     state.bestTargetDistance(),
                     state.stagnantSeconds(),
                     divergentSeconds,
-                    0.0);
+                    0.0,
+                    state.stagnantTicks(),
+                    divergentTicks,
+                    0);
             return Optional.of(new MovementFailure(
                     MovementFailureKind.PATH_DIVERGENCE,
                     "navigation drifted outside the path corridor"));
@@ -148,7 +192,10 @@ public final class MovementProgressMonitor {
                     evaluation.targetDistance(),
                     0.0,
                     divergentSeconds,
-                    0.0);
+                    0.0,
+                    0,
+                    divergentTicks,
+                    0);
             return Optional.empty();
         }
         boolean advanced = advanced(evaluation, state);
@@ -160,10 +207,14 @@ public final class MovementProgressMonitor {
                     evaluation.targetDistance(),
                     0.0,
                     divergentSeconds,
-                    0.0);
+                    0.0,
+                    0,
+                    divergentTicks,
+                    0);
             return Optional.empty();
         }
         double stagnantSeconds = state.stagnantSeconds() + deltaSeconds;
+        int stagnantTicks = state.stagnantTicks() + 1;
         state = new MovementHealthState(
                 snapshot.nextNodeIndex(),
                 snapshot.action(),
@@ -171,8 +222,11 @@ public final class MovementProgressMonitor {
                 state.bestTargetDistance(),
                 stagnantSeconds,
                 divergentSeconds,
-                0.0);
-        if (stagnantSeconds < settings.stuckAfterSeconds()) {
+                0.0,
+                stagnantTicks,
+                divergentTicks,
+                0);
+        if (!timedOut(stagnantSeconds, stagnantTicks, settings.stuckAfterSeconds(), settings.stuckAfterTicks())) {
             return Optional.empty();
         }
         return Optional.of(new MovementFailure(
@@ -190,14 +244,23 @@ public final class MovementProgressMonitor {
     private void resetPositionWatchdog() {
         lastProgressPosition = null;
         positionStagnantSeconds = 0.0;
+        positionStagnantTicks = 0;
     }
 
     private Optional<MovementFailure> failureIfPositionStuck() {
-        if (positionStagnantSeconds < settings.stuckAfterSeconds()) {
+        if (!timedOut(
+                positionStagnantSeconds,
+                positionStagnantTicks,
+                settings.stuckAfterSeconds(),
+                settings.stuckAfterTicks())) {
             return Optional.empty();
         }
         return Optional.of(new MovementFailure(
                 MovementFailureKind.STUCK_NO_PROGRESS,
                 "movement commanded but position did not progress"));
+    }
+
+    private static boolean timedOut(double seconds, int ticks, double secondsLimit, int tickLimit) {
+        return seconds >= secondsLimit || ticks >= tickLimit;
     }
 }

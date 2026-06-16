@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static dev.traveler.core.world.behavior.special.SurfaceMovementTestSupport.context;
 
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.world.behavior.context.HorizontalFacing;
 import dev.traveler.core.world.behavior.context.MovementDirection;
 import dev.traveler.core.world.behavior.decision.MovementAction;
@@ -56,7 +56,7 @@ class SpecialBlockBehaviorTest {
         ClimbSurfaceGeometry surface = behavior.climbSurface(HorizontalFacing.WEST, PLAYER).orElseThrow();
 
         assertEquals(new SurfaceNode(ladder, 0, 1, 64.0), surface.node(ladder));
-        assertEquals(new NavigationPoint(1.3, 64.0, 0.5), surface.target(ladder, 64.0));
+        assertEquals(new WorldPoint(1.3, 64.0, 0.5), surface.target(ladder, 64.0));
         assertTrue(behavior.climbSurface(HorizontalFacing.EAST, PLAYER).isEmpty());
     }
 

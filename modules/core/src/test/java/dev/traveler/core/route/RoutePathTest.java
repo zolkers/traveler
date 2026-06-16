@@ -3,7 +3,7 @@ package dev.traveler.core.route;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.world.behavior.decision.MovementAction;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.surface.SurfaceNode;
@@ -33,14 +33,14 @@ class RoutePathTest {
         SurfaceNode first = node(0, 64, 0);
         SurfaceNode second = node(1, 64, 0);
         SurfaceNode third = node(2, 65, 0);
-        NavigationPoint climbFace = new NavigationPoint(1.3, 64.0, 0.5);
-        NavigationPoint landing = new NavigationPoint(2.25, 66.0, 0.25);
+        WorldPoint climbFace = new WorldPoint(1.3, 64.0, 0.5);
+        WorldPoint landing = new WorldPoint(2.25, 66.0, 0.25);
         RoutePath route = RoutePath.of(List.of(
                 new RouteStep(first, second, MovementAction.CLIMB, 1.0, climbFace),
                 new RouteStep(second, third, MovementAction.CLIMB, 1.0, landing)));
 
         assertEquals(
-                List.of(new NavigationPoint(0.25, 65.0, 0.25), climbFace, landing),
+                List.of(new WorldPoint(0.25, 65.0, 0.25), climbFace, landing),
                 route.executionPoints());
     }
 

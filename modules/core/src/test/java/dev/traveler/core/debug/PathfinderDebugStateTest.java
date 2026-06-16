@@ -15,7 +15,7 @@ import dev.traveler.core.navigation.NavigationFrameInput;
 import dev.traveler.core.navigation.camera.CameraAngles;
 import dev.traveler.core.navigation.testing.NavigationDebugFrames;
 import dev.traveler.core.navigation.plan.NavigationPhase;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.world.block.BlockPosition;
 import org.junit.jupiter.api.Test;
 
@@ -95,12 +95,12 @@ class PathfinderDebugStateTest {
 
     private static NavigationFrameInput frameInput() {
         return new NavigationFrameInput(
-                new NavigationPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 64.0, 0.0),
                 new CameraAngles(0.0, 0.0),
                 0.016);
     }
 
     private static NavigationControlFrame frame() {
-        return NavigationDebugFrames.approachFrame(new NavigationPoint(0.0, 64.0, 4.0));
+        return NavigationDebugFrames.approachFrame(new WorldPoint(0.0, 64.0, 4.0));
     }
 }

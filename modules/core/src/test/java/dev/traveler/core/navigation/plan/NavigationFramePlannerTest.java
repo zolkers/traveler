@@ -13,8 +13,8 @@ import dev.traveler.core.navigation.control.MovementIntent;
 import dev.traveler.core.navigation.locomotion.AgentMotionState;
 import dev.traveler.core.navigation.locomotion.LocomotionExecutionState;
 import dev.traveler.core.navigation.locomotion.LocomotionAction;
-import dev.traveler.core.navigation.spatial.HorizontalVector;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.HorizontalVector;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.world.behavior.decision.MovementAction;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -94,12 +94,12 @@ class NavigationFramePlannerTest {
 
     @Test
     void climbActionSteersTowardClimbTargetInsteadOfLandingNode() {
-        NavigationPoint climbFace = point(1.3, 70.0, 0.5);
+        WorldPoint climbFace = point(1.3, 70.0, 0.5);
         NavigationPath path = NavigationPath.of(
                 List.of(point(0.0, 64.0, 0.0), point(1.25, 70.0, 1.25)),
                 List.of(MovementAction.CLIMB),
                 List.of(climbFace));
-        NavigationPoint position = point(0.0, 64.0, 0.0);
+        WorldPoint position = point(0.0, 64.0, 0.0);
 
         NavigationFramePlan plan = planner.plan(
                 path,
@@ -115,7 +115,7 @@ class NavigationFramePlannerTest {
 
     @Test
     void climbUpRequestsJumpAndClimbDownRequestsDescent() {
-        NavigationPoint climbFaceUp = point(1.3, 70.0, 0.5);
+        WorldPoint climbFaceUp = point(1.3, 70.0, 0.5);
         NavigationPath upward = NavigationPath.of(
                 List.of(point(0.0, 64.0, 0.0), point(1.25, 70.0, 1.25)),
                 List.of(MovementAction.CLIMB),
@@ -346,7 +346,7 @@ class NavigationFramePlannerTest {
                 plan.locomotionState());
     }
 
-    private static NavigationFrameInput frameInput(NavigationPoint position, CameraAngles cameraAngles) {
+    private static NavigationFrameInput frameInput(WorldPoint position, CameraAngles cameraAngles) {
         return new NavigationFrameInput(position, cameraAngles, 0.016, AgentMotionState.groundedStill());
     }
 
@@ -354,7 +354,7 @@ class NavigationFramePlannerTest {
         return new CameraAngles(0.0, 0.0);
     }
 
-    private static NavigationPoint point(double x, double y, double z) {
-        return new NavigationPoint(x, y, z);
+    private static WorldPoint point(double x, double y, double z) {
+        return new WorldPoint(x, y, z);
     }
 }

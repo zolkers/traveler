@@ -1,6 +1,7 @@
 package dev.traveler.core.world.navigation;
 
 import dev.traveler.core.world.behavior.decision.MovementDecision;
+import dev.traveler.core.world.behavior.decision.MovementAction;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -16,6 +17,7 @@ public final class DefaultSurfaceTransitionProvider implements SurfaceTransition
                         safeContext.worldLayer().surfaceBlock(safeContext.from().blockPosition()),
                         safeContext.destinationBlock(),
                         direction))
+                .filter(decision -> decision.action() != MovementAction.SWIM)
                 .or(() -> Optional.of(MovementDecision.blocked()));
     }
 }

@@ -3,8 +3,8 @@ package dev.traveler.core.debug;
 import dev.traveler.core.debug.snapshots.NavigationDebugSnapshot;
 import dev.traveler.core.debug.snapshots.PathfinderDebugSnapshot;
 import dev.traveler.core.navigation.control.MovementIntent;
-import dev.traveler.core.navigation.spatial.HorizontalVector;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.HorizontalVector;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.path.PathfinderStatus;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -163,7 +163,7 @@ public final class DebugTextFormatter {
         }
     }
 
-    private static String point(NavigationPoint point) {
+    private static String point(WorldPoint point) {
         return String.format(Locale.ROOT, "(%.2f,%.2f,%.2f)", point.x(), point.y(), point.z());
     }
 

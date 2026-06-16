@@ -1,7 +1,7 @@
 package dev.traveler.core.debug.snapshots;
 
 import dev.traveler.core.path.PathfinderResult;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.surface.SurfaceNode;
 import java.time.Instant;
@@ -13,7 +13,7 @@ public record PathfinderDebugSnapshot(
         String message,
         Instant updatedAt,
         List<SurfaceNode> surfaceNodes,
-        List<NavigationPoint> routePoints) {
+        List<WorldPoint> routePoints) {
     public PathfinderDebugSnapshot(PathfinderResult<BlockPosition> result, String message, Instant updatedAt) {
         this(result, message, updatedAt, List.of());
     }

@@ -1,7 +1,7 @@
 package dev.traveler.core.world.navigation;
 
 import dev.traveler.core.layer.SurfaceWorldLayer;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.movement.EntityDimensions;
 import java.util.Objects;
@@ -13,10 +13,10 @@ public final class SurfaceBodyClearance {
 
     public static boolean hasClearance(
             SurfaceWorldLayer worldLayer,
-            NavigationPoint position,
+            WorldPoint position,
             EntityDimensions dimensions) {
         SurfaceWorldLayer world = Objects.requireNonNull(worldLayer, "worldLayer");
-        NavigationPoint point = Objects.requireNonNull(position, "position");
+        WorldPoint point = Objects.requireNonNull(position, "position");
         EntityDimensions entityDimensions = Objects.requireNonNull(dimensions, "dimensions");
         double minY = point.y() + BODY_EPSILON;
         double maxY = point.y() + entityDimensions.height();

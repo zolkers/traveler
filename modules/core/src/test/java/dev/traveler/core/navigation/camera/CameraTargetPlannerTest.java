@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.follow.PathProgress;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -14,13 +14,13 @@ class CameraTargetPlannerTest {
     void looksAheadPastVerticalActionNodesWithDampedPitch() {
         CameraTargetPlanner planner = new CameraTargetPlanner(new CameraTargetSettings(3.5, 0.35, 0.0));
         NavigationPath path = NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(0.0, 65.0, 0.0),
-                new NavigationPoint(0.0, 65.0, 8.0)));
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 65.0, 0.0),
+                new WorldPoint(0.0, 65.0, 8.0)));
 
         CameraAngles target = planner.targetAngles(
                 path,
-                new NavigationPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 64.0, 0.0),
                 PathProgress.start(),
                 new CameraAngles(90.0, 12.0));
 
@@ -33,12 +33,12 @@ class CameraTargetPlannerTest {
     void keepsYawWhenOnlyVerticalActionHasNoHorizontalDirection() {
         CameraTargetPlanner planner = new CameraTargetPlanner(new CameraTargetSettings(3.5, 0.35, 0.0));
         NavigationPath path = NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(0.0, 65.0, 0.0)));
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 65.0, 0.0)));
 
         CameraAngles target = planner.targetAngles(
                 path,
-                new NavigationPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 64.0, 0.0),
                 PathProgress.start(),
                 new CameraAngles(90.0, 12.0));
 
@@ -49,13 +49,13 @@ class CameraTargetPlannerTest {
     void clampsDownwardPitchSoLookAheadDoesNotAimAtFeet() {
         CameraTargetPlanner planner = new CameraTargetPlanner(new CameraTargetSettings(3.5, 0.35, 0.0));
         NavigationPath path = NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(0.0, 61.0, 0.0),
-                new NavigationPoint(0.0, 61.0, 2.0)));
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 61.0, 0.0),
+                new WorldPoint(0.0, 61.0, 2.0)));
 
         CameraAngles target = planner.targetAngles(
                 path,
-                new NavigationPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 64.0, 0.0),
                 PathProgress.start(),
                 new CameraAngles(0.0, 0.0));
 
@@ -68,13 +68,13 @@ class CameraTargetPlannerTest {
     void projectsPositionOnCorridorBeforeLookingAhead() {
         CameraTargetPlanner planner = new CameraTargetPlanner(new CameraTargetSettings(3.5, 0.35, 0.0));
         NavigationPath path = NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(0.0, 64.0, 2.0),
-                new NavigationPoint(0.0, 64.0, 6.0)));
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 64.0, 2.0),
+                new WorldPoint(0.0, 64.0, 6.0)));
 
         CameraAngles target = planner.targetAngles(
                 path,
-                new NavigationPoint(0.9, 64.0, 4.0),
+                new WorldPoint(0.9, 64.0, 4.0),
                 PathProgress.start(),
                 new CameraAngles(180.0, 0.0));
 

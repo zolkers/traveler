@@ -9,7 +9,7 @@ import dev.traveler.core.navigation.NavigationGoalPlan;
 import dev.traveler.core.navigation.NavigationReplanRequest;
 import dev.traveler.core.navigation.TravelerNavigationState;
 import dev.traveler.core.navigation.follow.NavigationPath;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.route.RouteGoal;
 import dev.traveler.core.world.block.BlockPosition;
 import java.util.ArrayList;
@@ -108,7 +108,7 @@ final class TravelerPathJobService implements AutoCloseable {
             RouteGoal goal,
             String purpose,
             PathCompletion completion,
-            Optional<NavigationPoint> startOverride) {
+            Optional<WorldPoint> startOverride) {
         cancelActiveJob(purpose);
         TravelerPathSearchSubmission submission = searchService.goalPathSubmission(
                 source,

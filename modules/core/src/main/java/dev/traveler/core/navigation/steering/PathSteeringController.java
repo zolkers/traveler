@@ -4,8 +4,8 @@ import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.follow.PathCorridor;
 import dev.traveler.core.navigation.follow.PathProjection;
 import dev.traveler.core.navigation.locomotion.AgentMotionState;
-import dev.traveler.core.navigation.spatial.HorizontalVector;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.HorizontalVector;
+import dev.traveler.core.common.geometry.WorldPoint;
 import java.util.Objects;
 
 public final class PathSteeringController {
@@ -24,19 +24,19 @@ public final class PathSteeringController {
 
     public SteeringPlan plan(
             NavigationPath path,
-            NavigationPoint position,
+            WorldPoint position,
             AgentMotionState motionState,
             int nextNodeIndex) {
         NavigationPath navigationPath = Objects.requireNonNull(path, "path");
-        NavigationPoint currentPosition = Objects.requireNonNull(position, "position");
+        WorldPoint currentPosition = Objects.requireNonNull(position, "position");
         AgentMotionState motion = Objects.requireNonNull(motionState, "motionState");
         PathCorridor corridor = corridor(navigationPath, nextNodeIndex - 1);
-        NavigationPoint predicted = predictedPosition(currentPosition, motion);
+        WorldPoint predicted = predictedPosition(currentPosition, motion);
         PathProjection projection = corridor.project(predicted);
         double targetDistance = projection.distanceOnPath() + settings.pathOffset();
-        NavigationPoint pathTarget = corridor.targetAt(targetDistance);
+        WorldPoint pathTarget = corridor.targetAt(targetDistance);
         HorizontalVector correction = lateralCorrection(predicted, projection);
-        NavigationPoint steeringTarget = offset(pathTarget, correction);
+        WorldPoint steeringTarget = offset(pathTarget, correction);
         boolean outsideCorridor = projection.lateralError() > settings.corridorRadius();
         return SteeringPlan.corridor(
                 steeringTarget,
@@ -45,29 +45,31 @@ public final class PathSteeringController {
                 projection.tangent(),
                 correction,
                 projection.lateralError(),
+                projection.signedLateralError(),
                 Math.clamp(targetDistance, 0.0, corridor.length()),
                 outsideCorridor,
                 projection.lateralError() >= settings.clearanceWarningLateralError());
     }
 
-    private NavigationPoint predictedPosition(NavigationPoint position, AgentMotionState motion) {
+    private WorldPoint predictedPosition(WorldPoint position, AgentMotionState motion) {
         HorizontalVector drift = motion.horizontalVelocity().scaled(settings.predictionSeconds());
         double y = position.y() + motion.verticalVelocity() * settings.predictionSeconds();
-        return new NavigationPoint(position.x() + drift.x(), y, position.z() + drift.z());
+        return new WorldPoint(position.x() + drift.x(), y, position.z() + drift.z());
     }
 
-    private HorizontalVector lateralCorrection(NavigationPoint position, PathProjection projection) {
-        if (projection.lateralError() <= settings.corridorRadius()) {
+    private HorizontalVector lateralCorrection(WorldPoint position, PathProjection projection) {
+        double absoluteError = Math.abs(projection.signedLateralError());
+        if (absoluteError <= settings.lateralCorrectionDeadband()) {
             return new HorizontalVector(0.0, 0.0);
         }
         HorizontalVector toCenter = position.horizontalVectorTo(projection.nearestPoint()).normalized();
-        double excess = projection.lateralError() - settings.corridorRadius();
+        double excess = absoluteError - settings.lateralCorrectionDeadband();
         double distance = Math.min(settings.maxCorrectionDistance(), excess * settings.lateralCorrectionGain());
         return toCenter.scaled(distance);
     }
 
-    private static NavigationPoint offset(NavigationPoint point, HorizontalVector correction) {
-        return new NavigationPoint(point.x() + correction.x(), point.y(), point.z() + correction.z());
+    private static WorldPoint offset(WorldPoint point, HorizontalVector correction) {
+        return new WorldPoint(point.x() + correction.x(), point.y(), point.z() + correction.z());
     }
 
     private PathCorridor corridor(NavigationPath path, int requestedStartIndex) {

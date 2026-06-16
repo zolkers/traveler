@@ -1,8 +1,8 @@
 package dev.traveler.core.navigation.plan;
 
 import dev.traveler.core.navigation.locomotion.AgentMotionState;
-import dev.traveler.core.navigation.spatial.HorizontalVector;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.HorizontalVector;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.world.behavior.decision.MovementAction;
 import java.util.Objects;
 import java.util.Optional;
@@ -19,15 +19,15 @@ public final class JumpTraversalController {
     public Optional<MovementVectorIntent> movementVectorFor(
             MovementAction segmentAction,
             MovementActionDecision actionDecision,
-            NavigationPoint position,
-            NavigationPoint segmentStart,
-            NavigationPoint actionTarget,
+            WorldPoint position,
+            WorldPoint segmentStart,
+            WorldPoint actionTarget,
             AgentMotionState motionState) {
         MovementAction action = Objects.requireNonNull(segmentAction, "segmentAction");
         MovementActionDecision decision = Objects.requireNonNull(actionDecision, "actionDecision");
-        NavigationPoint currentPosition = Objects.requireNonNull(position, "position");
-        NavigationPoint start = Objects.requireNonNull(segmentStart, "segmentStart");
-        NavigationPoint target = Objects.requireNonNull(actionTarget, "actionTarget");
+        WorldPoint currentPosition = Objects.requireNonNull(position, "position");
+        WorldPoint start = Objects.requireNonNull(segmentStart, "segmentStart");
+        WorldPoint target = Objects.requireNonNull(actionTarget, "actionTarget");
         AgentMotionState motion = Objects.requireNonNull(motionState, "motionState");
         if (action != MovementAction.JUMP && action != MovementAction.STEP_UP) {
             return Optional.empty();
@@ -49,7 +49,7 @@ public final class JumpTraversalController {
         return Optional.of(new MovementVectorIntent(axis, PlannedMovementMode.DIRECT, true));
     }
 
-    private static HorizontalVector jumpAxis(NavigationPoint segmentStart, NavigationPoint actionTarget) {
+    private static HorizontalVector jumpAxis(WorldPoint segmentStart, WorldPoint actionTarget) {
         HorizontalVector vector = segmentStart.horizontalVectorTo(actionTarget);
         if (vector.length() <= ZERO_LENGTH) {
             return new HorizontalVector(0.0, 0.0);
@@ -58,9 +58,9 @@ public final class JumpTraversalController {
     }
 
     private static HorizontalVector lateralCorrection(
-            NavigationPoint segmentStart,
-            NavigationPoint actionTarget,
-            NavigationPoint position) {
+            WorldPoint segmentStart,
+            WorldPoint actionTarget,
+            WorldPoint position) {
         double deltaX = actionTarget.x() - segmentStart.x();
         double deltaZ = actionTarget.z() - segmentStart.z();
         double lengthSquared = deltaX * deltaX + deltaZ * deltaZ;
@@ -70,7 +70,7 @@ public final class JumpTraversalController {
         double offsetX = position.x() - segmentStart.x();
         double offsetZ = position.z() - segmentStart.z();
         double ratio = Math.clamp((offsetX * deltaX + offsetZ * deltaZ) / lengthSquared, 0.0, 1.0);
-        NavigationPoint nearest = new NavigationPoint(
+        WorldPoint nearest = new WorldPoint(
                 segmentStart.x() + deltaX * ratio,
                 position.y(),
                 segmentStart.z() + deltaZ * ratio);
@@ -78,9 +78,9 @@ public final class JumpTraversalController {
     }
 
     private static double lateralError(
-            NavigationPoint segmentStart,
-            NavigationPoint actionTarget,
-            NavigationPoint position) {
+            WorldPoint segmentStart,
+            WorldPoint actionTarget,
+            WorldPoint position) {
         return lateralCorrection(segmentStart, actionTarget, position).length();
     }
 }

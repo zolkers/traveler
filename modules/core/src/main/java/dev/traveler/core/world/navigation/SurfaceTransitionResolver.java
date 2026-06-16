@@ -8,9 +8,6 @@ import java.util.Optional;
 public record SurfaceTransitionResolver(List<SurfaceTransitionProvider> providers) {
     public SurfaceTransitionResolver {
         providers = List.copyOf(Objects.requireNonNull(providers, "providers"));
-        if (providers.isEmpty()) {
-            throw new IllegalArgumentException("providers must not be empty");
-        }
     }
 
     public MovementDecision decision(SurfaceTransitionContext context) {

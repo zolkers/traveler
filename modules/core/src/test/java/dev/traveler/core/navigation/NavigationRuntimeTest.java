@@ -13,7 +13,7 @@ import dev.traveler.core.navigation.diagnostics.MovementFailureReporter;
 import dev.traveler.core.navigation.recovery.MovementHealthSettings;
 import dev.traveler.core.navigation.recovery.MovementProgressMonitor;
 import dev.traveler.core.navigation.control.MovementIntent;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.route.RouteGoal;
 import dev.traveler.core.world.behavior.decision.MovementAction;
 import java.util.ArrayList;
@@ -25,11 +25,11 @@ class NavigationRuntimeTest {
     @Test
     void updatesNavigationFromFrameDeltaAndAppliesIntentThroughPort() {
         TravelerNavigationState navigationState = new TravelerNavigationState();
-        TestAgentPort agent = new TestAgentPort(new NavigationPoint(0.0, 64.0, 0.0), new CameraAngles(0.0, 0.0));
+        TestAgentPort agent = new TestAgentPort(new WorldPoint(0.0, 64.0, 0.0), new CameraAngles(0.0, 0.0));
         NavigationRuntime runtime = new NavigationRuntime(navigationState, agent);
         navigationState.start(NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(-4.0, 64.0, 6.0))), "test");
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(-4.0, 64.0, 6.0))), "test");
 
         runtime.update(1_000_000_000L);
         runtime.update(1_016_000_000L);
@@ -42,11 +42,11 @@ class NavigationRuntimeTest {
     @Test
     void releasesInputWhenNavigationStops() {
         TravelerNavigationState navigationState = new TravelerNavigationState();
-        TestAgentPort agent = new TestAgentPort(new NavigationPoint(0.0, 64.0, 0.0), new CameraAngles(0.0, 0.0));
+        TestAgentPort agent = new TestAgentPort(new WorldPoint(0.0, 64.0, 0.0), new CameraAngles(0.0, 0.0));
         NavigationRuntime runtime = new NavigationRuntime(navigationState, agent);
         navigationState.start(NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(0.0, 64.0, 4.0))), "test");
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 64.0, 4.0))), "test");
 
         runtime.update(1_000_000_000L);
         navigationState.stop("manual");
@@ -58,18 +58,18 @@ class NavigationRuntimeTest {
     @Test
     void resetsPathProgressWhenActiveSessionChanges() {
         TravelerNavigationState navigationState = new TravelerNavigationState();
-        TestAgentPort agent = new TestAgentPort(new NavigationPoint(0.0, 64.0, 0.0), new CameraAngles(0.0, 0.0));
+        TestAgentPort agent = new TestAgentPort(new WorldPoint(0.0, 64.0, 0.0), new CameraAngles(0.0, 0.0));
         NavigationRuntime runtime = new NavigationRuntime(navigationState, agent);
         navigationState.start(NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(0.1, 64.0, 0.0),
-                new NavigationPoint(8.0, 64.0, 0.0))), "first");
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.1, 64.0, 0.0),
+                new WorldPoint(8.0, 64.0, 0.0))), "first");
 
         runtime.update(1_000_000_000L);
         navigationState.start(NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(4.0, 64.0, 0.0),
-                new NavigationPoint(8.0, 64.0, 0.0))), "second");
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(4.0, 64.0, 0.0),
+                new WorldPoint(8.0, 64.0, 0.0))), "second");
         runtime.update(1_016_000_000L);
 
         assertEquals(new PathProgress(1), agent.controlFrames.getLast().state().progress());
@@ -79,11 +79,11 @@ class NavigationRuntimeTest {
     void storesLatestNavigationDebugFrameWhileActive() {
         TravelerNavigationState navigationState = new TravelerNavigationState();
         PathfinderDebugState debugState = new PathfinderDebugState();
-        TestAgentPort agent = new TestAgentPort(new NavigationPoint(0.0, 64.0, 0.0), new CameraAngles(0.0, 0.0));
+        TestAgentPort agent = new TestAgentPort(new WorldPoint(0.0, 64.0, 0.0), new CameraAngles(0.0, 0.0));
         NavigationRuntime runtime = new NavigationRuntime(navigationState, agent, debugState);
         navigationState.start(NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(0.0, 64.0, 4.0))), "test");
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 64.0, 4.0))), "test");
 
         runtime.update(1_000_000_000L);
 
@@ -95,11 +95,11 @@ class NavigationRuntimeTest {
     void clearsNavigationDebugWhenRuntimeReleasesControls() {
         TravelerNavigationState navigationState = new TravelerNavigationState();
         PathfinderDebugState debugState = new PathfinderDebugState();
-        TestAgentPort agent = new TestAgentPort(new NavigationPoint(0.0, 64.0, 0.0), new CameraAngles(0.0, 0.0));
+        TestAgentPort agent = new TestAgentPort(new WorldPoint(0.0, 64.0, 0.0), new CameraAngles(0.0, 0.0));
         NavigationRuntime runtime = new NavigationRuntime(navigationState, agent, debugState);
         navigationState.start(NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(0.0, 64.0, 4.0))), "test");
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 64.0, 4.0))), "test");
 
         runtime.update(1_000_000_000L);
         navigationState.stop("manual");
@@ -111,7 +111,7 @@ class NavigationRuntimeTest {
     @Test
     void requestsReplanWhenMovementIsCommandedButPositionDoesNotProgress() {
         TravelerNavigationState navigationState = new TravelerNavigationState();
-        TestAgentPort agent = new TestAgentPort(new NavigationPoint(0.0, 64.0, 0.0), new CameraAngles(0.0, 0.0));
+        TestAgentPort agent = new TestAgentPort(new WorldPoint(0.0, 64.0, 0.0), new CameraAngles(0.0, 0.0));
         NavigationRuntime runtime = new NavigationRuntime(
                 navigationState,
                 agent,
@@ -123,8 +123,8 @@ class NavigationRuntimeTest {
                 RouteGoal.xz(0, 4),
                 true);
         navigationState.start(NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(0.0, 64.0, 4.0))), "test", goalPlan);
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 64.0, 4.0))), "test", goalPlan);
 
         runtime.update(1_000_000_000L);
         runtime.update(1_100_000_000L);
@@ -138,7 +138,7 @@ class NavigationRuntimeTest {
     @Test
     void reportsMovementFailureDiagnosticsBeforeRequestingRecovery() {
         TravelerNavigationState navigationState = new TravelerNavigationState();
-        TestAgentPort agent = new TestAgentPort(new NavigationPoint(0.0, 64.0, 0.0), new CameraAngles(0.0, 0.0));
+        TestAgentPort agent = new TestAgentPort(new WorldPoint(0.0, 64.0, 0.0), new CameraAngles(0.0, 0.0));
         RecordingFailureReporter reporter = new RecordingFailureReporter();
         NavigationRuntime runtime = new NavigationRuntime(
                 navigationState,
@@ -152,8 +152,8 @@ class NavigationRuntimeTest {
                 RouteGoal.xz(0, 4),
                 true);
         navigationState.start(NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(0.0, 64.0, 4.0))), "test", goalPlan);
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 64.0, 4.0))), "test", goalPlan);
 
         runtime.update(1_000_000_000L);
         runtime.update(1_100_000_000L);
@@ -162,14 +162,14 @@ class NavigationRuntimeTest {
         assertEquals(1, reporter.reports.size());
         MovementFailureReportContext report = reporter.reports.getFirst();
         assertEquals(navigationState.pendingReplanRequest().orElseThrow().goal(), RouteGoal.xz(0, 4));
-        assertEquals(new NavigationPoint(0.0, 64.0, 0.0), report.input().position());
-        assertEquals(new NavigationPoint(0.0, 64.0, 4.0), report.session().path().lastNode());
+        assertEquals(new WorldPoint(0.0, 64.0, 0.0), report.input().position());
+        assertEquals(new WorldPoint(0.0, 64.0, 4.0), report.session().path().lastNode());
     }
 
     @Test
     void repairsDivergenceTowardCurrentSegmentWithoutReleasingControls() {
         TravelerNavigationState navigationState = new TravelerNavigationState();
-        TestAgentPort agent = new TestAgentPort(new NavigationPoint(2.0, 64.0, 2.0), new CameraAngles(-90.0, 0.0));
+        TestAgentPort agent = new TestAgentPort(new WorldPoint(2.0, 64.0, 2.0), new CameraAngles(-90.0, 0.0));
         NavigationRuntime runtime = new NavigationRuntime(
                 navigationState,
                 agent,
@@ -189,8 +189,8 @@ class NavigationRuntimeTest {
                 false,
                 8.0);
         navigationState.start(NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(20.0, 64.0, 0.0))), "test", goalPlan);
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(20.0, 64.0, 0.0))), "test", goalPlan);
 
         runtime.update(1_000_000_000L);
         runtime.update(1_100_000_000L);
@@ -198,7 +198,7 @@ class NavigationRuntimeTest {
         NavigationReplanRequest request = navigationState.pendingReplanRequest().orElseThrow();
         assertEquals(RouteGoal.xz(20, 0), request.goal());
         assertEquals(NavigationReplanActivation.REPLACE_ACTIVE_SESSION, request.activation());
-        assertEquals(new NavigationPoint(2.0, 64.0, 2.0), request.startOverride().orElseThrow());
+        assertEquals(new WorldPoint(2.0, 64.0, 2.0), request.startOverride().orElseThrow());
         assertTrue(request.preserveActiveSession());
         assertEquals(goalPlan, request.goalPlanOverride().orElseThrow());
         assertTrue(navigationState.activeSession().isPresent());
@@ -208,8 +208,8 @@ class NavigationRuntimeTest {
     @Test
     void requestsLookaheadReplanBeforeSegmentCompletionWithoutStoppingCurrentSession() {
         TravelerNavigationState navigationState = new TravelerNavigationState();
-        NavigationPoint segmentEnd = new NavigationPoint(20.25, 64.0, 0.75);
-        TestAgentPort agent = new TestAgentPort(new NavigationPoint(14.0, 64.0, 0.0), new CameraAngles(0.0, 0.0));
+        WorldPoint segmentEnd = new WorldPoint(20.25, 64.0, 0.75);
+        TestAgentPort agent = new TestAgentPort(new WorldPoint(14.0, 64.0, 0.0), new CameraAngles(0.0, 0.0));
         NavigationRuntime runtime = new NavigationRuntime(navigationState, agent);
         NavigationGoalPlan goalPlan = new NavigationGoalPlan(
                 RouteGoal.xz(100, 0),
@@ -217,7 +217,7 @@ class NavigationRuntimeTest {
                 false,
                 8.0);
         navigationState.start(NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 64.0, 0.0),
                 segmentEnd)), "test", goalPlan);
 
         runtime.update(1_000_000_000L);
@@ -235,8 +235,8 @@ class NavigationRuntimeTest {
     @Test
     void completedLongDistanceSegmentQueuesContinuityWithoutReleasingControls() {
         TravelerNavigationState navigationState = new TravelerNavigationState();
-        NavigationPoint segmentEnd = new NavigationPoint(20.25, 64.0, 0.75);
-        TestAgentPort agent = new TestAgentPort(new NavigationPoint(14.0, 64.0, 0.0), new CameraAngles(0.0, 0.0));
+        WorldPoint segmentEnd = new WorldPoint(20.25, 64.0, 0.75);
+        TestAgentPort agent = new TestAgentPort(new WorldPoint(14.0, 64.0, 0.0), new CameraAngles(0.0, 0.0));
         NavigationRuntime runtime = new NavigationRuntime(navigationState, agent);
         NavigationGoalPlan goalPlan = new NavigationGoalPlan(
                 RouteGoal.xz(100, 0),
@@ -244,7 +244,7 @@ class NavigationRuntimeTest {
                 false,
                 8.0);
         navigationState.start(NavigationPath.of(
-                List.of(new NavigationPoint(0.0, 64.0, 0.0), segmentEnd),
+                List.of(new WorldPoint(0.0, 64.0, 0.0), segmentEnd),
                 List.of(MovementAction.WALK)), "test", goalPlan);
 
         runtime.update(1_000_000_000L);
@@ -263,7 +263,7 @@ class NavigationRuntimeTest {
     @Test
     void activatesPreparedLookaheadAtSegmentCompletionInsteadOfRequestingFreshReplan() {
         TravelerNavigationState navigationState = new TravelerNavigationState();
-        TestAgentPort agent = new TestAgentPort(new NavigationPoint(20.0, 64.0, 0.0), new CameraAngles(0.0, 0.0));
+        TestAgentPort agent = new TestAgentPort(new WorldPoint(20.0, 64.0, 0.0), new CameraAngles(0.0, 0.0));
         NavigationRuntime runtime = new NavigationRuntime(navigationState, agent);
         NavigationGoalPlan currentPlan = new NavigationGoalPlan(
                 RouteGoal.xz(100, 0),
@@ -276,11 +276,11 @@ class NavigationRuntimeTest {
                 false,
                 8.0);
         NavigationPath preparedPath = NavigationPath.of(List.of(
-                new NavigationPoint(20.0, 64.0, 0.0),
-                new NavigationPoint(40.0, 64.0, 0.0)));
+                new WorldPoint(20.0, 64.0, 0.0),
+                new WorldPoint(40.0, 64.0, 0.0)));
         navigationState.start(NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(20.0, 64.0, 0.0))), "current", currentPlan);
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(20.0, 64.0, 0.0))), "current", currentPlan);
         navigationState.prepareLookahead(preparedPath, "prepared", preparedPlan);
 
         runtime.update(1_000_000_000L);
@@ -293,11 +293,11 @@ class NavigationRuntimeTest {
         private final List<NavigationFrameInput> frames = new ArrayList<>();
         private final List<NavigationControlFrame> controlFrames = new ArrayList<>();
         private final List<MovementIntent> intents = new ArrayList<>();
-        private NavigationPoint position;
+        private WorldPoint position;
         private final CameraAngles cameraAngles;
         private boolean released;
 
-        private TestAgentPort(NavigationPoint position, CameraAngles cameraAngles) {
+        private TestAgentPort(WorldPoint position, CameraAngles cameraAngles) {
             this.position = position;
             this.cameraAngles = cameraAngles;
         }

@@ -4,10 +4,10 @@ import dev.traveler.core.navigation.NavigationFrameInput;
 import dev.traveler.core.navigation.camera.CameraAimController;
 import dev.traveler.core.navigation.camera.CameraAimSettings;
 import dev.traveler.core.navigation.camera.CameraAngles;
+import dev.traveler.core.navigation.internal.TraversalIntent;
 import dev.traveler.core.navigation.plan.NavigationFramePlan;
 import dev.traveler.core.navigation.plan.PlannedMovementMode;
-import dev.traveler.core.navigation.spatial.CameraMovementBasis;
-import dev.traveler.core.navigation.spatial.HorizontalVector;
+import dev.traveler.core.common.geometry.HorizontalVector;
 import dev.traveler.core.settings.TravelerSettings;
 import java.util.Objects;
 
@@ -44,30 +44,38 @@ public final class ControlProjector {
             NavigationFrameInput input,
             MovementIntent previousIntent) {
         NavigationFramePlan framePlan = Objects.requireNonNull(plan, "plan");
+        return project(TraversalIntent.from(framePlan), input, previousIntent);
+    }
+
+    public ControlProjectionFrame project(
+            TraversalIntent intent,
+            NavigationFrameInput input,
+            MovementIntent previousIntent) {
+        TraversalIntent traversalIntent = Objects.requireNonNull(intent, "intent");
         NavigationFrameInput frameInput = Objects.requireNonNull(input, "input");
         MovementIntent previous = Objects.requireNonNull(previousIntent, "previousIntent");
         CameraAngles camera = cameraAimController.update(
                 frameInput.cameraAngles(),
-                framePlan.cameraTarget(),
+                traversalIntent.cameraTarget(),
                 frameInput.deltaSeconds());
-        return new ControlProjectionFrame(intentFor(framePlan, camera, previous), camera);
+        return new ControlProjectionFrame(intentFor(traversalIntent, camera, previous), camera);
     }
 
     private MovementIntent intentFor(
-            NavigationFramePlan plan,
+            TraversalIntent intent,
             CameraAngles cameraAngles,
             MovementIntent previous) {
-        HorizontalVector desired = scaledDesiredVector(plan.movementVector().desiredVector());
+        HorizontalVector desired = scaledDesiredVector(intent.desiredVector());
         CameraMovementBasis basis = CameraMovementBasis.fromMinecraftYaw(cameraAngles.yawDegrees());
         double forwardAmount = desired.dot(basis.forward());
         double rightAmount = desired.dot(basis.right());
-        boolean forward = forward(plan.movementVector().mode(), forwardAmount, previous);
-        boolean back = back(plan.movementVector().mode(), forwardAmount, previous);
-        boolean left = left(plan.movementVector().mode(), rightAmount, previous);
-        boolean right = right(plan.movementVector().mode(), rightAmount, previous);
-        boolean jump = plan.actionIntent().jumpRequested();
-        boolean descend = plan.actionIntent().descendRequested();
-        boolean sprint = plan.speedIntent().sprintRequested() && forward && !back && !descend;
+        boolean forward = forward(intent.movementMode(), forwardAmount, previous);
+        boolean back = back(intent.movementMode(), forwardAmount, previous);
+        boolean left = left(intent.movementMode(), rightAmount, previous);
+        boolean right = right(intent.movementMode(), rightAmount, previous);
+        boolean jump = intent.jumpRequested();
+        boolean descend = intent.descendRequested();
+        boolean sprint = intent.sprintRequested() && forward && !back && !descend;
         return new MovementIntent(forward, back, left, right, jump, sprint);
     }
 

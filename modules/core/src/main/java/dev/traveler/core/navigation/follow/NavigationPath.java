@@ -1,13 +1,13 @@
 package dev.traveler.core.navigation.follow;
 
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.world.behavior.decision.MovementAction;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
 public record NavigationPath(
-        List<NavigationPoint> nodes,
+        List<WorldPoint> nodes,
         List<NavigationSegmentIntent> segmentIntents) {
     public NavigationPath {
         nodes = List.copyOf(Objects.requireNonNull(nodes, "nodes"));
@@ -20,27 +20,27 @@ public record NavigationPath(
         }
     }
 
-    public static NavigationPath of(List<NavigationPoint> nodes) {
-        List<NavigationPoint> safeNodes = List.copyOf(Objects.requireNonNull(nodes, "nodes"));
+    public static NavigationPath of(List<WorldPoint> nodes) {
+        List<WorldPoint> safeNodes = List.copyOf(Objects.requireNonNull(nodes, "nodes"));
         return new NavigationPath(safeNodes, inferredIntents(safeNodes));
     }
 
     public static NavigationPath of(
-            List<NavigationPoint> nodes,
+            List<WorldPoint> nodes,
             List<MovementAction> segmentActions) {
-        List<NavigationPoint> safeNodes = List.copyOf(Objects.requireNonNull(nodes, "nodes"));
+        List<WorldPoint> safeNodes = List.copyOf(Objects.requireNonNull(nodes, "nodes"));
         return new NavigationPath(safeNodes, intentsFromActions(safeNodes, segmentActions));
     }
 
     public static NavigationPath of(
-            List<NavigationPoint> nodes,
+            List<WorldPoint> nodes,
             List<MovementAction> segmentActions,
-            List<NavigationPoint> actionTargets) {
+            List<WorldPoint> actionTargets) {
         return new NavigationPath(nodes, intentsFromActionsAndTargets(segmentActions, actionTargets));
     }
 
     public static NavigationPath withIntents(
-            List<NavigationPoint> nodes,
+            List<WorldPoint> nodes,
             List<NavigationSegmentIntent> segmentIntents) {
         return new NavigationPath(nodes, segmentIntents);
     }
@@ -49,11 +49,11 @@ public record NavigationPath(
         return nodes.size();
     }
 
-    public NavigationPoint nodeAt(int index) {
+    public WorldPoint nodeAt(int index) {
         return nodes.get(index);
     }
 
-    public NavigationPoint lastNode() {
+    public WorldPoint lastNode() {
         return nodes.getLast();
     }
 
@@ -61,7 +61,7 @@ public record NavigationPath(
         return segmentIntentBeforeNode(nodeIndex).action();
     }
 
-    public NavigationPoint actionTargetBeforeNode(int nodeIndex) {
+    public WorldPoint actionTargetBeforeNode(int nodeIndex) {
         return segmentIntentBeforeNode(nodeIndex).actionTarget();
     }
 
@@ -76,27 +76,27 @@ public record NavigationPath(
         return segmentIntents.stream().map(NavigationSegmentIntent::action).toList();
     }
 
-    public List<NavigationPoint> actionTargets() {
+    public List<WorldPoint> actionTargets() {
         return segmentIntents.stream().map(NavigationSegmentIntent::actionTarget).toList();
     }
 
-    private static List<NavigationSegmentIntent> inferredIntents(List<NavigationPoint> nodes) {
+    private static List<NavigationSegmentIntent> inferredIntents(List<WorldPoint> nodes) {
         List<MovementAction> actions = Collections.nCopies(Math.max(nodes.size() - 1, 0),
                 MovementAction.WALK);
         return intentsFromActions(nodes, actions);
     }
 
     private static List<NavigationSegmentIntent> intentsFromActions(
-            List<NavigationPoint> nodes,
+            List<WorldPoint> nodes,
             List<MovementAction> segmentActions) {
         return intentsFromActionsAndTargets(segmentActions, segmentEnds(nodes));
     }
 
     private static List<NavigationSegmentIntent> intentsFromActionsAndTargets(
             List<MovementAction> segmentActions,
-            List<NavigationPoint> actionTargets) {
+            List<WorldPoint> actionTargets) {
         List<MovementAction> actions = List.copyOf(Objects.requireNonNull(segmentActions, "segmentActions"));
-        List<NavigationPoint> targets = List.copyOf(Objects.requireNonNull(actionTargets, "actionTargets"));
+        List<WorldPoint> targets = List.copyOf(Objects.requireNonNull(actionTargets, "actionTargets"));
         if (actions.size() != targets.size()) {
             throw new IllegalArgumentException("A navigation path needs one action target per segment action.");
         }
@@ -107,7 +107,7 @@ public record NavigationPath(
         return List.copyOf(intents);
     }
 
-    private static List<NavigationPoint> segmentEnds(List<NavigationPoint> nodes) {
+    private static List<WorldPoint> segmentEnds(List<WorldPoint> nodes) {
         if (nodes.size() <= 1) {
             return List.of();
         }

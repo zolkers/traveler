@@ -6,8 +6,8 @@ import dev.traveler.core.navigation.NavigationFrameInput;
 import dev.traveler.core.navigation.camera.CameraAngles;
 import dev.traveler.core.navigation.control.MovementIntent;
 import dev.traveler.core.navigation.locomotion.AgentMotionState;
-import dev.traveler.core.navigation.spatial.HorizontalVector;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.HorizontalVector;
+import dev.traveler.core.common.geometry.WorldPoint;
 import java.util.Objects;
 import java.util.Optional;
 import net.minecraft.client.Minecraft;
@@ -32,7 +32,7 @@ public final class MinecraftClientNavigationAdapter implements NavigationAgentPo
         if (player == null) {
             return Optional.empty();
         }
-        NavigationPoint position = new NavigationPoint(player.getX(), player.getY(), player.getZ());
+        WorldPoint position = new WorldPoint(player.getX(), player.getY(), player.getZ());
         CameraAngles camera = new CameraAngles(player.getYRot(), player.getXRot());
         return Optional.of(new NavigationFrameInput(position, camera, deltaSeconds, motionState(player)));
     }

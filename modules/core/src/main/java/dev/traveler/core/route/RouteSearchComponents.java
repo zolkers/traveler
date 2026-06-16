@@ -1,15 +1,24 @@
 package dev.traveler.core.route;
 
+import dev.traveler.core.capability.traversal.api.TraversalModule;
+import dev.traveler.core.capability.traversal.impl.StandardTraversalModules;
+import dev.traveler.core.capability.traversal.spi.TraversalConnectionContributor;
+import dev.traveler.core.capability.traversal.spi.TraversalRouteContributor;
 import dev.traveler.core.path.AStarPathfinder;
 import dev.traveler.core.path.Pathfinder;
+import dev.traveler.core.route.internal.SurfaceTraversalFeature;
+import dev.traveler.core.route.internal.SurfaceTraversalFeatures;
 import dev.traveler.core.route.start.SurfaceRouteStartResolver;
+import dev.traveler.core.route.start.SurfaceRouteStartProvider;
 import dev.traveler.core.route.step.SurfaceRouteStepResolver;
+import dev.traveler.core.route.step.SurfaceRouteStepProvider;
 import dev.traveler.core.smooth.PathSmoothingSelector;
 import dev.traveler.core.world.block.BlockPosition;
+import dev.traveler.core.world.navigation.SurfaceConnectionProvider;
+import dev.traveler.core.world.navigation.SurfaceTransitionProvider;
 import dev.traveler.core.world.navigation.SurfaceTransitionResolver;
-import dev.traveler.core.world.navigation.SurfaceTraversalFeature;
-import dev.traveler.core.world.navigation.SurfaceTraversalFeatures;
 import dev.traveler.core.world.surface.SurfaceNode;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -36,16 +45,21 @@ public record RouteSearchComponents(
     }
 
     public static RouteSearchComponents standard() {
-        List<SurfaceTraversalFeature> traversalFeatures = SurfaceTraversalFeatures.standard();
-        SurfaceTransitionResolver transitionResolver = SurfaceTraversalFeatures.transitionResolver(traversalFeatures);
+        return withTraversalModules(StandardTraversalModules.modules());
+    }
+
+    public static RouteSearchComponents withTraversalModules(List<? extends TraversalModule> modules) {
+        TraversalProviders providers = traversalProviders(modules);
+        SurfaceTransitionResolver transitionResolver =
+                new SurfaceTransitionResolver(providers.transitionProviders());
         return new RouteSearchComponents(
                 new DefaultBlockRouteGraphFactory(),
                 new DefaultSurfaceRouteGraphFactory(
-                        SurfaceTraversalFeatures.connectionProviders(traversalFeatures),
+                        providers.connectionProviders(),
                         transitionResolver),
-                SurfaceTraversalFeatures.startResolver(traversalFeatures),
+                new SurfaceRouteStartResolver(providers.routeStartProviders()),
                 transitionResolver,
-                SurfaceTraversalFeatures.routeStepResolver(traversalFeatures),
+                new SurfaceRouteStepResolver(providers.routeStepProviders()),
                 new AStarPathfinder<>(),
                 new AStarPathfinder<>(),
                 PathSmoothingSelector.farthestReachable(),
@@ -106,5 +120,62 @@ public record RouteSearchComponents(
                 surfacePathfinder,
                 blockSmoothingSelector,
                 selector);
+    }
+
+    private static TraversalProviders traversalProviders(List<? extends TraversalModule> modules) {
+        List<TraversalModule> safeModules = List.copyOf(Objects.requireNonNull(modules, "modules"));
+        List<SurfaceConnectionProvider> connectionProviders = new ArrayList<>();
+        List<SurfaceRouteStartProvider> routeStartProviders = new ArrayList<>();
+        List<SurfaceTransitionProvider> transitionProviders = new ArrayList<>();
+        List<SurfaceRouteStepProvider> routeStepProviders = new ArrayList<>();
+        for (TraversalModule module : safeModules) {
+            if (!module.descriptor().enabled()) {
+                continue;
+            }
+            addConnectionProviders(module, connectionProviders);
+            addRouteProviders(module, routeStartProviders, transitionProviders, routeStepProviders);
+        }
+        return new TraversalProviders(
+                connectionProviders,
+                routeStartProviders,
+                transitionProviders,
+                routeStepProviders);
+    }
+
+    private static void addConnectionProviders(
+            TraversalModule module,
+            List<SurfaceConnectionProvider> providers) {
+        for (TraversalConnectionContributor contributor : module.connectionContributors()) {
+            providers.addAll(contributor.surfaceConnectionProviders());
+        }
+    }
+
+    private static void addRouteProviders(
+            TraversalModule module,
+            List<SurfaceRouteStartProvider> routeStartProviders,
+            List<SurfaceTransitionProvider> transitionProviders,
+            List<SurfaceRouteStepProvider> routeStepProviders) {
+        for (TraversalRouteContributor contributor : module.routeContributors()) {
+            routeStartProviders.addAll(contributor.routeStartProviders());
+            transitionProviders.addAll(contributor.transitionProviders());
+            routeStepProviders.addAll(contributor.routeStepProviders());
+        }
+    }
+
+    private record TraversalProviders(
+            List<SurfaceConnectionProvider> connectionProviders,
+            List<SurfaceRouteStartProvider> routeStartProviders,
+            List<SurfaceTransitionProvider> transitionProviders,
+            List<SurfaceRouteStepProvider> routeStepProviders) {
+        private TraversalProviders {
+            connectionProviders =
+                    List.copyOf(Objects.requireNonNull(connectionProviders, "connectionProviders"));
+            routeStartProviders =
+                    List.copyOf(Objects.requireNonNull(routeStartProviders, "routeStartProviders"));
+            transitionProviders =
+                    List.copyOf(Objects.requireNonNull(transitionProviders, "transitionProviders"));
+            routeStepProviders =
+                    List.copyOf(Objects.requireNonNull(routeStepProviders, "routeStepProviders"));
+        }
     }
 }

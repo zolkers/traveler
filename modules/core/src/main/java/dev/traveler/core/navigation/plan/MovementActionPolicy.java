@@ -3,38 +3,38 @@ package dev.traveler.core.navigation.plan;
 import dev.traveler.core.navigation.locomotion.AgentMotionState;
 import dev.traveler.core.navigation.locomotion.JumpTraversalRules;
 import dev.traveler.core.navigation.locomotion.LocomotionPlan;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.world.behavior.decision.MovementAction;
 import java.util.Objects;
 
 public final class MovementActionPolicy {
     public LocomotionPlan plan(
-            NavigationPoint position,
-            NavigationPoint target,
+            WorldPoint position,
+            WorldPoint target,
             AgentMotionState motionState) {
         return decide(position, target, motionState, MovementAction.WALK).locomotionPlan();
     }
 
     public LocomotionPlan plan(
-            NavigationPoint position,
-            NavigationPoint segmentStart,
-            NavigationPoint target,
+            WorldPoint position,
+            WorldPoint segmentStart,
+            WorldPoint target,
             AgentMotionState motionState,
             MovementAction segmentAction) {
         return decide(position, segmentStart, target, motionState, segmentAction).locomotionPlan();
     }
 
     public LocomotionPlan plan(
-            NavigationPoint position,
-            NavigationPoint target,
+            WorldPoint position,
+            WorldPoint target,
             AgentMotionState motionState,
             MovementAction segmentAction) {
         return decide(position, target, motionState, segmentAction).locomotionPlan();
     }
 
     public MovementActionDecision decide(
-            NavigationPoint position,
-            NavigationPoint target,
+            WorldPoint position,
+            WorldPoint target,
             AgentMotionState motionState,
             MovementAction segmentAction) {
         Objects.requireNonNull(position, "position");
@@ -48,14 +48,14 @@ public final class MovementActionPolicy {
     }
 
     public MovementActionDecision decide(
-            NavigationPoint position,
-            NavigationPoint segmentStart,
-            NavigationPoint target,
+            WorldPoint position,
+            WorldPoint segmentStart,
+            WorldPoint target,
             AgentMotionState motionState,
             MovementAction segmentAction) {
-        NavigationPoint currentPosition = Objects.requireNonNull(position, "position");
-        NavigationPoint start = Objects.requireNonNull(segmentStart, "segmentStart");
-        NavigationPoint actionTarget = Objects.requireNonNull(target, "target");
+        WorldPoint currentPosition = Objects.requireNonNull(position, "position");
+        WorldPoint start = Objects.requireNonNull(segmentStart, "segmentStart");
+        WorldPoint actionTarget = Objects.requireNonNull(target, "target");
         AgentMotionState motion = Objects.requireNonNull(motionState, "motionState");
         MovementAction action = Objects.requireNonNull(segmentAction, "segmentAction");
         if (motion.blockedOnGround()) {
@@ -82,9 +82,9 @@ public final class MovementActionPolicy {
 
     private static boolean isJumpFollowThrough(
             MovementAction action,
-            NavigationPoint position,
-            NavigationPoint segmentStart,
-            NavigationPoint target,
+            WorldPoint position,
+            WorldPoint segmentStart,
+            WorldPoint target,
             AgentMotionState motionState) {
         if (action != MovementAction.JUMP && action != MovementAction.STEP_UP) {
             return false;

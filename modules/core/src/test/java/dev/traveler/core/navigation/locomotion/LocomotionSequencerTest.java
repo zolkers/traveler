@@ -3,7 +3,7 @@ package dev.traveler.core.navigation.locomotion;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import dev.traveler.core.navigation.control.MovementIntent;
-import dev.traveler.core.navigation.spatial.HorizontalVector;
+import dev.traveler.core.common.geometry.HorizontalVector;
 import org.junit.jupiter.api.Test;
 
 class LocomotionSequencerTest {

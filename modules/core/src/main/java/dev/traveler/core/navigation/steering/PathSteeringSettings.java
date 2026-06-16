@@ -8,7 +8,8 @@ public record PathSteeringSettings(
         double corridorRadius,
         double lateralCorrectionGain,
         double maxCorrectionDistance,
-        double clearanceWarningLateralError) {
+        double clearanceWarningLateralError,
+        double lateralCorrectionDeadband) {
     public PathSteeringSettings(
             double pathOffset,
             double predictionSeconds,
@@ -18,6 +19,23 @@ public record PathSteeringSettings(
         this(pathOffset, predictionSeconds, corridorRadius, lateralCorrectionGain, maxCorrectionDistance, 0.65);
     }
 
+    public PathSteeringSettings(
+            double pathOffset,
+            double predictionSeconds,
+            double corridorRadius,
+            double lateralCorrectionGain,
+            double maxCorrectionDistance,
+            double clearanceWarningLateralError) {
+        this(
+                pathOffset,
+                predictionSeconds,
+                corridorRadius,
+                lateralCorrectionGain,
+                maxCorrectionDistance,
+                clearanceWarningLateralError,
+                0.08);
+    }
+
     public PathSteeringSettings {
         requireNonNegative(pathOffset, "pathOffset");
         requireNonNegative(predictionSeconds, "predictionSeconds");
@@ -25,6 +43,7 @@ public record PathSteeringSettings(
         requireNonNegative(lateralCorrectionGain, "lateralCorrectionGain");
         requireNonNegative(maxCorrectionDistance, "maxCorrectionDistance");
         requireNonNegative(clearanceWarningLateralError, "clearanceWarningLateralError");
+        requireNonNegative(lateralCorrectionDeadband, "lateralCorrectionDeadband");
     }
 
     public static PathSteeringSettings standard() {
@@ -39,7 +58,8 @@ public record PathSteeringSettings(
                 settings.get(TravelerSettings.STEERING_CORRIDOR_RADIUS),
                 settings.get(TravelerSettings.STEERING_LATERAL_CORRECTION_GAIN),
                 settings.get(TravelerSettings.STEERING_MAX_CORRECTION_DISTANCE),
-                settings.get(TravelerSettings.STEERING_CLEARANCE_WARNING_LATERAL_ERROR));
+                settings.get(TravelerSettings.STEERING_CLEARANCE_WARNING_LATERAL_ERROR),
+                settings.get(TravelerSettings.STEERING_LATERAL_CORRECTION_DEADBAND));
     }
 
     private static void requireNonNegative(double value, String name) {

@@ -1,12 +1,12 @@
 package dev.traveler.core.navigation.api;
 
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import java.util.Objects;
 
 public record TraversalGeometry(
-        NavigationPoint entryAnchor,
-        NavigationPoint targetAnchor,
-        NavigationPoint exitAnchor,
+        WorldPoint entryAnchor,
+        WorldPoint targetAnchor,
+        WorldPoint exitAnchor,
         double lateralTolerance,
         double yawTolerance) {
     public TraversalGeometry {

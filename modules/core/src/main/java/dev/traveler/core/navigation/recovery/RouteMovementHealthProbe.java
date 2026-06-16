@@ -4,7 +4,7 @@ import dev.traveler.core.navigation.NavigationControlFrame;
 import dev.traveler.core.navigation.NavigationFrameInput;
 import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.locomotion.LocomotionExecutionState;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.world.behavior.decision.MovementAction;
 import java.util.Objects;
 
@@ -18,9 +18,9 @@ public final class RouteMovementHealthProbe implements MovementHealthProbe {
         NavigationFrameInput frameInput = Objects.requireNonNull(input, "input");
         NavigationControlFrame controlFrame = Objects.requireNonNull(frame, "frame");
         int nextNodeIndex = nextNodeIndex(navigationPath, controlFrame);
-        NavigationPoint start = navigationPath.nodeAt(nextNodeIndex - 1);
-        NavigationPoint end = navigationPath.nodeAt(nextNodeIndex);
-        NavigationPoint actionTarget = navigationPath.actionTargetBeforeNode(nextNodeIndex);
+        WorldPoint start = navigationPath.nodeAt(nextNodeIndex - 1);
+        WorldPoint end = navigationPath.nodeAt(nextNodeIndex);
+        WorldPoint actionTarget = navigationPath.actionTargetBeforeNode(nextNodeIndex);
         MovementAction action = navigationPath.actionBeforeNode(nextNodeIndex);
         LocomotionExecutionState locomotionState = controlFrame.plan().locomotionState();
         return new MovementHealthSnapshot(
@@ -50,9 +50,9 @@ public final class RouteMovementHealthProbe implements MovementHealthProbe {
 
     private static double routeProgress(
             MovementAction action,
-            NavigationPoint start,
-            NavigationPoint end,
-            NavigationPoint position) {
+            WorldPoint start,
+            WorldPoint end,
+            WorldPoint position) {
         if (action == MovementAction.CLIMB || action == MovementAction.DROP) {
             double verticalDelta = end.y() - start.y();
             if (Math.abs(verticalDelta) > 1.0E-6) {
@@ -64,9 +64,9 @@ public final class RouteMovementHealthProbe implements MovementHealthProbe {
 
     private static double lateralDistance(
             MovementAction action,
-            NavigationPoint start,
-            NavigationPoint end,
-            NavigationPoint position) {
+            WorldPoint start,
+            WorldPoint end,
+            WorldPoint position) {
         if (action == MovementAction.CLIMB) {
             return position.horizontalDistanceTo(start);
         }
@@ -74,9 +74,9 @@ public final class RouteMovementHealthProbe implements MovementHealthProbe {
     }
 
     private static double horizontalProjection(
-            NavigationPoint start,
-            NavigationPoint end,
-            NavigationPoint position) {
+            WorldPoint start,
+            WorldPoint end,
+            WorldPoint position) {
         double deltaX = end.x() - start.x();
         double deltaZ = end.z() - start.z();
         double length = Math.hypot(deltaX, deltaZ);
@@ -89,9 +89,9 @@ public final class RouteMovementHealthProbe implements MovementHealthProbe {
     }
 
     private static double horizontalDistanceToSegment(
-            NavigationPoint start,
-            NavigationPoint end,
-            NavigationPoint position) {
+            WorldPoint start,
+            WorldPoint end,
+            WorldPoint position) {
         double deltaX = end.x() - start.x();
         double deltaZ = end.z() - start.z();
         double lengthSquared = deltaX * deltaX + deltaZ * deltaZ;

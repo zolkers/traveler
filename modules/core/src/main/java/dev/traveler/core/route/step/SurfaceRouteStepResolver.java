@@ -8,9 +8,6 @@ import java.util.Optional;
 public record SurfaceRouteStepResolver(List<SurfaceRouteStepProvider> providers) {
     public SurfaceRouteStepResolver {
         providers = List.copyOf(Objects.requireNonNull(providers, "providers"));
-        if (providers.isEmpty()) {
-            throw new IllegalArgumentException("providers must not be empty");
-        }
     }
 
     public List<RouteStep> routeSteps(SurfaceRouteStepContext context) {

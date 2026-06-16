@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.graph.MutableGraphPath;
 import dev.traveler.core.navigation.follow.NavigationPath;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.path.PathfinderResult;
 import dev.traveler.core.path.PathfinderStatus;
 import dev.traveler.core.route.RoutePath;
@@ -78,7 +78,7 @@ class TravelerPathSearchResultTest {
     void navigationPathKeepsLandingNodeSeparateFromClimbActionTarget() {
         SurfaceNode start = node(0);
         SurfaceNode landing = node(1);
-        NavigationPoint climbFace = new NavigationPoint(0.7, 64.0, 0.5);
+        WorldPoint climbFace = new WorldPoint(0.7, 64.0, 0.5);
         RoutePath route = RoutePath.of(List.of(new RouteStep(start, landing, MovementAction.CLIMB, 1.0, climbFace)));
         TravelerPathSearchResult result = new TravelerPathSearchResult(
                 new RouteSearchResult(
@@ -90,7 +90,7 @@ class TravelerPathSearchResultTest {
 
         NavigationPath path = result.navigationPath().orElseThrow();
 
-        assertEquals(new NavigationPoint(1.25, 64.0, 0.25), path.nodeAt(1));
+        assertEquals(new WorldPoint(1.25, 64.0, 0.25), path.nodeAt(1));
         assertEquals(climbFace, path.actionTargetBeforeNode(1));
     }
 
@@ -98,7 +98,7 @@ class TravelerPathSearchResultTest {
     void navigationPathStartsAtExactRequestedAnchorWhenProvided() {
         SurfaceNode start = node(1);
         SurfaceNode goal = node(2);
-        NavigationPoint exactAnchor = new NavigationPoint(1.3, 64.0, 0.5);
+        WorldPoint exactAnchor = new WorldPoint(1.3, 64.0, 0.5);
         RoutePath route = RoutePath.of(List.of(new RouteStep(start, goal, MovementAction.WALK, 1.0)));
         TravelerPathSearchResult result = new TravelerPathSearchResult(
                 new RouteSearchResult(
@@ -113,7 +113,7 @@ class TravelerPathSearchResultTest {
         NavigationPath path = result.navigationPath().orElseThrow();
 
         assertEquals(exactAnchor, path.nodeAt(0));
-        assertEquals(new NavigationPoint(2.25, 64.0, 0.25), path.nodeAt(1));
+        assertEquals(new WorldPoint(2.25, 64.0, 0.25), path.nodeAt(1));
         assertEquals(MovementAction.WALK, path.actionBeforeNode(1));
     }
 
@@ -121,7 +121,7 @@ class TravelerPathSearchResultTest {
     void debugSnapshotKeepsRouteExecutionPointsForRendering() {
         SurfaceNode start = node(0);
         SurfaceNode landing = node(1);
-        NavigationPoint climbFace = new NavigationPoint(0.7, 64.0, 0.5);
+        WorldPoint climbFace = new WorldPoint(0.7, 64.0, 0.5);
         RoutePath route = RoutePath.of(List.of(new RouteStep(start, landing, MovementAction.CLIMB, 1.0, climbFace)));
         TravelerPathSearchResult result = new TravelerPathSearchResult(
                 new RouteSearchResult(
@@ -134,7 +134,7 @@ class TravelerPathSearchResultTest {
 
         result.updateDebug(debugState);
 
-        assertEquals(List.of(new NavigationPoint(0.25, 64.0, 0.25), climbFace),
+        assertEquals(List.of(new WorldPoint(0.25, 64.0, 0.25), climbFace),
                 debugState.latestSnapshot().orElseThrow().routePoints());
     }
 

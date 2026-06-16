@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.traveler.core.layer.SurfaceBlock;
 import dev.traveler.core.layer.SurfaceWorldLayer;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.geometry.BlockShape;
 import dev.traveler.core.world.movement.EntityDimensions;
@@ -20,7 +20,7 @@ class SurfaceBodyClearanceTest {
         SurfaceWorldLayer world = new TestSurfaceWorldLayer(Map.of(
                 new BlockPosition(1, 64, 0), SurfaceBlock.solid(BlockShape.fullCube())));
 
-        boolean clear = SurfaceBodyClearance.hasClearance(world, new NavigationPoint(0.7, 64.0, 0.5), PLAYER);
+        boolean clear = SurfaceBodyClearance.hasClearance(world, new WorldPoint(0.7, 64.0, 0.5), PLAYER);
 
         assertTrue(clear);
     }
@@ -30,7 +30,7 @@ class SurfaceBodyClearanceTest {
         SurfaceWorldLayer world = new TestSurfaceWorldLayer(Map.of(
                 new BlockPosition(1, 64, 0), SurfaceBlock.solid(BlockShape.fullCube())));
 
-        boolean clear = SurfaceBodyClearance.hasClearance(world, new NavigationPoint(0.8, 64.0, 0.5), PLAYER);
+        boolean clear = SurfaceBodyClearance.hasClearance(world, new WorldPoint(0.8, 64.0, 0.5), PLAYER);
 
         assertFalse(clear);
     }

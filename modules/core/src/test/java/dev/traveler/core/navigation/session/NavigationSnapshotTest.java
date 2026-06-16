@@ -9,8 +9,8 @@ import dev.traveler.core.navigation.NavigationGoalPlan;
 import dev.traveler.core.navigation.TravelerNavigationState;
 import dev.traveler.core.navigation.api.NavigationSnapshot;
 import dev.traveler.core.navigation.follow.NavigationPath;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
-import dev.traveler.core.navigation.api.TraversalKind;
+import dev.traveler.core.common.geometry.WorldPoint;
+import dev.traveler.core.route.api.RouteTraversalHint;
 import dev.traveler.core.route.api.RoutePlan;
 import dev.traveler.core.route.api.RouteSegment;
 import dev.traveler.core.route.RouteGoal;
@@ -46,8 +46,8 @@ class NavigationSnapshotTest {
     void snapshotReflectsStateTransitionsAndPreservesCompatibilityViews() {
         TravelerNavigationState state = new TravelerNavigationState();
         NavigationPath activePath = navigationPath(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(4.0, 64.0, 0.0));
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(4.0, 64.0, 0.0));
         NavigationGoalPlan activePlan = goalPlan(100, 0, 4, 0);
 
         state.start(activePath, "active", activePlan);
@@ -59,16 +59,16 @@ class NavigationSnapshotTest {
         assertFalse(started.pending().isPresent());
         assertEquals(
                 List.of(
-                        new NavigationPoint(0.0, 64.0, 0.0),
-                        new NavigationPoint(4.0, 64.0, 0.0)),
+                        new WorldPoint(0.0, 64.0, 0.0),
+                        new WorldPoint(4.0, 64.0, 0.0)),
                 started.active().orElseThrow().nodes());
         assertEquals("active", started.active().orElseThrow().message());
         assertEquals(RouteGoal.xz(100, 0), started.active().orElseThrow().goalPlan().orElseThrow().requestedGoal());
         assertEquals(RouteGoal.xz(4, 0), started.active().orElseThrow().goalPlan().orElseThrow().activeGoal());
 
         NavigationPath lookaheadPath = navigationPath(
-                new NavigationPoint(4.0, 64.0, 0.0),
-                new NavigationPoint(8.0, 64.0, 0.0));
+                new WorldPoint(4.0, 64.0, 0.0),
+                new WorldPoint(8.0, 64.0, 0.0));
         NavigationGoalPlan lookaheadPlan = goalPlan(100, 0, 8, 0);
         state.prepareLookahead(lookaheadPath, "lookahead", lookaheadPlan);
 
@@ -79,7 +79,7 @@ class NavigationSnapshotTest {
         assertTrue(state.preparedLookaheadSession().isPresent());
         assertEquals("lookahead", prepared.prepared().orElseThrow().message());
 
-        NavigationPoint replanStart = new NavigationPoint(2.0, 64.0, 1.0);
+        WorldPoint replanStart = new WorldPoint(2.0, 64.0, 1.0);
         state.requestSegmentRepair(activePlan, "repair", replanStart);
 
         NavigationSnapshot requested = state.snapshot();
@@ -124,10 +124,10 @@ class NavigationSnapshotTest {
     void travelerNavigationStateRejectsNullMessagesAcrossTransitions() {
         TravelerNavigationState state = new TravelerNavigationState();
         NavigationPath path = navigationPath(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(4.0, 64.0, 0.0));
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(4.0, 64.0, 0.0));
         NavigationGoalPlan plan = goalPlan(100, 0, 4, 0);
-        NavigationPoint startOverride = new NavigationPoint(2.0, 64.0, 1.0);
+        WorldPoint startOverride = new WorldPoint(2.0, 64.0, 1.0);
 
         assertThrows(NullPointerException.class, () -> state.start(path, null));
         assertThrows(NullPointerException.class, () -> state.start(path, null, plan));
@@ -149,10 +149,10 @@ class NavigationSnapshotTest {
     void requestSegmentRepairSnapshotUsesReplaceActiveSessionBranch() {
         TravelerNavigationState state = new TravelerNavigationState();
         NavigationPath activePath = navigationPath(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(4.0, 64.0, 0.0));
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(4.0, 64.0, 0.0));
         NavigationGoalPlan activePlan = goalPlan(100, 0, 4, 0);
-        NavigationPoint repairStart = new NavigationPoint(2.0, 64.0, 1.0);
+        WorldPoint repairStart = new WorldPoint(2.0, 64.0, 1.0);
 
         state.start(activePath, "active", activePlan);
         state.requestSegmentRepair(activePlan, "repair", repairStart);
@@ -177,9 +177,9 @@ class NavigationSnapshotTest {
     @Test
     void routePlanRequiresSegmentIndexesToMatchListOrder() {
         RouteSegment first =
-                new RouteSegment(0, new BlockPosition(0, 64, 0), new BlockPosition(1, 64, 0), TraversalKind.WALK);
+                new RouteSegment(0, new BlockPosition(0, 64, 0), new BlockPosition(1, 64, 0), RouteTraversalHint.WALK);
         RouteSegment second =
-                new RouteSegment(1, new BlockPosition(1, 64, 0), new BlockPosition(2, 64, 0), TraversalKind.WALK);
+                new RouteSegment(1, new BlockPosition(1, 64, 0), new BlockPosition(2, 64, 0), RouteTraversalHint.WALK);
 
         RoutePlan plan = new RoutePlan(List.of(first, second));
 
@@ -192,7 +192,7 @@ class NavigationSnapshotTest {
                                 2,
                                 new BlockPosition(1, 64, 0),
                                 new BlockPosition(2, 64, 0),
-                                TraversalKind.WALK))));
+                                RouteTraversalHint.WALK))));
     }
 
     private static List<Class<?>> publicSnapshotTypes() {
@@ -205,7 +205,7 @@ class NavigationSnapshotTest {
         return List.copyOf(apiTypes);
     }
 
-    private static NavigationPath navigationPath(NavigationPoint start, NavigationPoint end) {
+    private static NavigationPath navigationPath(WorldPoint start, WorldPoint end) {
         return NavigationPath.of(List.of(start, end));
     }
 

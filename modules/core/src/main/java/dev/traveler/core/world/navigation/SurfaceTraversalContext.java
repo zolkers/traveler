@@ -20,6 +20,8 @@ public interface SurfaceTraversalContext {
 
     boolean canReachClimb(SurfaceNode from, SurfaceNode to);
 
+    boolean canReachSwim(SurfaceNode from, SurfaceNode to);
+
     boolean hasClimbableAtGlobalCell(int globalX, int blockY, int globalZ);
 
     List<SurfaceNode> climbNodesAt(int blockX, int blockY, int blockZ);

@@ -1,16 +1,17 @@
 package dev.traveler.core.navigation.steering;
 
-import dev.traveler.core.navigation.spatial.HorizontalVector;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.HorizontalVector;
+import dev.traveler.core.common.geometry.WorldPoint;
 import java.util.Objects;
 
 public record SteeringPlan(
-        NavigationPoint steeringTarget,
-        NavigationPoint pathTarget,
-        NavigationPoint nearestPoint,
+        WorldPoint steeringTarget,
+        WorldPoint pathTarget,
+        WorldPoint nearestPoint,
         HorizontalVector tangent,
         HorizontalVector lateralCorrection,
         double lateralError,
+        double signedLateralError,
         double distanceOnPath,
         boolean outsideCorridor,
         boolean clearanceWarning) {
@@ -21,23 +22,24 @@ public record SteeringPlan(
         Objects.requireNonNull(tangent, "tangent");
         Objects.requireNonNull(lateralCorrection, "lateralCorrection");
         requireNonNegative(lateralError, "lateralError");
+        requireFinite(signedLateralError, "signedLateralError");
         requireNonNegative(distanceOnPath, "distanceOnPath");
     }
 
-    public static SteeringPlan seek(NavigationPoint target) {
+    public static SteeringPlan seek(WorldPoint target) {
         return seek(target, 0.0);
     }
 
-    public static SteeringPlan seek(NavigationPoint target, double lateralError) {
-        NavigationPoint point = Objects.requireNonNull(target, "target");
+    public static SteeringPlan seek(WorldPoint target, double lateralError) {
+        WorldPoint point = Objects.requireNonNull(target, "target");
         HorizontalVector zero = new HorizontalVector(0.0, 0.0);
-        return new SteeringPlan(point, point, point, zero, zero, lateralError, 0.0, false, false);
+        return new SteeringPlan(point, point, point, zero, zero, lateralError, 0.0, 0.0, false, false);
     }
 
     public static SteeringPlan corridor(
-            NavigationPoint steeringTarget,
-            NavigationPoint pathTarget,
-            NavigationPoint nearestPoint,
+            WorldPoint steeringTarget,
+            WorldPoint pathTarget,
+            WorldPoint nearestPoint,
             HorizontalVector tangent,
             HorizontalVector lateralCorrection,
             double lateralError,
@@ -50,18 +52,66 @@ public record SteeringPlan(
                 tangent,
                 lateralCorrection,
                 lateralError,
+                0.0,
                 distanceOnPath,
                 outsideCorridor,
                 false);
     }
 
     public static SteeringPlan corridor(
-            NavigationPoint steeringTarget,
-            NavigationPoint pathTarget,
-            NavigationPoint nearestPoint,
+            WorldPoint steeringTarget,
+            WorldPoint pathTarget,
+            WorldPoint nearestPoint,
             HorizontalVector tangent,
             HorizontalVector lateralCorrection,
             double lateralError,
+            double signedLateralError,
+            double distanceOnPath,
+            boolean outsideCorridor) {
+        return corridor(
+                steeringTarget,
+                pathTarget,
+                nearestPoint,
+                tangent,
+                lateralCorrection,
+                lateralError,
+                signedLateralError,
+                distanceOnPath,
+                outsideCorridor,
+                false);
+    }
+
+    public static SteeringPlan corridor(
+            WorldPoint steeringTarget,
+            WorldPoint pathTarget,
+            WorldPoint nearestPoint,
+            HorizontalVector tangent,
+            HorizontalVector lateralCorrection,
+            double lateralError,
+            double distanceOnPath,
+            boolean outsideCorridor,
+            boolean clearanceWarning) {
+        return corridor(
+                steeringTarget,
+                pathTarget,
+                nearestPoint,
+                tangent,
+                lateralCorrection,
+                lateralError,
+                0.0,
+                distanceOnPath,
+                outsideCorridor,
+                clearanceWarning);
+    }
+
+    public static SteeringPlan corridor(
+            WorldPoint steeringTarget,
+            WorldPoint pathTarget,
+            WorldPoint nearestPoint,
+            HorizontalVector tangent,
+            HorizontalVector lateralCorrection,
+            double lateralError,
+            double signedLateralError,
             double distanceOnPath,
             boolean outsideCorridor,
             boolean clearanceWarning) {
@@ -72,13 +122,14 @@ public record SteeringPlan(
                 tangent,
                 lateralCorrection,
                 lateralError,
+                signedLateralError,
                 distanceOnPath,
                 outsideCorridor,
                 clearanceWarning);
     }
 
-    public HorizontalVector desiredVectorFrom(NavigationPoint position) {
-        NavigationPoint current = Objects.requireNonNull(position, "position");
+    public HorizontalVector desiredVectorFrom(WorldPoint position) {
+        WorldPoint current = Objects.requireNonNull(position, "position");
         HorizontalVector targetVector = current.horizontalVectorTo(steeringTarget);
         if (tangent.isZero()) {
             return targetVector;
@@ -93,6 +144,12 @@ public record SteeringPlan(
     private static void requireNonNegative(double value, String name) {
         if (!Double.isFinite(value) || value < 0.0) {
             throw new IllegalArgumentException(name + " must be non-negative.");
+        }
+    }
+
+    private static void requireFinite(double value, String name) {
+        if (!Double.isFinite(value)) {
+            throw new IllegalArgumentException(name + " must be finite.");
         }
     }
 }

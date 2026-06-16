@@ -21,7 +21,11 @@ public final class SurfaceConnectionProviders {
         return new ClimbSurfaceConnectionProvider();
     }
 
+    public static SurfaceConnectionProvider swim() {
+        return new SwimSurfaceConnectionProvider();
+    }
+
     public static List<SurfaceConnectionProvider> standard() {
-        return List.of(adjacent(), drop(), jump(), climb());
+        return List.of(adjacent(), swim(), drop(), jump(), climb());
     }
 }

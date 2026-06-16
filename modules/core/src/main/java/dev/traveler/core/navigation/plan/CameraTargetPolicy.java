@@ -4,7 +4,7 @@ import dev.traveler.core.navigation.camera.CameraAngles;
 import dev.traveler.core.navigation.camera.CameraTargetPlanner;
 import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.follow.PathProgress;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import java.util.Objects;
 
 public final class CameraTargetPolicy {
@@ -20,7 +20,7 @@ public final class CameraTargetPolicy {
 
     public CameraAngles target(
             NavigationPath path,
-            NavigationPoint position,
+            WorldPoint position,
             PathProgress progress,
             CameraAngles currentAngles) {
         return targetPlanner.targetAngles(path, position, progress, currentAngles);

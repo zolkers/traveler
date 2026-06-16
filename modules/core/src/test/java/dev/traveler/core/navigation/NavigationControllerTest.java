@@ -11,8 +11,8 @@ import dev.traveler.core.navigation.control.MovementIntent;
 import dev.traveler.core.navigation.locomotion.AgentMotionState;
 import dev.traveler.core.navigation.plan.NavigationPhase;
 import dev.traveler.core.navigation.plan.PlannedMovementMode;
-import dev.traveler.core.navigation.spatial.HorizontalVector;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.HorizontalVector;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.world.behavior.decision.MovementAction;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -23,10 +23,10 @@ class NavigationControllerTest {
     @Test
     void producesCameraSmoothedCameraRelativeMovementIntent() {
         NavigationPath path = NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(-4.0, 64.0, 6.0)));
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(-4.0, 64.0, 6.0)));
         NavigationFrameInput input = new NavigationFrameInput(
-                new NavigationPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 64.0, 0.0),
                 new CameraAngles(0.0, 0.0),
                 0.016);
 
@@ -41,10 +41,10 @@ class NavigationControllerTest {
     @Test
     void returnsIdleWhenPathIsAlreadyCompleted() {
         NavigationPath path = NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(0.1, 64.0, 0.0)));
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.1, 64.0, 0.0)));
         NavigationFrameInput input = new NavigationFrameInput(
-                new NavigationPoint(0.1, 64.0, 0.0),
+                new WorldPoint(0.1, 64.0, 0.0),
                 new CameraAngles(0.0, 0.0),
                 0.016);
 
@@ -59,10 +59,10 @@ class NavigationControllerTest {
     void customSettingsCanSlowCameraForPreviewableControl() {
         NavigationController slowController = NavigationController.standard(CameraAimSettings.preview());
         NavigationPath path = NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(8.0, 64.0, 0.0)));
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(8.0, 64.0, 0.0)));
         NavigationFrameInput input = new NavigationFrameInput(
-                new NavigationPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 64.0, 0.0),
                 new CameraAngles(0.0, 0.0),
                 0.016);
 
@@ -75,10 +75,10 @@ class NavigationControllerTest {
     @Test
     void keepsForwardAndJumpPressedForOneBlockRise() {
         NavigationPath path = NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(0.0, 65.0, 1.0)), List.of(MovementAction.JUMP));
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 65.0, 1.0)), List.of(MovementAction.JUMP));
         NavigationFrameInput input = new NavigationFrameInput(
-                new NavigationPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 64.0, 0.0),
                 new CameraAngles(0.0, 0.0),
                 0.016);
 
@@ -94,10 +94,10 @@ class NavigationControllerTest {
     @Test
     void keepsForwardPressedForOneBlockDrop() {
         NavigationPath path = NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(0.0, 63.0, 1.0)), List.of(MovementAction.DROP));
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 63.0, 1.0)), List.of(MovementAction.DROP));
         NavigationFrameInput input = new NavigationFrameInput(
-                new NavigationPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 64.0, 0.0),
                 new CameraAngles(0.0, 0.0),
                 0.016);
 
@@ -114,11 +114,11 @@ class NavigationControllerTest {
     void climbDownAlreadyAlignedReleasesJumpAndSneak() {
         NavigationPath path = NavigationPath.of(
                 List.of(
-                        new NavigationPoint(1.3, 70.0, 0.5),
-                        new NavigationPoint(1.3, 64.0, 0.5)),
+                        new WorldPoint(1.3, 70.0, 0.5),
+                        new WorldPoint(1.3, 64.0, 0.5)),
                 List.of(MovementAction.CLIMB));
         NavigationFrameInput input = new NavigationFrameInput(
-                new NavigationPoint(1.3, 70.0, 0.5),
+                new WorldPoint(1.3, 70.0, 0.5),
                 new CameraAngles(0.0, 0.0),
                 0.016);
 
@@ -134,12 +134,12 @@ class NavigationControllerTest {
     @Test
     void aimsCameraSlightlyUpDuringJumpLookahead() {
         NavigationPath path = NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(0.0, 65.0, 0.0),
-                new NavigationPoint(0.0, 65.0, 4.0)),
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 65.0, 0.0),
+                new WorldPoint(0.0, 65.0, 4.0)),
                 List.of(MovementAction.JUMP, MovementAction.WALK));
         NavigationFrameInput input = new NavigationFrameInput(
-                new NavigationPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 64.0, 0.0),
                 new CameraAngles(0.0, 0.0),
                 0.016);
 
@@ -153,10 +153,10 @@ class NavigationControllerTest {
     @Test
     void keepsCameraYawWhenActionHasNoHorizontalLookahead() {
         NavigationPath path = NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(0.0, 65.0, 0.0)), List.of(MovementAction.JUMP));
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 65.0, 0.0)), List.of(MovementAction.JUMP));
         NavigationFrameInput input = new NavigationFrameInput(
-                new NavigationPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 64.0, 0.0),
                 new CameraAngles(90.0, 0.0),
                 0.016);
 
@@ -169,10 +169,10 @@ class NavigationControllerTest {
     @Test
     void keepsJumpPressedAcrossRenderFramesUntilMinecraftTickCanConsumeIt() {
         NavigationPath path = NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(0.0, 65.0, 1.0)), List.of(MovementAction.JUMP));
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 65.0, 1.0)), List.of(MovementAction.JUMP));
         NavigationFrameInput input = new NavigationFrameInput(
-                new NavigationPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 64.0, 0.0),
                 new CameraAngles(0.0, 0.0),
                 0.004,
                 AgentMotionState.groundedStill());
@@ -187,17 +187,17 @@ class NavigationControllerTest {
     @Test
     void keepsLatchedJumpPressedThroughTemporaryRecenterFrame() {
         NavigationPath path = NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(0.0, 65.0, 1.0)), List.of(MovementAction.JUMP));
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 65.0, 1.0)), List.of(MovementAction.JUMP));
         NavigationFrameInput initial = new NavigationFrameInput(
-                new NavigationPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 64.0, 0.0),
                 new CameraAngles(0.0, 0.0),
                 0.004,
                 AgentMotionState.groundedStill());
         NavigationControlFrame first =
                 controller.update(path, initial, NavigationControllerState.start());
         NavigationFrameInput recenter = new NavigationFrameInput(
-                new NavigationPoint(2.0, 64.0, 0.1),
+                new WorldPoint(2.0, 64.0, 0.1),
                 new CameraAngles(0.0, 0.0),
                 0.004,
                 AgentMotionState.groundedStill());
@@ -213,12 +213,12 @@ class NavigationControllerTest {
     @Test
     void anticipatesAfterJumpInsteadOfTurningBackToActionNode() {
         NavigationPath path = NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(0.0, 65.0, 0.0),
-                new NavigationPoint(0.0, 65.0, 4.0)),
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 65.0, 0.0),
+                new WorldPoint(0.0, 65.0, 4.0)),
                 List.of(MovementAction.JUMP, MovementAction.WALK));
         NavigationFrameInput input = new NavigationFrameInput(
-                new NavigationPoint(0.0, 64.2, 0.3),
+                new WorldPoint(0.0, 64.2, 0.3),
                 new CameraAngles(0.0, 0.0),
                 0.016);
 
@@ -228,19 +228,19 @@ class NavigationControllerTest {
         assertTrue(frame.intent().forward());
         assertTrue(frame.intent().jump());
         assertFalse(frame.intent().back());
-        assertEquals(new NavigationPoint(0.0, 65.0, 0.0), frame.movementTarget().point());
+        assertEquals(new WorldPoint(0.0, 65.0, 0.0), frame.movementTarget().point());
     }
 
     @Test
     void keepsLandingTargetWithoutRejumpingUntilJumpSegmentIsActuallyReached() {
         NavigationPath path = NavigationPath.of(
                 List.of(
-                        new NavigationPoint(0.0, 64.0, 0.0),
-                        new NavigationPoint(0.0, 65.0, 1.0),
-                        new NavigationPoint(2.0, 65.0, 1.0)),
+                        new WorldPoint(0.0, 64.0, 0.0),
+                        new WorldPoint(0.0, 65.0, 1.0),
+                        new WorldPoint(2.0, 65.0, 1.0)),
                 List.of(MovementAction.JUMP, MovementAction.WALK));
         NavigationFrameInput input = new NavigationFrameInput(
-                new NavigationPoint(0.7, 65.0, 1.2),
+                new WorldPoint(0.7, 65.0, 1.2),
                 new CameraAngles(0.0, 0.0),
                 0.016);
 
@@ -248,7 +248,7 @@ class NavigationControllerTest {
                 controller.update(path, input, NavigationControllerState.start());
 
         assertEquals(1, frame.state().progress().nextNodeIndex());
-        assertEquals(new NavigationPoint(0.0, 65.0, 1.0), frame.movementTarget().point());
+        assertEquals(new WorldPoint(0.0, 65.0, 1.0), frame.movementTarget().point());
         assertFalse(frame.plan().actionIntent().jumpRequested());
         assertFalse(frame.intent().jump());
     }
@@ -256,19 +256,19 @@ class NavigationControllerTest {
     @Test
     void waitsForStableGroundContactBeforeTriggeringConsecutiveJump() {
         NavigationPath path = NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(0.0, 65.0, 1.0),
-                new NavigationPoint(0.0, 66.0, 2.0)),
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 65.0, 1.0),
+                new WorldPoint(0.0, 66.0, 2.0)),
                 List.of(MovementAction.JUMP, MovementAction.JUMP));
         NavigationControlFrame first = controller.update(
                 path,
                 new NavigationFrameInput(
-                        new NavigationPoint(0.0, 64.0, 0.0),
+                        new WorldPoint(0.0, 64.0, 0.0),
                         new CameraAngles(0.0, 0.0),
                         0.016),
                 NavigationControllerState.start());
         NavigationFrameInput landed = new NavigationFrameInput(
-                new NavigationPoint(0.0, 65.0, 1.0),
+                new WorldPoint(0.0, 65.0, 1.0),
                 new CameraAngles(0.0, 0.0),
                 0.016,
                 AgentMotionState.groundedStill());
@@ -286,10 +286,10 @@ class NavigationControllerTest {
     @Test
     void canStrafeBeforeCameraHasFinishedTurning() {
         NavigationPath path = NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(3.0, 64.0, 0.0)));
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(3.0, 64.0, 0.0)));
         NavigationFrameInput input = new NavigationFrameInput(
-                new NavigationPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 64.0, 0.0),
                 new CameraAngles(0.0, 0.0),
                 0.016);
 
@@ -303,10 +303,10 @@ class NavigationControllerTest {
     @Test
     void waitsForCameraInsteadOfBackpedalingTowardFarTargetBehind() {
         NavigationPath path = NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(0.0, 64.0, -3.0)));
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 64.0, -3.0)));
         NavigationFrameInput input = new NavigationFrameInput(
-                new NavigationPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 64.0, 0.0),
                 new CameraAngles(0.0, 0.0),
                 0.016);
 
@@ -320,10 +320,10 @@ class NavigationControllerTest {
     @Test
     void usesTurnStrafeForWideCameraTurn() {
         NavigationPath path = NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(4.0, 64.0, -4.0)));
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(4.0, 64.0, -4.0)));
         NavigationFrameInput input = new NavigationFrameInput(
-                new NavigationPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 64.0, 0.0),
                 new CameraAngles(0.0, 0.0),
                 0.016);
 
@@ -338,19 +338,19 @@ class NavigationControllerTest {
     @Test
     void doesNotTriggerJumpWhileStillFallingIntoConsecutiveActionNode() {
         NavigationPath path = NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(0.0, 65.0, 1.0),
-                new NavigationPoint(0.0, 66.0, 2.0)),
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 65.0, 1.0),
+                new WorldPoint(0.0, 66.0, 2.0)),
                 List.of(MovementAction.JUMP, MovementAction.JUMP));
         NavigationControlFrame first = controller.update(
                 path,
                 new NavigationFrameInput(
-                        new NavigationPoint(0.0, 64.0, 0.0),
+                        new WorldPoint(0.0, 64.0, 0.0),
                         new CameraAngles(0.0, 0.0),
                         0.016),
                 NavigationControllerState.start());
         NavigationFrameInput falling = new NavigationFrameInput(
-                new NavigationPoint(0.0, 65.0, 1.0),
+                new WorldPoint(0.0, 65.0, 1.0),
                 new CameraAngles(0.0, 0.0),
                 0.016,
                 new AgentMotionState(false, false, new HorizontalVector(0.0, 0.2), -0.3));

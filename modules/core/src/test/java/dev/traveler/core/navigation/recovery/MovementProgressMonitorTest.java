@@ -20,8 +20,9 @@ import dev.traveler.core.navigation.plan.NavigationFramePlan;
 import dev.traveler.core.navigation.plan.NavigationPhase;
 import dev.traveler.core.navigation.plan.PlannedMovementMode;
 import dev.traveler.core.navigation.plan.SpeedIntent;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
-import dev.traveler.core.navigation.spatial.HorizontalVector;
+import dev.traveler.core.navigation.api.RecoveryAction;
+import dev.traveler.core.common.geometry.WorldPoint;
+import dev.traveler.core.common.geometry.HorizontalVector;
 import dev.traveler.core.navigation.testing.NavigationDebugFrames;
 import dev.traveler.core.world.behavior.decision.MovementAction;
 import java.util.List;
@@ -44,12 +45,42 @@ class MovementProgressMonitorTest {
     }
 
     @Test
+    void reportsNoProgressAfterCommandedTicksEvenWhenDeltaTimeDoesNotAdvance() {
+        MovementProgressMonitor monitor = new MovementProgressMonitor(tickHealthSettings());
+        NavigationPath path = path(MovementAction.WALK,
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(10.0, 64.0, 0.0));
+        NavigationControlFrame frame = NavigationDebugFrames.approachFrame(new WorldPoint(10.0, 64.0, 0.0));
+
+        assertTrue(monitor.update(path, input(0.0, 64.0, 0.0, 0.0), frame).isEmpty());
+        assertTrue(monitor.update(path, input(0.0, 64.0, 0.0, 0.0), frame).isEmpty());
+        assertTrue(monitor.update(path, input(0.0, 64.0, 0.0, 0.0), frame).isEmpty());
+
+        MovementFailure failure = monitor.update(path, input(0.0, 64.0, 0.0, 0.0), frame).orElseThrow();
+
+        assertEquals(MovementFailureKind.STUCK_NO_PROGRESS, failure.kind());
+    }
+
+    @Test
+    void exposesTypedRecoveryActionsForMovementFailures() {
+        MovementProgressMonitor monitor =
+                new MovementProgressMonitor(new MovementHealthSettings(0.05, 0.25, 0.2));
+
+        assertTrue(monitor.updateRecoveryAction(input(0.0, 0.10), MOVING).isEmpty());
+        assertTrue(monitor.updateRecoveryAction(input(0.0, 0.10), MOVING).isEmpty());
+
+        RecoveryAction action = monitor.updateRecoveryAction(input(0.0, 0.10), MOVING).orElseThrow();
+
+        assertEquals(RecoveryAction.REPLAN_SEGMENT, action);
+    }
+
+    @Test
     void reportsPathDivergenceSeparatelyFromNoProgress() {
         MovementProgressMonitor monitor = new MovementProgressMonitor(healthSettings());
         NavigationPath path = path(MovementAction.WALK,
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(10.0, 64.0, 0.0));
-        NavigationControlFrame frame = NavigationDebugFrames.approachFrame(new NavigationPoint(10.0, 64.0, 0.0));
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(10.0, 64.0, 0.0));
+        NavigationControlFrame frame = NavigationDebugFrames.approachFrame(new WorldPoint(10.0, 64.0, 0.0));
 
         assertTrue(monitor.update(path, input(0.0, 64.0, 1.1, 0.10), frame).isEmpty());
         MovementFailure failure = monitor.update(path, input(0.0, 64.0, 1.1, 0.10), frame).orElseThrow();
@@ -61,9 +92,9 @@ class MovementProgressMonitorTest {
     void climbProgressUsesVerticalRouteProgress() {
         MovementProgressMonitor monitor = new MovementProgressMonitor(healthSettings());
         NavigationPath path = path(MovementAction.CLIMB,
-                new NavigationPoint(0.5, 64.0, 0.5),
-                new NavigationPoint(0.5, 67.0, 0.5));
-        NavigationControlFrame frame = NavigationDebugFrames.approachFrame(new NavigationPoint(0.5, 67.0, 0.5));
+                new WorldPoint(0.5, 64.0, 0.5),
+                new WorldPoint(0.5, 67.0, 0.5));
+        NavigationControlFrame frame = NavigationDebugFrames.approachFrame(new WorldPoint(0.5, 67.0, 0.5));
 
         assertTrue(monitor.update(path, input(0.5, 64.0, 0.5, 0.10), frame).isEmpty());
         assertTrue(monitor.update(path, input(0.5, 64.1, 0.5, 0.10), frame).isEmpty());
@@ -75,9 +106,9 @@ class MovementProgressMonitorTest {
     void dropProgressAcceptsDescendingYWithoutHorizontalMovement() {
         MovementProgressMonitor monitor = new MovementProgressMonitor(healthSettings());
         NavigationPath path = path(MovementAction.DROP,
-                new NavigationPoint(0.5, 66.0, 0.5),
-                new NavigationPoint(0.5, 64.0, 0.5));
-        NavigationControlFrame frame = NavigationDebugFrames.approachFrame(new NavigationPoint(0.5, 64.0, 0.5));
+                new WorldPoint(0.5, 66.0, 0.5),
+                new WorldPoint(0.5, 64.0, 0.5));
+        NavigationControlFrame frame = NavigationDebugFrames.approachFrame(new WorldPoint(0.5, 64.0, 0.5));
 
         assertTrue(monitor.update(path, input(0.5, 66.0, 0.5, 0.10), frame).isEmpty());
         assertTrue(monitor.update(path, input(0.5, 65.9, 0.5, 0.10), frame).isEmpty());
@@ -89,13 +120,13 @@ class MovementProgressMonitorTest {
     void jumpSetupWaitsForSetupTimeoutBeforeRecovery() {
         MovementProgressMonitor monitor = new MovementProgressMonitor(healthSettings());
         NavigationPath path = path(MovementAction.JUMP,
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(1.0, 65.0, 0.0));
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(1.0, 65.0, 0.0));
         NavigationControlFrame frame = frame(
                 PathProgress.start(),
                 NavigationPhase.ALIGN,
                 ActionIntent.jump(),
-                new NavigationPoint(1.0, 65.0, 0.0),
+                new WorldPoint(1.0, 65.0, 0.0),
                 LocomotionExecutionState.start());
 
         assertTrue(monitor.update(path, input(0.0, 64.0, 0.0, 0.10), frame).isEmpty());
@@ -110,13 +141,13 @@ class MovementProgressMonitorTest {
     void jumpCommitDoesNotTriggerNoProgressRecoveryWhileAirborne() {
         MovementProgressMonitor monitor = new MovementProgressMonitor(healthSettings());
         NavigationPath path = path(MovementAction.JUMP,
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(1.0, 65.0, 0.0));
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(1.0, 65.0, 0.0));
         NavigationControlFrame frame = frame(
                 PathProgress.start(),
                 NavigationPhase.EXECUTE_ACTION,
                 ActionIntent.jump(),
-                new NavigationPoint(1.0, 65.0, 0.0),
+                new WorldPoint(1.0, 65.0, 0.0),
                 LocomotionExecutionState.settling(2, LocomotionAction.JUMP));
         NavigationFrameInput airborne = input(0.3, 64.5, 0.0, 0.20, false, 0.05, 0.18);
 
@@ -129,13 +160,13 @@ class MovementProgressMonitorTest {
     void jumpLandingFollowThroughUsesTargetDistanceProgress() {
         MovementProgressMonitor monitor = new MovementProgressMonitor(healthSettings());
         NavigationPath path = path(MovementAction.JUMP,
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(0.0, 65.0, 1.0));
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 65.0, 1.0));
         NavigationControlFrame frame = frame(
                 PathProgress.start(),
                 NavigationPhase.APPROACH,
                 ActionIntent.none(),
-                new NavigationPoint(0.0, 65.0, 1.0),
+                new WorldPoint(0.0, 65.0, 1.0),
                 LocomotionExecutionState.start());
 
         assertTrue(monitor.update(path, input(0.70, 65.0, 1.20, 0.10), frame).isEmpty());
@@ -147,21 +178,21 @@ class MovementProgressMonitorTest {
     void segmentChangeResetsProgressEvenWhenActionTypeDoesNotChange() {
         MovementProgressMonitor monitor = new MovementProgressMonitor(healthSettings());
         NavigationPath path = NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(1.0, 64.0, 0.0),
-                new NavigationPoint(2.0, 64.0, 0.0)),
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(1.0, 64.0, 0.0),
+                new WorldPoint(2.0, 64.0, 0.0)),
                 List.of(MovementAction.WALK, MovementAction.WALK));
         NavigationControlFrame firstSegment = frame(
                 PathProgress.start(),
                 NavigationPhase.APPROACH,
                 ActionIntent.none(),
-                new NavigationPoint(1.0, 64.0, 0.0),
+                new WorldPoint(1.0, 64.0, 0.0),
                 LocomotionExecutionState.start());
         NavigationControlFrame secondSegment = frame(
                 new PathProgress(2),
                 NavigationPhase.APPROACH,
                 ActionIntent.none(),
-                new NavigationPoint(2.0, 64.0, 0.0),
+                new WorldPoint(2.0, 64.0, 0.0),
                 LocomotionExecutionState.start());
 
         assertTrue(monitor.update(path, input(0.0, 64.0, 0.0, 0.20), firstSegment).isEmpty());
@@ -172,8 +203,8 @@ class MovementProgressMonitorTest {
     void alignPhaseWaitsForActionSetupTimeoutInsteadOfNoProgressRecovery() {
         MovementProgressMonitor monitor = new MovementProgressMonitor(healthSettings());
         NavigationPath path = path(MovementAction.WALK,
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(10.0, 64.0, 0.0));
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(10.0, 64.0, 0.0));
         NavigationControlFrame frame = frame(NavigationPhase.ALIGN);
 
         assertTrue(monitor.update(path, input(0.0, 64.0, 0.0, 0.10), frame).isEmpty());
@@ -189,8 +220,8 @@ class MovementProgressMonitorTest {
     void recoverPhaseDoesNotTriggerNoProgressRecoveryLoop() {
         MovementProgressMonitor monitor = new MovementProgressMonitor(healthSettings());
         NavigationPath path = path(MovementAction.WALK,
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(10.0, 64.0, 0.0));
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(10.0, 64.0, 0.0));
         NavigationControlFrame frame = frame(NavigationPhase.RECOVER);
 
         assertTrue(monitor.update(path, input(0.0, 64.0, 0.0, 0.10), frame).isEmpty());
@@ -229,7 +260,7 @@ class MovementProgressMonitorTest {
             double horizontalSpeed,
             double verticalVelocity) {
         return new NavigationFrameInput(
-                new NavigationPoint(x, y, z),
+                new WorldPoint(x, y, z),
                 new CameraAngles(0.0, 0.0),
                 deltaSeconds,
                 new AgentMotionState(
@@ -239,7 +270,7 @@ class MovementProgressMonitorTest {
                         verticalVelocity));
     }
 
-    private static NavigationPath path(MovementAction action, NavigationPoint first, NavigationPoint second) {
+    private static NavigationPath path(MovementAction action, WorldPoint first, WorldPoint second) {
         return NavigationPath.of(List.of(first, second), List.of(action));
     }
 
@@ -248,7 +279,7 @@ class MovementProgressMonitorTest {
                 PathProgress.start(),
                 phase,
                 phase == NavigationPhase.RECOVER ? ActionIntent.recover() : ActionIntent.none(),
-                new NavigationPoint(10.0, 64.0, 0.0),
+                new WorldPoint(10.0, 64.0, 0.0),
                 LocomotionExecutionState.start());
     }
 
@@ -256,7 +287,7 @@ class MovementProgressMonitorTest {
             PathProgress progress,
             NavigationPhase phase,
             ActionIntent actionIntent,
-            NavigationPoint targetPoint,
+            WorldPoint targetPoint,
             LocomotionExecutionState locomotionState) {
         MovementIntent intent = new MovementIntent(true, false, false, false, false, true);
         MovementTarget target = MovementTarget.follow(targetPoint);
@@ -288,5 +319,20 @@ class MovementProgressMonitorTest {
                 0.15,
                 0.50,
                 0.35);
+    }
+
+    private static MovementHealthSettings tickHealthSettings() {
+        return new MovementHealthSettings(
+                0.15,
+                99.0,
+                0.2,
+                1.2,
+                99.0,
+                99.0,
+                0.35,
+                3,
+                20,
+                40,
+                7);
     }
 }

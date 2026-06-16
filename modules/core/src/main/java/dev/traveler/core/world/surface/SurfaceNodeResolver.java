@@ -57,6 +57,20 @@ public final class SurfaceNodeResolver {
         return highestSurfaces(candidates);
     }
 
+    public List<SurfaceNode> swimStartSurfaces(BlockPosition feetPosition) {
+        BlockPosition safePosition = Objects.requireNonNull(feetPosition, "feetPosition");
+        if (!capabilities.canSwim() || !hasFluid(safePosition)) {
+            return List.of();
+        }
+        List<SurfaceNode> nodes = new ArrayList<>(4);
+        for (int cellX = 0; cellX <= 1; cellX++) {
+            for (int cellZ = 0; cellZ <= 1; cellZ++) {
+                nodes.add(new SurfaceNode(safePosition, cellX, cellZ, safePosition.y() + 1.0));
+            }
+        }
+        return List.copyOf(nodes);
+    }
+
     public List<SurfaceNode> climbLandingSurfaces(BlockPosition climbPosition) {
         BlockPosition safePosition = Objects.requireNonNull(climbPosition, "climbPosition");
         Optional<ClimbableBlockBehavior> climbable = climbableBehaviorAt(safePosition);

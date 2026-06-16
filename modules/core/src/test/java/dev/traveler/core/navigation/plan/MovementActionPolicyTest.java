@@ -4,8 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import dev.traveler.core.navigation.locomotion.AgentMotionState;
 import dev.traveler.core.navigation.locomotion.LocomotionPlan;
-import dev.traveler.core.navigation.spatial.HorizontalVector;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.HorizontalVector;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.world.behavior.decision.MovementAction;
 import org.junit.jupiter.api.Test;
 
@@ -48,7 +48,7 @@ class MovementActionPolicyTest {
         assertEquals(LocomotionPlan.jump(), plan);
     }
 
-    private static NavigationPoint point(double x, double y, double z) {
-        return new NavigationPoint(x, y, z);
+    private static WorldPoint point(double x, double y, double z) {
+        return new WorldPoint(x, y, z);
     }
 }

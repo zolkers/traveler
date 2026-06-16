@@ -9,9 +9,12 @@ public record MovementHealthState(
         Double bestTargetDistance,
         double stagnantSeconds,
         double divergentSeconds,
-        double setupSeconds) {
+        double setupSeconds,
+        int stagnantTicks,
+        int divergentTicks,
+        int setupTicks) {
     public static MovementHealthState empty() {
-        return new MovementHealthState(0, null, null, null, 0.0, 0.0, 0.0);
+        return new MovementHealthState(0, null, null, null, 0.0, 0.0, 0.0, 0, 0, 0);
     }
 
     public boolean tracksSameSegment(MovementHealthSnapshot snapshot) {
@@ -19,6 +22,6 @@ public record MovementHealthState(
     }
 
     public MovementHealthState resetFor(MovementHealthSnapshot snapshot) {
-        return new MovementHealthState(snapshot.nextNodeIndex(), snapshot.action(), null, null, 0.0, 0.0, 0.0);
+        return new MovementHealthState(snapshot.nextNodeIndex(), snapshot.action(), null, null, 0.0, 0.0, 0.0, 0, 0, 0);
     }
 }

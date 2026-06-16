@@ -1,6 +1,6 @@
 package dev.traveler.core.world.behavior.special;
 
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.world.behavior.context.HorizontalFacing;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.geometry.SurfaceCell;
@@ -35,12 +35,12 @@ public record ClimbSurfaceGeometry(
         return new SurfaceNode(position, cellX, cellZ, position.y());
     }
 
-    public NavigationPoint target(BlockPosition climbBlockPosition, double floorY) {
+    public WorldPoint target(BlockPosition climbBlockPosition, double floorY) {
         BlockPosition position = Objects.requireNonNull(climbBlockPosition, "climbBlockPosition");
         if (!Double.isFinite(floorY)) {
             throw new IllegalArgumentException("floorY must be finite.");
         }
-        return new NavigationPoint(
+        return new WorldPoint(
                 position.x() + localTargetX,
                 floorY,
                 position.z() + localTargetZ);

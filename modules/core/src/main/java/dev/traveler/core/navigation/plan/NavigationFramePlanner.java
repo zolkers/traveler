@@ -11,7 +11,7 @@ import dev.traveler.core.navigation.locomotion.LocomotionAction;
 import dev.traveler.core.navigation.locomotion.LocomotionDecision;
 import dev.traveler.core.navigation.locomotion.LocomotionPlan;
 import dev.traveler.core.navigation.locomotion.LocomotionSequencer;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.navigation.steering.PathSteeringController;
 import dev.traveler.core.navigation.steering.PathSteeringSettings;
 import dev.traveler.core.navigation.steering.SteeringPlan;
@@ -91,8 +91,8 @@ public final class NavigationFramePlanner {
             NavigationFrameInput input,
             NavigationControllerState state) {
         PathProgress progress = routeProgressPolicy.progress(path, input.position(), state.progress());
-        NavigationPoint actionTarget = path.actionTargetBeforeNode(progress.nextNodeIndex());
-        NavigationPoint segmentStart = path.nodeAt(progress.nextNodeIndex() - 1);
+        WorldPoint actionTarget = path.actionTargetBeforeNode(progress.nextNodeIndex());
+        WorldPoint segmentStart = path.nodeAt(progress.nextNodeIndex() - 1);
         MovementActionDecision actionDecision = actionPolicy.decide(
                 input.position(),
                 segmentStart,
@@ -174,7 +174,7 @@ public final class NavigationFramePlanner {
 
     private MovementTarget movementTarget(
             LocomotionPlan action,
-            NavigationPoint actionTarget,
+            WorldPoint actionTarget,
             SteeringPlan steering,
             boolean retainActionTarget) {
         if (retainActionTarget) {
@@ -188,7 +188,7 @@ public final class NavigationFramePlanner {
 
     private SpeedIntent speedIntent(
             NavigationPath path,
-            NavigationPoint position,
+            WorldPoint position,
             MovementVectorIntent movementVector) {
         double scale = speedScale(position.horizontalDistanceTo(path.lastNode()));
         boolean sprint = scale >= 0.5 && movementVector.mode().forwardAllowed();
@@ -197,8 +197,8 @@ public final class NavigationFramePlanner {
 
     private static ClimbDirection climbDirection(
             LocomotionAction requestedAction,
-            NavigationPoint position,
-            NavigationPoint actionTarget) {
+            WorldPoint position,
+            WorldPoint actionTarget) {
         if (requestedAction != LocomotionAction.CLIMB) {
             return ClimbDirection.NONE;
         }

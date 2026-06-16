@@ -16,9 +16,6 @@ public record SurfaceTraversalGraphSettings(
         Objects.requireNonNull(clearanceScorer, "clearanceScorer");
         Objects.requireNonNull(bodyClearanceMode, "bodyClearanceMode");
         connectionProviders = List.copyOf(Objects.requireNonNull(connectionProviders, "connectionProviders"));
-        if (connectionProviders.isEmpty()) {
-            throw new IllegalArgumentException("connectionProviders must not be empty");
-        }
         Objects.requireNonNull(transitionResolver, "transitionResolver");
     }
 
@@ -33,7 +30,7 @@ public record SurfaceTraversalGraphSettings(
                 clearanceScorer,
                 bodyClearanceMode,
                 SurfaceConnectionProvider.standard(),
-                SurfaceTraversalFeatures.transitionResolver(SurfaceTraversalFeatures.standard()));
+                new SurfaceTransitionResolver(SurfaceTransitionProvider.standard()));
     }
 
     public static SurfaceTraversalGraphSettings basic(int horizontalMargin, int verticalMargin) {

@@ -115,6 +115,14 @@ public final class TravelerSettings {
             positiveDouble("movement-health.action-setup-timeout-seconds", 2.0);
     public static final Setting<Double> MOVEMENT_HEALTH_JUMP_GRACE_SECONDS =
             nonNegativeDouble("movement-health.jump-grace-seconds", 0.35);
+    public static final Setting<Integer> MOVEMENT_HEALTH_STUCK_AFTER_TICKS =
+            positiveInteger("movement-health.stuck-after-ticks", 30);
+    public static final Setting<Integer> MOVEMENT_HEALTH_PATH_DIVERGENCE_AFTER_TICKS =
+            positiveInteger("movement-health.path-divergence-after-ticks", 15);
+    public static final Setting<Integer> MOVEMENT_HEALTH_ACTION_SETUP_TIMEOUT_TICKS =
+            positiveInteger("movement-health.action-setup-timeout-ticks", 40);
+    public static final Setting<Integer> MOVEMENT_HEALTH_JUMP_GRACE_TICKS =
+            nonNegativeInteger("movement-health.jump-grace-ticks", 7);
 
     public static final Setting<Double> STEERING_PREDICTION_SECONDS =
             nonNegativeDouble("steering.prediction-seconds", 0.25);
@@ -126,6 +134,8 @@ public final class TravelerSettings {
             nonNegativeDouble("steering.max-correction-distance", 0.75);
     public static final Setting<Double> STEERING_CLEARANCE_WARNING_LATERAL_ERROR =
             nonNegativeDouble("steering.clearance-warning-lateral-error", 0.65);
+    public static final Setting<Double> STEERING_LATERAL_CORRECTION_DEADBAND =
+            nonNegativeDouble("steering.lateral-correction-deadband", 0.08);
 
     public static final Setting<Double> MOVEMENT_VECTOR_PRESS_THRESHOLD =
             boundedDouble("movement-vector.press-threshold", 0.32, 0.0, 1.0);
@@ -273,7 +283,8 @@ public final class TravelerSettings {
                 get(STEERING_CORRIDOR_RADIUS),
                 get(STEERING_LATERAL_CORRECTION_GAIN),
                 get(STEERING_MAX_CORRECTION_DISTANCE),
-                get(STEERING_CLEARANCE_WARNING_LATERAL_ERROR));
+                get(STEERING_CLEARANCE_WARNING_LATERAL_ERROR),
+                get(STEERING_LATERAL_CORRECTION_DEADBAND));
     }
 
     public MovementHealthSettings movementHealthSettings() {
@@ -284,7 +295,11 @@ public final class TravelerSettings {
                 get(MOVEMENT_HEALTH_PATH_DIVERGENCE_DISTANCE),
                 get(MOVEMENT_HEALTH_PATH_DIVERGENCE_AFTER_SECONDS),
                 get(MOVEMENT_HEALTH_ACTION_SETUP_TIMEOUT_SECONDS),
-                get(MOVEMENT_HEALTH_JUMP_GRACE_SECONDS));
+                get(MOVEMENT_HEALTH_JUMP_GRACE_SECONDS),
+                get(MOVEMENT_HEALTH_STUCK_AFTER_TICKS),
+                get(MOVEMENT_HEALTH_PATH_DIVERGENCE_AFTER_TICKS),
+                get(MOVEMENT_HEALTH_ACTION_SETUP_TIMEOUT_TICKS),
+                get(MOVEMENT_HEALTH_JUMP_GRACE_TICKS));
     }
 
     public MovementVectorSettings movementVectorSettings() {

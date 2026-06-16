@@ -3,9 +3,9 @@ package dev.traveler.core.navigation.plan;
 import dev.traveler.core.navigation.camera.CameraAngles;
 import dev.traveler.core.navigation.locomotion.LocomotionAction;
 import dev.traveler.core.navigation.locomotion.LocomotionPlan;
-import dev.traveler.core.navigation.spatial.CameraMovementBasis;
-import dev.traveler.core.navigation.spatial.HorizontalVector;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.navigation.control.CameraMovementBasis;
+import dev.traveler.core.common.geometry.HorizontalVector;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.navigation.steering.SteeringPlan;
 import java.util.Objects;
 
@@ -21,11 +21,11 @@ public final class MovementVectorPolicy {
     }
 
     public MovementVectorIntent plan(
-            NavigationPoint position,
+            WorldPoint position,
             SteeringPlan steering,
             CameraAngles cameraAngles,
             LocomotionPlan actionPlan) {
-        NavigationPoint currentPosition = Objects.requireNonNull(position, "position");
+        WorldPoint currentPosition = Objects.requireNonNull(position, "position");
         SteeringPlan steeringPlan = Objects.requireNonNull(steering, "steering");
         CameraAngles camera = Objects.requireNonNull(cameraAngles, "cameraAngles");
         LocomotionPlan action = Objects.requireNonNull(actionPlan, "actionPlan");
@@ -36,7 +36,7 @@ public final class MovementVectorPolicy {
     }
 
     private MovementVectorDecision vectorDecision(
-            NavigationPoint position,
+            WorldPoint position,
             SteeringPlan steering,
         LocomotionPlan action) {
         if (shouldRecenter(steering, action)) {
@@ -97,7 +97,7 @@ public final class MovementVectorPolicy {
 
     private boolean allowsSpecialAction(
             LocomotionPlan action,
-            NavigationPoint position,
+            WorldPoint position,
             SteeringPlan steering) {
         if (isContinuousMovement(action.action())) {
             return true;
@@ -107,7 +107,7 @@ public final class MovementVectorPolicy {
 
     private boolean nearEnoughForSpecialAction(
             LocomotionPlan action,
-            NavigationPoint position,
+            WorldPoint position,
             SteeringPlan steering) {
         if (isContinuousMovement(action.action())) {
             return false;
@@ -130,7 +130,7 @@ public final class MovementVectorPolicy {
 
     private boolean actionCanStayCommitted(
             LocomotionAction action,
-            NavigationPoint position,
+            WorldPoint position,
             SteeringPlan steering) {
         if (action != LocomotionAction.JUMP && action != LocomotionAction.STEP_UP) {
             return false;

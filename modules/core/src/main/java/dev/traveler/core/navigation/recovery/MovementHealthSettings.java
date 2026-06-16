@@ -7,7 +7,11 @@ public record MovementHealthSettings(
         double pathDivergenceDistance,
         double pathDivergenceAfterSeconds,
         double actionSetupTimeoutSeconds,
-        double jumpGraceSeconds) {
+        double jumpGraceSeconds,
+        int stuckAfterTicks,
+        int pathDivergenceAfterTicks,
+        int actionSetupTimeoutTicks,
+        int jumpGraceTicks) {
     public MovementHealthSettings(
             double minimumProgressDistance,
             double stuckAfterSeconds,
@@ -22,6 +26,28 @@ public record MovementHealthSettings(
                 0.35);
     }
 
+    public MovementHealthSettings(
+            double minimumProgressDistance,
+            double stuckAfterSeconds,
+            double recoveryCooldownSeconds,
+            double pathDivergenceDistance,
+            double pathDivergenceAfterSeconds,
+            double actionSetupTimeoutSeconds,
+            double jumpGraceSeconds) {
+        this(
+                minimumProgressDistance,
+                stuckAfterSeconds,
+                recoveryCooldownSeconds,
+                pathDivergenceDistance,
+                pathDivergenceAfterSeconds,
+                actionSetupTimeoutSeconds,
+                jumpGraceSeconds,
+                ticksForSeconds(stuckAfterSeconds),
+                ticksForSeconds(pathDivergenceAfterSeconds),
+                ticksForSeconds(actionSetupTimeoutSeconds),
+                ticksForSeconds(jumpGraceSeconds));
+    }
+
     public MovementHealthSettings {
         requireNonNegative(minimumProgressDistance, "minimumProgressDistance");
         requirePositive(stuckAfterSeconds, "stuckAfterSeconds");
@@ -30,6 +56,10 @@ public record MovementHealthSettings(
         requirePositive(pathDivergenceAfterSeconds, "pathDivergenceAfterSeconds");
         requirePositive(actionSetupTimeoutSeconds, "actionSetupTimeoutSeconds");
         requireNonNegative(jumpGraceSeconds, "jumpGraceSeconds");
+        requirePositive(stuckAfterTicks, "stuckAfterTicks");
+        requirePositive(pathDivergenceAfterTicks, "pathDivergenceAfterTicks");
+        requirePositive(actionSetupTimeoutTicks, "actionSetupTimeoutTicks");
+        requireNonNegative(jumpGraceTicks, "jumpGraceTicks");
     }
 
     public static MovementHealthSettings standard() {
@@ -46,5 +76,22 @@ public record MovementHealthSettings(
         if (!Double.isFinite(value) || value < 0.0) {
             throw new IllegalArgumentException(name + " must be finite and non-negative.");
         }
+    }
+
+    private static void requirePositive(int value, String name) {
+        if (value <= 0) {
+            throw new IllegalArgumentException(name + " must be positive.");
+        }
+    }
+
+    private static void requireNonNegative(int value, String name) {
+        if (value < 0) {
+            throw new IllegalArgumentException(name + " must be non-negative.");
+        }
+    }
+
+    private static int ticksForSeconds(double seconds) {
+        requireNonNegative(seconds, "seconds");
+        return Math.max(1, (int) Math.ceil(seconds * 20.0));
     }
 }

@@ -15,7 +15,7 @@ import dev.traveler.core.layer.SurfaceWorldLayer;
 import dev.traveler.core.layer.WorldLayer;
 import dev.traveler.core.navigation.NavigationSession;
 import dev.traveler.core.navigation.TravelerNavigationState;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.world.behavior.BlockBehavior;
 import dev.traveler.core.world.behavior.context.HorizontalFacing;
 import dev.traveler.core.world.behavior.decision.MovementAction;
@@ -61,7 +61,7 @@ class TravelerCommandModuleTest {
         assertEquals(CommandResult.Status.SUCCESS, result.status());
         assertTrue(result.reply().orElseThrow().contains("navigate queued id="));
         assertEquals(
-                new NavigationPoint(1.5, 2.0, 3.5),
+                new WorldPoint(1.5, 2.0, 3.5),
                 module.navigationState().activeSession().orElseThrow().path().lastNode());
         assertTrue(source.replies().getLast().contains("navigate block"));
     }

@@ -1,7 +1,7 @@
 package dev.traveler.core.world.navigation;
 
 import dev.traveler.core.world.movement.EntityDimensions;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.world.surface.SurfaceNode;
 import java.util.Objects;
 
@@ -16,8 +16,8 @@ record SurfaceBodyFootprint(int minGlobalX, int maxGlobalX, int minGlobalZ, int 
         return aroundCenter(surfaceNode.centerX(), surfaceNode.centerZ(), radius);
     }
 
-    static SurfaceBodyFootprint around(NavigationPoint point, EntityDimensions dimensions) {
-        NavigationPoint navigationPoint = Objects.requireNonNull(point, "point");
+    static SurfaceBodyFootprint around(WorldPoint point, EntityDimensions dimensions) {
+        WorldPoint navigationPoint = Objects.requireNonNull(point, "point");
         EntityDimensions entityDimensions = Objects.requireNonNull(dimensions, "dimensions");
         double radius = entityDimensions.width() * 0.5;
         return aroundCenter(navigationPoint.x(), navigationPoint.z(), radius);

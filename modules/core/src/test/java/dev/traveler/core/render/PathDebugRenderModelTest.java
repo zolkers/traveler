@@ -13,7 +13,8 @@ import dev.traveler.core.navigation.NavigationFrameInput;
 import dev.traveler.core.navigation.camera.CameraAngles;
 import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.testing.NavigationDebugFrames;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.navigation.debug.DebugLayer;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.path.PathfinderResult;
 import dev.traveler.core.path.PathfinderStatus;
 import dev.traveler.core.route.RouteGoal;
@@ -152,8 +153,8 @@ class PathDebugRenderModelTest {
                         new SurfaceNode(new BlockPosition(0, 63, 0), 1, 1, 64.0),
                         new SurfaceNode(new BlockPosition(1, 64, 0), 0, 1, 64.0)),
                 List.of(
-                        new NavigationPoint(0.75, 64.0, 0.75),
-                        new NavigationPoint(1.3, 64.0, 0.5)),
+                        new WorldPoint(0.75, 64.0, 0.75),
+                        new WorldPoint(1.3, 64.0, 0.5)),
                 "path");
 
         DebugRenderFrame frame = model.frameFor(state.snapshot());
@@ -170,7 +171,7 @@ class PathDebugRenderModelTest {
         PathfinderDebugState state = new PathfinderDebugState();
         state.updateNavigation(
                 new NavigationFrameInput(
-                        new NavigationPoint(0.0, 64.0, 0.0),
+                        new WorldPoint(0.0, 64.0, 0.0),
                         new CameraAngles(0.0, 0.0),
                         0.016),
                 navigationFrame());
@@ -189,11 +190,11 @@ class PathDebugRenderModelTest {
         PathfinderDebugState debugState = new PathfinderDebugState();
         TravelerNavigationState navigationState = new TravelerNavigationState();
         navigationState.start(navigationPath(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(10.0, 64.0, 0.0)), "active", goalPlan());
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(10.0, 64.0, 0.0)), "active", goalPlan());
         navigationState.prepareLookahead(navigationPath(
-                new NavigationPoint(10.0, 64.0, 0.0),
-                new NavigationPoint(20.0, 64.0, 0.0)), "lookahead", goalPlan());
+                new WorldPoint(10.0, 64.0, 0.0),
+                new WorldPoint(20.0, 64.0, 0.0)), "lookahead", goalPlan());
         debugState.update(foundPath(
                 new BlockPosition(50, 64, 0),
                 new BlockPosition(51, 64, 0),
@@ -207,16 +208,34 @@ class PathDebugRenderModelTest {
     }
 
     @Test
+    void debugFrameExposesStableLayerRoles() {
+        PathDebugRenderModel model = PathDebugRenderModel.defaultModel();
+        PathfinderDebugState debugState = new PathfinderDebugState();
+        TravelerNavigationState navigationState = new TravelerNavigationState();
+        navigationState.start(navigationPath(
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(10.0, 64.0, 0.0)), "active", goalPlan());
+        navigationState.prepareLookahead(navigationPath(
+                new WorldPoint(10.0, 64.0, 0.0),
+                new WorldPoint(20.0, 64.0, 0.0)), "lookahead", goalPlan());
+
+        var frame = model.debugFrameFor(debugState, navigationState);
+
+        assertTrue(frame.layers().contains(DebugLayer.ACTIVE_SEGMENT));
+        assertTrue(frame.layers().contains(DebugLayer.PREPARED_SEGMENT));
+    }
+
+    @Test
     void mismatchedLookaheadStartRendersJunctionWarningBox() {
         PathDebugRenderModel model = PathDebugRenderModel.defaultModel();
         PathfinderDebugState debugState = new PathfinderDebugState();
         TravelerNavigationState navigationState = new TravelerNavigationState();
         navigationState.start(navigationPath(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(10.0, 64.0, 0.0)), "active", goalPlan());
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(10.0, 64.0, 0.0)), "active", goalPlan());
         navigationState.prepareLookahead(navigationPath(
-                new NavigationPoint(10.5, 64.0, 0.0),
-                new NavigationPoint(20.0, 64.0, 0.0)), "lookahead", goalPlan());
+                new WorldPoint(10.5, 64.0, 0.0),
+                new WorldPoint(20.0, 64.0, 0.0)), "lookahead", goalPlan());
 
         DebugRenderFrame frame = model.frameFor(debugState, navigationState);
 
@@ -246,7 +265,7 @@ class PathDebugRenderModelTest {
         return new PathfinderResult<>(PathfinderStatus.FOUND, path);
     }
 
-    private static NavigationPath navigationPath(NavigationPoint first, NavigationPoint second) {
+    private static NavigationPath navigationPath(WorldPoint first, WorldPoint second) {
         return NavigationPath.of(List.of(first, second));
     }
 
@@ -262,6 +281,6 @@ class PathDebugRenderModelTest {
     }
 
     private static dev.traveler.core.navigation.NavigationControlFrame navigationFrame() {
-        return NavigationDebugFrames.approachFrame(new NavigationPoint(1.0, 65.0, 3.0));
+        return NavigationDebugFrames.approachFrame(new WorldPoint(1.0, 65.0, 3.0));
     }
 }

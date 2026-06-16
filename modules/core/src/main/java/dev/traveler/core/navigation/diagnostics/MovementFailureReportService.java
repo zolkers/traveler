@@ -1,6 +1,6 @@
 package dev.traveler.core.navigation.diagnostics;
 
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.world.block.BlockPosition;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -37,7 +37,7 @@ public final class MovementFailureReportService implements MovementFailureReport
                 scanBlocks(safeContext.input().position())));
     }
 
-    private List<BlockScanSample> scanBlocks(NavigationPoint center) {
+    private List<BlockScanSample> scanBlocks(WorldPoint center) {
         BlockScanSource source = blockScanSourceSupplier.get();
         if (source == null) {
             return List.of();
@@ -65,7 +65,7 @@ public final class MovementFailureReportService implements MovementFailureReport
         }
     }
 
-    private static BlockPosition blockPosition(NavigationPoint point) {
+    private static BlockPosition blockPosition(WorldPoint point) {
         return new BlockPosition(
                 (int) Math.floor(point.x()),
                 (int) Math.floor(point.y()),

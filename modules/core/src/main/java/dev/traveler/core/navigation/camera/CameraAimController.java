@@ -1,6 +1,6 @@
 package dev.traveler.core.navigation.camera;
 
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import java.util.Objects;
 
 public final class CameraAimController {
@@ -29,9 +29,9 @@ public final class CameraAimController {
         return new CameraAngles(yaw, pitch);
     }
 
-    public static CameraAngles targetAngles(NavigationPoint eye, NavigationPoint target) {
-        NavigationPoint origin = Objects.requireNonNull(eye, "eye");
-        NavigationPoint destination = Objects.requireNonNull(target, "target");
+    public static CameraAngles targetAngles(WorldPoint eye, WorldPoint target) {
+        WorldPoint origin = Objects.requireNonNull(eye, "eye");
+        WorldPoint destination = Objects.requireNonNull(target, "target");
         double deltaX = destination.x() - origin.x();
         double deltaY = destination.y() - origin.y();
         double deltaZ = destination.z() - origin.z();

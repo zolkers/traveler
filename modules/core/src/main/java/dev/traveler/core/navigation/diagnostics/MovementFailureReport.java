@@ -2,7 +2,7 @@ package dev.traveler.core.navigation.diagnostics;
 
 import dev.traveler.core.navigation.NavigationControlFrame;
 import dev.traveler.core.navigation.follow.NavigationPath;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.world.behavior.decision.MovementAction;
 import java.time.Instant;
 import java.util.List;
@@ -42,8 +42,8 @@ public record MovementFailureReport(
                 1,
                 path.nodeCount() - 1);
         MovementAction action = path.actionBeforeNode(nextNodeIndex);
-        NavigationPoint from = path.nodeAt(nextNodeIndex - 1);
-        NavigationPoint to = path.nodeAt(nextNodeIndex);
+        WorldPoint from = path.nodeAt(nextNodeIndex - 1);
+        WorldPoint to = path.nodeAt(nextNodeIndex);
         output.append("possibleFailedMove=action=")
                 .append(action)
                 .append(" phase=")

@@ -1,7 +1,7 @@
 package dev.traveler.core.route.step;
 
 import dev.traveler.core.layer.SurfaceWorldLayer;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.world.behavior.decision.MovementDecision;
 import dev.traveler.core.world.movement.MovementCapabilities;
 import dev.traveler.core.world.movement.MovementProfile;
@@ -37,17 +37,17 @@ public record SurfaceRouteStepContext(
         return surfaceDistance(from, to);
     }
 
-    public NavigationPoint pointOf(SurfaceNode node) {
+    public WorldPoint pointOf(SurfaceNode node) {
         SurfaceNode safeNode = Objects.requireNonNull(node, "node");
-        return new NavigationPoint(safeNode.centerX(), safeNode.floorY(), safeNode.centerZ());
+        return new WorldPoint(safeNode.centerX(), safeNode.floorY(), safeNode.centerZ());
     }
 
-    public NavigationPoint stableLandingPointOf(SurfaceNode node) {
+    public WorldPoint stableLandingPointOf(SurfaceNode node) {
         SurfaceNode safeNode = Objects.requireNonNull(node, "node");
         if (!hasUniformLandingFloor(safeNode)) {
             return pointOf(safeNode);
         }
-        return new NavigationPoint(
+        return new WorldPoint(
                 safeNode.blockPosition().x() + 0.5,
                 safeNode.floorY(),
                 safeNode.blockPosition().z() + 0.5);

@@ -2,7 +2,7 @@ package dev.traveler.core.world.navigation;
 
 import dev.traveler.core.layer.SurfaceBlock;
 import dev.traveler.core.layer.SurfaceWorldLayer;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.world.behavior.BlockBehaviors;
 import dev.traveler.core.world.behavior.context.HorizontalFacing;
 import dev.traveler.core.world.behavior.special.ClimbableBlockBehavior;
@@ -45,7 +45,7 @@ public final class SurfaceClimbTraversal {
                 SurfaceClimbTraversal::preservedClimbSurface);
     }
 
-    public static Optional<NavigationPoint> climbTarget(
+    public static Optional<WorldPoint> climbTarget(
             SurfaceWorldLayer worldLayer,
             SurfaceNode from,
             SurfaceNode to,
@@ -54,7 +54,7 @@ public final class SurfaceClimbTraversal {
         return climbTargetWithLookup(layer::surfaceBlock, from, to, capabilities);
     }
 
-    public static Optional<NavigationPoint> climbFaceTarget(
+    public static Optional<WorldPoint> climbFaceTarget(
             SurfaceWorldLayer worldLayer,
             SurfaceNode from,
             SurfaceNode to,
@@ -98,7 +98,7 @@ public final class SurfaceClimbTraversal {
         return List.copyOf(starts);
     }
 
-    public static Optional<NavigationPoint> climbStartTarget(
+    public static Optional<WorldPoint> climbStartTarget(
             SurfaceWorldLayer worldLayer,
             SurfaceNode node,
             MovementCapabilities capabilities) {
@@ -145,7 +145,7 @@ public final class SurfaceClimbTraversal {
         return false;
     }
 
-    private static Optional<NavigationPoint> climbTargetWithLookup(
+    private static Optional<WorldPoint> climbTargetWithLookup(
             BlockLookup blocks,
             SurfaceNode from,
             SurfaceNode to,
@@ -390,7 +390,7 @@ public final class SurfaceClimbTraversal {
         return Optional.ofNullable(geometry);
     }
 
-    private static NavigationPoint climbTargetPoint(ClimbContact contact, double floorY) {
+    private static WorldPoint climbTargetPoint(ClimbContact contact, double floorY) {
         BlockColumn column = contact.column();
         return contact.geometry().target(
                 new BlockPosition(column.x(), (int) Math.floor(floorY + FLOOR_EPSILON), column.z()),

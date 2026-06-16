@@ -1,7 +1,7 @@
 package dev.traveler.core.navigation.follow;
 
-import dev.traveler.core.navigation.spatial.HorizontalVector;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.HorizontalVector;
+import dev.traveler.core.common.geometry.WorldPoint;
 import java.util.Objects;
 
 public final class PathCorridor {
@@ -32,13 +32,13 @@ public final class PathCorridor {
         return length;
     }
 
-    public PathProjection project(NavigationPoint position) {
-        NavigationPoint point = Objects.requireNonNull(position, "position");
+    public PathProjection project(WorldPoint position) {
+        WorldPoint point = Objects.requireNonNull(position, "position");
         BestProjection projection = new BestProjection(point, path.nodeAt(startIndex));
         double distance = 0.0;
         for (int index = startIndex + 1; index < path.nodeCount(); index++) {
-            NavigationPoint from = path.nodeAt(index - 1);
-            NavigationPoint to = path.nodeAt(index);
+            WorldPoint from = path.nodeAt(index - 1);
+            WorldPoint to = path.nodeAt(index);
             double segmentLength = horizontalDistance(from, to);
             projection.consider(point, from, to, distance, segmentLength);
             distance += segmentLength;
@@ -46,7 +46,7 @@ public final class PathCorridor {
         return projection.toProjection();
     }
 
-    public NavigationPoint targetAt(double distanceOnPath) {
+    public WorldPoint targetAt(double distanceOnPath) {
         requireFinite(distanceOnPath, "distanceOnPath");
         if (length <= ZERO_LENGTH) {
             return path.nodeAt(startIndex);
@@ -54,8 +54,8 @@ public final class PathCorridor {
         double targetDistance = Math.clamp(distanceOnPath, 0.0, length);
         double distance = 0.0;
         for (int index = startIndex + 1; index < path.nodeCount(); index++) {
-            NavigationPoint from = path.nodeAt(index - 1);
-            NavigationPoint to = path.nodeAt(index);
+            WorldPoint from = path.nodeAt(index - 1);
+            WorldPoint to = path.nodeAt(index);
             double segmentLength = horizontalDistance(from, to);
             if (segmentLength <= ZERO_LENGTH) {
                 continue;
@@ -77,7 +77,7 @@ public final class PathCorridor {
         return distance;
     }
 
-    private static double horizontalDistance(NavigationPoint first, NavigationPoint second) {
+    private static double horizontalDistance(WorldPoint first, WorldPoint second) {
         double dx = first.x() - second.x();
         double dz = first.z() - second.z();
         if (dx == 0.0) {
@@ -96,9 +96,9 @@ public final class PathCorridor {
     }
 
     private static double projectionRatio(
-            NavigationPoint point,
-            NavigationPoint from,
-            NavigationPoint to,
+            WorldPoint point,
+            WorldPoint from,
+            WorldPoint to,
             double segmentLength) {
         if (segmentLength <= ZERO_LENGTH) {
             return 0.0;
@@ -111,20 +111,21 @@ public final class PathCorridor {
     }
 
     private static final class BestProjection {
-        private NavigationPoint nearestPoint;
+        private WorldPoint nearestPoint;
         private HorizontalVector tangent = new HorizontalVector(0.0, 0.0);
         private double distanceOnPath;
         private double lateralError;
+        private double signedLateralError;
 
-        BestProjection(NavigationPoint point, NavigationPoint fallback) {
+        BestProjection(WorldPoint point, WorldPoint fallback) {
             nearestPoint = fallback;
             lateralError = horizontalDistance(point, fallback);
         }
 
         void consider(
-                NavigationPoint point,
-                NavigationPoint from,
-                NavigationPoint to,
+                WorldPoint point,
+                WorldPoint from,
+                WorldPoint to,
                 double segmentStart,
                 double segmentLength) {
             if (segmentLength <= ZERO_LENGTH) {
@@ -135,25 +136,28 @@ public final class PathCorridor {
             double nearestY = from.y() + (to.y() - from.y()) * ratio;
             double nearestZ = from.z() + (to.z() - from.z()) * ratio;
             double error = Math.hypot(point.x() - nearestX, point.z() - nearestZ);
+            double signedError = signedLateralError(point, from, to, nearestX, nearestZ, segmentLength);
             double distance = segmentStart + segmentLength * ratio;
-            updateIfCloser(from, to, nearestX, nearestY, nearestZ, distance, error);
+            updateIfCloser(from, to, nearestX, nearestY, nearestZ, distance, error, signedError);
         }
 
         private void updateIfCloser(
-                NavigationPoint from,
-                NavigationPoint to,
+                WorldPoint from,
+                WorldPoint to,
                 double nearestX,
                 double nearestY,
                 double nearestZ,
                 double distance,
-                double error) {
+                double error,
+                double signedError) {
             if (!isCloser(error, distance)) {
                 return;
             }
-            nearestPoint = new NavigationPoint(nearestX, nearestY, nearestZ);
+            nearestPoint = new WorldPoint(nearestX, nearestY, nearestZ);
             tangent = from.horizontalVectorTo(to).normalized();
             distanceOnPath = distance;
             lateralError = error;
+            signedLateralError = signedError;
         }
 
         private boolean isCloser(double error, double distance) {
@@ -164,7 +168,21 @@ public final class PathCorridor {
         }
 
         PathProjection toProjection() {
-            return new PathProjection(nearestPoint, tangent, distanceOnPath, lateralError);
+            return new PathProjection(nearestPoint, tangent, distanceOnPath, lateralError, signedLateralError);
+        }
+
+        private static double signedLateralError(
+                WorldPoint point,
+                WorldPoint from,
+                WorldPoint to,
+                double nearestX,
+                double nearestZ,
+                double segmentLength) {
+            double unitX = (to.x() - from.x()) / segmentLength;
+            double unitZ = (to.z() - from.z()) / segmentLength;
+            double offsetX = point.x() - nearestX;
+            double offsetZ = point.z() - nearestZ;
+            return unitX * offsetZ - unitZ * offsetX;
         }
     }
 }

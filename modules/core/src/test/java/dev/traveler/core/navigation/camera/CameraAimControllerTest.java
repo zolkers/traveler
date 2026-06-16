@@ -3,7 +3,7 @@ package dev.traveler.core.navigation.camera;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import org.junit.jupiter.api.Test;
 
 class CameraAimControllerTest {
@@ -78,8 +78,8 @@ class CameraAimControllerTest {
     @Test
     void derivesMinecraftAnglesFromEyeToTarget() {
         CameraAngles target = CameraAimController.targetAngles(
-                new NavigationPoint(0.0, 65.6, 0.0),
-                new NavigationPoint(0.0, 65.6, 8.0));
+                new WorldPoint(0.0, 65.6, 0.0),
+                new WorldPoint(0.0, 65.6, 8.0));
 
         assertEquals(new CameraAngles(0.0, 0.0), target);
     }

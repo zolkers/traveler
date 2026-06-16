@@ -8,7 +8,7 @@ import dev.traveler.core.layer.NavigationBudgetProvider;
 import dev.traveler.core.layer.SnapshotCaptureSession;
 import dev.traveler.core.layer.SurfaceWorldLayer;
 import dev.traveler.core.layer.WorldNavigationBudget;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.route.RouteGoal;
 import dev.traveler.core.world.block.BlockPosition;
 import java.util.Optional;
@@ -105,7 +105,7 @@ class TravelerPathSearchServiceTest {
                 source,
                 RouteGoal.xz(10_000, 0),
                 "navigate:block",
-                Optional.of(new NavigationPoint(segmentEnd.x() + 0.25, segmentEnd.y(), segmentEnd.z() + 0.75)));
+                Optional.of(new WorldPoint(segmentEnd.x() + 0.25, segmentEnd.y(), segmentEnd.z() + 0.75)));
 
         assertTrue(submission.snapshotSearch().isPresent());
         assertEquals(segmentEnd, layer.start);

@@ -33,7 +33,7 @@ When these disagree, tuning one detail becomes cross-cutting surgery.
 
 1. **Spatial values**
    - [BlockPosition](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/world/block/BlockPosition.java)
-   - [NavigationPoint](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/navigation/spatial/NavigationPoint.java)
+   - `WorldPoint`
    - [SurfaceNode](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/world/surface/SurfaceNode.java)
    - [RenderVertex](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/render/RenderVertex.java)
 
@@ -179,6 +179,7 @@ Exposes:
 - `RoutePlanner`
 - `RoutePlan`
 - `RouteSegment`
+- `RouteTraversalHint`
 - `LongDistancePlanner`
 
 May depend on:
@@ -322,6 +323,14 @@ That means:
 
 During migration we may temporarily keep composition helpers in core, but the target remains the same: domain modules expose contracts, and the outer runtime assembles them.
 
+## Pathfinder Kernel Direction
+
+The pathfinder kernel is the current modularization seam for route search. It is not a new class-prefix family: `Traveler` remains the mod name, while internal kernel code should use domain names such as `PathfinderKernel`, `TraversalModule`, and `RouteSearchComponents`.
+
+The target package shape is documented in [pathfinder-kernel-modules.md](pathfinder-kernel-modules.md): public contracts in `api`, provider contracts in `spi`, concrete defaults in `impl`, disabled conservative fallbacks in `noop`, migration details in `internal`, and reusable fixtures in `testing`.
+
+The route-only kernel must stay interchangeable. Standard modules are the default, but a walk-only kernel can still search flat routes, disabled modules do not appear in active descriptors, and missing traversal capability returns typed route diagnostics rather than infrastructure exceptions.
+
 ## Package Strategy: `api` and `internal`
 
 This is the most important structural rule.
@@ -390,6 +399,7 @@ That is enough. We do **not** force request/state/result/decision marker hierarc
 - `RoutePlanner`
 - `RoutePlan`
 - `RouteSegment`
+- `RouteTraversalHint`
 - `LongDistancePlanner`
 
 ### Navigation / Traversal API
@@ -417,7 +427,7 @@ We keep plain immutable values plain.
 Examples:
 
 - `BlockPosition`
-- `NavigationPoint`
+- `WorldPoint`
 - `SurfaceNode`
 - `RenderVertex`
 
@@ -618,6 +628,7 @@ Each policy receives the smallest settings section it needs.
 ```text
 modules/core/src/main/java/dev/traveler/core/common/api
 modules/core/src/main/java/dev/traveler/core/common/internal
+modules/core/src/main/java/dev/traveler/core/common/geometry
 modules/core/src/main/java/dev/traveler/core/common/settings
 
 modules/core/src/main/java/dev/traveler/core/world/behavior/api

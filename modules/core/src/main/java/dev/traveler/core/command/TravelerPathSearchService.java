@@ -7,7 +7,7 @@ import dev.traveler.core.layer.NavigationBudgetProvider;
 import dev.traveler.core.layer.SnapshotCaptureSession;
 import dev.traveler.core.layer.SnapshotCapturableWorldLayer;
 import dev.traveler.core.layer.WorldLayer;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.path.PathfinderStatus;
 import dev.traveler.core.route.RouteGoal;
 import dev.traveler.core.route.RouteSearchDiagnostics;
@@ -65,7 +65,7 @@ final class TravelerPathSearchService {
             TravelerCommandSource source,
             RouteGoal goal,
             String purpose,
-            Optional<NavigationPoint> startOverride) {
+            Optional<WorldPoint> startOverride) {
         RouteGoal safeGoal = Objects.requireNonNull(goal, "goal");
         BlockPosition start = startPosition(source, safeGoal, startOverride);
         WorldLayer worldLayer = worldLayerSupplier.get();
@@ -144,7 +144,7 @@ final class TravelerPathSearchService {
             BlockPosition activeBlockGoal,
             LongDistanceRoutePlan plan,
             String purpose,
-            Optional<NavigationPoint> navigationStartOverride) {
+            Optional<WorldPoint> navigationStartOverride) {
         return new PathJob<>(
                 purpose,
                 () -> searchGoalPath(
@@ -165,7 +165,7 @@ final class TravelerPathSearchService {
             RouteGoal goal,
             BlockPosition activeBlockGoal,
             LongDistanceRoutePlan plan,
-            Optional<NavigationPoint> navigationStartOverride) {
+            Optional<WorldPoint> navigationStartOverride) {
         RouteSearchResult result = routeSearchService.search(worldLayer, start, goal);
         return new TravelerPathSearchResult(
                 result,
@@ -177,8 +177,8 @@ final class TravelerPathSearchService {
     private static BlockPosition startPosition(
             TravelerCommandSource source,
             RouteGoal goal,
-            Optional<NavigationPoint> startOverride) {
-        Optional<NavigationPoint> override = Objects.requireNonNull(startOverride, "startOverride");
+            Optional<WorldPoint> startOverride) {
+        Optional<WorldPoint> override = Objects.requireNonNull(startOverride, "startOverride");
         if (override.isPresent()) {
             return blockPosition(override.orElseThrow());
         }
@@ -191,8 +191,8 @@ final class TravelerPathSearchService {
         return sourcePosition;
     }
 
-    private static BlockPosition blockPosition(NavigationPoint point) {
-        NavigationPoint safePoint = Objects.requireNonNull(point, "point");
+    private static BlockPosition blockPosition(WorldPoint point) {
+        WorldPoint safePoint = Objects.requireNonNull(point, "point");
         return new BlockPosition(
                 (int) Math.floor(safePoint.x()),
                 (int) Math.floor(safePoint.y()),
@@ -301,7 +301,7 @@ final class TravelerPathSearchService {
         private final SnapshotMargins margins;
         private final LongDistanceRoutePlan plan;
         private final String purpose;
-        private final Optional<NavigationPoint> navigationStartOverride;
+        private final Optional<WorldPoint> navigationStartOverride;
 
         private SnapshotBlockSearch(
                 SnapshotCapturableWorldLayer worldLayer,
@@ -311,7 +311,7 @@ final class TravelerPathSearchService {
                 SnapshotMargins margins,
                 LongDistanceRoutePlan plan,
                 String purpose,
-                Optional<NavigationPoint> navigationStartOverride) {
+                Optional<WorldPoint> navigationStartOverride) {
             this.captureSession = worldLayer.captureSession(
                     start, target, margins.horizontal(), margins.vertical());
             this.start = Objects.requireNonNull(start, "start");

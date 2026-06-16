@@ -3,16 +3,16 @@ package dev.traveler.core.navigation.recovery;
 import dev.traveler.core.navigation.locomotion.LocomotionAction;
 import dev.traveler.core.navigation.locomotion.LocomotionExecutionState;
 import dev.traveler.core.navigation.plan.NavigationPhase;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.world.behavior.decision.MovementAction;
 import java.util.Objects;
 
 public record MovementHealthSnapshot(
         int nextNodeIndex,
-        NavigationPoint position,
-        NavigationPoint segmentStart,
-        NavigationPoint segmentEnd,
-        NavigationPoint actionTarget,
+        WorldPoint position,
+        WorldPoint segmentStart,
+        WorldPoint segmentEnd,
+        WorldPoint actionTarget,
         MovementAction action,
         NavigationPhase phase,
         LocomotionAction locomotionAction,

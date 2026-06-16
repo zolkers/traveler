@@ -2,15 +2,15 @@ package dev.traveler.core.navigation;
 
 import dev.traveler.core.navigation.camera.CameraAngles;
 import dev.traveler.core.navigation.locomotion.AgentMotionState;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import java.util.Objects;
 
 public record NavigationFrameInput(
-        NavigationPoint position,
+        WorldPoint position,
         CameraAngles cameraAngles,
         double deltaSeconds,
         AgentMotionState motionState) {
-    public NavigationFrameInput(NavigationPoint position, CameraAngles cameraAngles, double deltaSeconds) {
+    public NavigationFrameInput(WorldPoint position, CameraAngles cameraAngles, double deltaSeconds) {
         this(position, cameraAngles, deltaSeconds, AgentMotionState.groundedStill());
     }
 

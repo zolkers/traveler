@@ -15,7 +15,7 @@ public final class SurfaceTransitionEvaluator {
     public SurfaceTransitionEvaluator(MovementCapabilities capabilities) {
         this(
                 capabilities,
-                SurfaceTraversalFeatures.transitionResolver(SurfaceTraversalFeatures.standard()));
+                new SurfaceTransitionResolver(SurfaceTransitionProvider.standard()));
     }
 
     public SurfaceTransitionEvaluator(

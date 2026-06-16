@@ -1,6 +1,6 @@
 package dev.traveler.core.route.step;
 
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.route.RouteStep;
 import dev.traveler.core.world.behavior.decision.MovementAction;
 import dev.traveler.core.world.behavior.decision.MovementDecision;
@@ -24,7 +24,7 @@ public final class DefaultSurfaceRouteStepProvider implements SurfaceRouteStepPr
                 targetPoint(safeContext, decision.action()))));
     }
 
-    private static NavigationPoint targetPoint(
+    private static WorldPoint targetPoint(
             SurfaceRouteStepContext context,
             MovementAction action) {
         if (action == MovementAction.JUMP || action == MovementAction.STEP_UP) {

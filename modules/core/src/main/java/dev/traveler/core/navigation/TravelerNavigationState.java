@@ -6,7 +6,7 @@ import dev.traveler.core.navigation.api.NavigationSnapshot.NavigationReplanReque
 import dev.traveler.core.navigation.api.NavigationSnapshot.NavigationSessionSnapshot;
 import dev.traveler.core.navigation.api.NavigationSnapshot.ReplanActivation;
 import dev.traveler.core.navigation.follow.NavigationPath;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
@@ -48,7 +48,7 @@ public final class TravelerNavigationState {
     public synchronized void requestReplan(
             NavigationGoalPlan goalPlan,
             String message,
-            NavigationPoint startOverride) {
+            WorldPoint startOverride) {
         NavigationGoalPlan plan = Objects.requireNonNull(goalPlan, "goalPlan");
         String safeMessage = requireMessage(message);
         clearActiveNavigation();
@@ -63,7 +63,7 @@ public final class TravelerNavigationState {
     public synchronized void requestSegmentRepair(
             NavigationGoalPlan goalPlan,
             String message,
-            NavigationPoint startOverride) {
+            WorldPoint startOverride) {
         NavigationGoalPlan plan = Objects.requireNonNull(goalPlan, "goalPlan");
         String safeMessage = requireMessage(message);
         if (pendingReplanRequest != null || preparedLookaheadSession != null) {
@@ -93,7 +93,7 @@ public final class TravelerNavigationState {
     public synchronized void requestLookaheadReplan(
             NavigationGoalPlan goalPlan,
             String message,
-            NavigationPoint startOverride) {
+            WorldPoint startOverride) {
         NavigationGoalPlan plan = Objects.requireNonNull(goalPlan, "goalPlan");
         String safeMessage = requireMessage(message);
         if (pendingReplanRequest != null || preparedLookaheadSession != null) {

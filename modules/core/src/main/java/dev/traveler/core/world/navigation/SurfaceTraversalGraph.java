@@ -171,6 +171,7 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
         SurfaceBlock block = surfaceBlock(to.blockPosition());
         return insideBounds(to)
                 && rules.allowVertical()
+                && !isSwimNode(from)
                 && isJumpUp(from, to)
                 && hasBodyClearance(to)
                 && destinationAllowsMovement(from, to, block, direction);
@@ -183,6 +184,18 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
                 && hasBodyClearance(to)
                 && SurfaceClimbTraversal.canClimbWithLookup(surfaceBlocks::get, from, to, capabilities)
                 && hasClimbTargetClearance(from, to);
+    }
+
+    @Override
+    public boolean canReachSwim(SurfaceNode from, SurfaceNode to) {
+        return insideBounds(to)
+                && rules.allowVertical()
+                && capabilities.canSwim()
+                && sameHorizontalCell(from, to)
+                && to.floorY() > from.floorY() + FLOOR_EPSILON
+                && isSwimNode(from)
+                && isSwimNode(to)
+                && hasBodyClearance(to);
     }
 
     private boolean hasClimbTargetClearance(SurfaceNode from, SurfaceNode to) {
@@ -290,7 +303,7 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
         double floorHeight = block.shape().floorHeightForCellOrNaN(cellX, cellZ);
         if (Double.isNaN(floorHeight)) {
             return capabilities.canSwim()
-                    ? swimSurfaceNode(block, blockX, blockY, blockZ, cellX, cellZ)
+                    ? swimNode(block, blockX, blockY, blockZ, cellX, cellZ)
                     : null;
         }
         if (!restingSemantics(block, blockX, blockY, blockZ, cellX, cellZ, blockY + floorHeight)
@@ -302,7 +315,7 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
         return new SurfaceNode(position, cellX, cellZ, blockY + floorHeight);
     }
 
-    private SurfaceNode swimSurfaceNode(
+    private SurfaceNode swimNode(
             SurfaceBlock block,
             int blockX,
             int blockY,
@@ -310,19 +323,10 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
             int cellX,
             int cellZ) {
         BlockPosition position = new BlockPosition(blockX, blockY, blockZ);
-        if (!isTopFluidSurface(block, position, cellX, cellZ)) {
+        if (!hasFluid(block, position, cellX, cellZ)) {
             return null;
         }
         return new SurfaceNode(position, cellX, cellZ, blockY + 1.0);
-    }
-
-    private boolean isTopFluidSurface(SurfaceBlock block, BlockPosition position, int cellX, int cellZ) {
-        return hasFluid(block, position, cellX, cellZ)
-                && !hasFluid(
-                        surfaceBlock(position.x(), position.y() + 1, position.z()),
-                        position.above(),
-                        cellX,
-                        cellZ);
     }
 
     private boolean hasFluid(SurfaceBlock block, BlockPosition position, int cellX, int cellZ) {
@@ -370,7 +374,11 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
     }
 
     private boolean canUseAsExpansionOrigin(SurfaceNode node) {
-        return canStandOn(node) || canOccupyClimbNode(node);
+        return canStandOn(node) || canOccupyClimbNode(node) || canOccupySwimNode(node);
+    }
+
+    private boolean canOccupySwimNode(SurfaceNode node) {
+        return isSwimNode(node) && hasBodyClearance(node);
     }
 
     private boolean canOccupyClimbNode(SurfaceNode node) {
@@ -554,6 +562,23 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
 
     private static boolean sameFloor(SurfaceNode first, SurfaceNode second) {
         return Math.abs(first.floorY() - second.floorY()) <= FLOOR_EPSILON;
+    }
+
+    private boolean isSwimNode(SurfaceNode node) {
+        return capabilities.canSwim()
+                && Math.abs(node.floorY() - (node.blockPosition().y() + 1.0)) <= FLOOR_EPSILON
+                && hasFluid(
+                        surfaceBlock(node.blockPosition()),
+                        node.blockPosition(),
+                        node.cellX(),
+                        node.cellZ());
+    }
+
+    private static boolean sameHorizontalCell(SurfaceNode first, SurfaceNode second) {
+        return first.blockPosition().x() == second.blockPosition().x()
+                && first.blockPosition().z() == second.blockPosition().z()
+                && first.cellX() == second.cellX()
+                && first.cellZ() == second.cellZ();
     }
 
     private static SurfaceNode nearestOf(SurfaceNode current, SurfaceNode candidate, double floorY) {

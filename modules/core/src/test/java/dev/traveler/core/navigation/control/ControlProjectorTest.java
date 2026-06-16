@@ -11,14 +11,15 @@ import dev.traveler.core.navigation.follow.MovementTarget;
 import dev.traveler.core.navigation.follow.PathProgress;
 import dev.traveler.core.navigation.locomotion.AgentMotionState;
 import dev.traveler.core.navigation.locomotion.LocomotionExecutionState;
+import dev.traveler.core.navigation.internal.TraversalIntent;
 import dev.traveler.core.navigation.plan.ActionIntent;
 import dev.traveler.core.navigation.plan.MovementVectorIntent;
 import dev.traveler.core.navigation.plan.NavigationFramePlan;
 import dev.traveler.core.navigation.plan.NavigationPhase;
 import dev.traveler.core.navigation.plan.PlannedMovementMode;
 import dev.traveler.core.navigation.plan.SpeedIntent;
-import dev.traveler.core.navigation.spatial.HorizontalVector;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.HorizontalVector;
+import dev.traveler.core.common.geometry.WorldPoint;
 import org.junit.jupiter.api.Test;
 
 class ControlProjectorTest {
@@ -29,7 +30,7 @@ class ControlProjectorTest {
         NavigationFramePlan plan = plan(
                 new MovementVectorIntent(new HorizontalVector(0.0, 0.0), PlannedMovementMode.WAIT_FOR_CAMERA, true),
                 ActionIntent.none(),
-                new NavigationPoint(0.0, 65.0, 0.0));
+                new WorldPoint(0.0, 65.0, 0.0));
 
         ControlProjectionFrame frame = projector.project(
                 plan,
@@ -44,7 +45,7 @@ class ControlProjectorTest {
         NavigationFramePlan plan = plan(
                 new MovementVectorIntent(new HorizontalVector(4.0, -4.0), PlannedMovementMode.STRAFE_TURN, true),
                 ActionIntent.none(),
-                new NavigationPoint(4.0, 64.0, -4.0));
+                new WorldPoint(4.0, 64.0, -4.0));
 
         ControlProjectionFrame frame = projector.project(
                 plan,
@@ -61,7 +62,7 @@ class ControlProjectorTest {
         NavigationFramePlan plan = plan(
                 new MovementVectorIntent(new HorizontalVector(1.0, 2.0), PlannedMovementMode.FORWARD_ARC, true),
                 ActionIntent.none(),
-                new NavigationPoint(1.0, 64.0, 2.0));
+                new WorldPoint(1.0, 64.0, 2.0));
 
         ControlProjectionFrame frame = projector.project(
                 plan,
@@ -79,7 +80,7 @@ class ControlProjectorTest {
         NavigationFramePlan plan = plan(
                 new MovementVectorIntent(new HorizontalVector(0.0, 1.0), PlannedMovementMode.DIRECT, true),
                 ActionIntent.jump(),
-                new NavigationPoint(0.0, 65.0, 1.0));
+                new WorldPoint(0.0, 65.0, 1.0));
 
         ControlProjectionFrame frame = projector.project(
                 plan,
@@ -95,7 +96,7 @@ class ControlProjectorTest {
         NavigationFramePlan plan = plan(
                 new MovementVectorIntent(new HorizontalVector(0.0, 0.0), PlannedMovementMode.WAIT_FOR_CAMERA, true),
                 ActionIntent.climbDown(),
-                new NavigationPoint(0.0, 63.0, 0.0));
+                new WorldPoint(0.0, 63.0, 0.0));
 
         ControlProjectionFrame frame = projector.project(
                 plan,
@@ -114,7 +115,7 @@ class ControlProjectorTest {
                         PlannedMovementMode.SIDESTEP_RECENTER,
                         false),
                 ActionIntent.jump(),
-                new NavigationPoint(0.0, 65.0, 1.0));
+                new WorldPoint(0.0, 65.0, 1.0));
 
         ControlProjectionFrame frame = projector.project(
                 plan,
@@ -131,7 +132,7 @@ class ControlProjectorTest {
         NavigationFramePlan plan = plan(
                 new MovementVectorIntent(new HorizontalVector(-1.0, 0.0), PlannedMovementMode.DIRECT, true),
                 ActionIntent.none(),
-                new NavigationPoint(-1.0, 64.0, 0.0),
+                new WorldPoint(-1.0, 64.0, 0.0),
                 new CameraAngles(90.0, 0.0));
 
         ControlProjectionFrame frame = fastProjector.project(
@@ -149,7 +150,7 @@ class ControlProjectorTest {
         NavigationFramePlan plan = plan(
                 MovementVectorIntent.idle(),
                 ActionIntent.none(),
-                new NavigationPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 64.0, 0.0),
                 new CameraAngles(-179.0, 0.0));
 
         ControlProjectionFrame frame = projector.project(
@@ -166,7 +167,7 @@ class ControlProjectorTest {
         NavigationFramePlan plan = plan(
                 new MovementVectorIntent(new HorizontalVector(0.0, 0.2), PlannedMovementMode.DIRECT, true),
                 ActionIntent.none(),
-                new NavigationPoint(0.0, 64.0, 0.2));
+                new WorldPoint(0.0, 64.0, 0.2));
         MovementIntent previous = new MovementIntent(true, false, false, false, false, true);
 
         ControlProjectionFrame frame = projector.project(
@@ -177,17 +178,37 @@ class ControlProjectorTest {
         assertEquals(previous, frame.intent());
     }
 
+    @Test
+    void projectsTraversalIntentWithoutReadingPlannerDetails() {
+        TraversalIntent intent = new TraversalIntent(
+                new HorizontalVector(0.0, 1.0),
+                PlannedMovementMode.DIRECT,
+                true,
+                false,
+                true,
+                new CameraAngles(0.0, 0.0));
+
+        ControlProjectionFrame frame = projector.project(
+                intent,
+                frameInput(new CameraAngles(0.0, 0.0)),
+                MovementIntent.idle());
+
+        assertTrue(frame.intent().forward());
+        assertTrue(frame.intent().jump());
+        assertTrue(frame.intent().sprint());
+    }
+
     private static NavigationFramePlan plan(
             MovementVectorIntent movementVector,
             ActionIntent actionIntent,
-            NavigationPoint movementTarget) {
+            WorldPoint movementTarget) {
         return plan(movementVector, actionIntent, movementTarget, new CameraAngles(0.0, 0.0));
     }
 
     private static NavigationFramePlan plan(
             MovementVectorIntent movementVector,
             ActionIntent actionIntent,
-            NavigationPoint movementTarget,
+            WorldPoint movementTarget,
             CameraAngles cameraTarget) {
         return new NavigationFramePlan(
                 NavigationPhase.APPROACH,
@@ -207,7 +228,7 @@ class ControlProjectorTest {
 
     private static NavigationFrameInput frameInput(CameraAngles cameraAngles, double deltaSeconds) {
         return new NavigationFrameInput(
-                new NavigationPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 64.0, 0.0),
                 cameraAngles,
                 deltaSeconds,
                 AgentMotionState.groundedStill());

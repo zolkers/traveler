@@ -6,7 +6,7 @@ import dev.traveler.core.navigation.diagnostics.MovementFailureReporter;
 import dev.traveler.core.navigation.recovery.MovementFailure;
 import dev.traveler.core.navigation.recovery.MovementFailureKind;
 import dev.traveler.core.navigation.recovery.MovementProgressMonitor;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.settings.TravelerSettings;
 import java.util.Objects;
 import java.util.Optional;
@@ -212,7 +212,7 @@ public final class NavigationRuntime {
         return input.position().horizontalDistanceTo(session.path().lastNode());
     }
 
-    private static NavigationPoint replanStart(NavigationSession session) {
+    private static WorldPoint replanStart(NavigationSession session) {
         return session.path().lastNode();
     }
 

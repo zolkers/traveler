@@ -1,6 +1,10 @@
 package dev.traveler.core.route.step;
 
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.capability.traversal.climb.impl.DefaultClimbContactResolver;
+import dev.traveler.core.capability.traversal.climb.impl.DefaultClimbTargetProjector;
+import dev.traveler.core.capability.traversal.climb.spi.ClimbContactResolver;
+import dev.traveler.core.capability.traversal.climb.spi.ClimbTargetProjector;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.route.RouteStep;
 import dev.traveler.core.world.behavior.decision.MovementAction;
 import dev.traveler.core.world.navigation.SurfaceClimbTraversal;
@@ -11,6 +15,20 @@ import java.util.Objects;
 import java.util.Optional;
 
 public final class ClimbSurfaceRouteStepProvider implements SurfaceRouteStepProvider {
+    private final ClimbContactResolver contactResolver;
+    private final ClimbTargetProjector targetProjector;
+
+    public ClimbSurfaceRouteStepProvider() {
+        this(new DefaultClimbContactResolver(), new DefaultClimbTargetProjector());
+    }
+
+    public ClimbSurfaceRouteStepProvider(
+            ClimbContactResolver contactResolver,
+            ClimbTargetProjector targetProjector) {
+        this.contactResolver = Objects.requireNonNull(contactResolver, "contactResolver");
+        this.targetProjector = Objects.requireNonNull(targetProjector, "targetProjector");
+    }
+
     @Override
     public Optional<List<RouteStep>> routeSteps(SurfaceRouteStepContext context) {
         SurfaceRouteStepContext safeContext = Objects.requireNonNull(context, "context");
@@ -20,8 +38,8 @@ public final class ClimbSurfaceRouteStepProvider implements SurfaceRouteStepProv
         return Optional.of(climbRouteSteps(safeContext));
     }
 
-    private static List<RouteStep> climbRouteSteps(SurfaceRouteStepContext context) {
-        List<SurfaceNode> climbNodes = SurfaceClimbTraversal.climbRouteNodes(
+    private List<RouteStep> climbRouteSteps(SurfaceRouteStepContext context) {
+        List<SurfaceNode> climbNodes = contactResolver.climbRouteNodes(
                         context.worldLayer(),
                         context.from(),
                         context.to(),
@@ -37,7 +55,7 @@ public final class ClimbSurfaceRouteStepProvider implements SurfaceRouteStepProv
         return List.copyOf(steps);
     }
 
-    private static RouteStep climbRouteStep(
+    private RouteStep climbRouteStep(
             SurfaceRouteStepContext context,
             SurfaceNode from,
             SurfaceNode to) {
@@ -49,7 +67,7 @@ public final class ClimbSurfaceRouteStepProvider implements SurfaceRouteStepProv
                 climbStepTargetPoint(context, from, to));
     }
 
-    private static NavigationPoint climbStepTargetPoint(
+    private WorldPoint climbStepTargetPoint(
             SurfaceRouteStepContext context,
             SurfaceNode from,
             SurfaceNode to) {
@@ -58,7 +76,7 @@ public final class ClimbSurfaceRouteStepProvider implements SurfaceRouteStepProv
                 context.capabilities())) {
             return context.pointOf(to);
         }
-        return SurfaceClimbTraversal.climbFaceTarget(
+        return targetProjector.climbFaceTarget(
                         context.worldLayer(),
                         from,
                         to,

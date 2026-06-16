@@ -1,6 +1,6 @@
 package dev.traveler.core.route;
 
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.world.behavior.decision.MovementAction;
 import dev.traveler.core.world.surface.SurfaceNode;
 import java.util.Objects;
@@ -10,7 +10,7 @@ public record RouteStep(
         SurfaceNode to,
         MovementAction action,
         double cost,
-        NavigationPoint targetPoint) {
+        WorldPoint targetPoint) {
     public RouteStep(SurfaceNode from, SurfaceNode to, MovementAction action, double cost) {
         this(from, to, action, cost, pointOf(to));
     }
@@ -36,7 +36,7 @@ public record RouteStep(
         }
     }
 
-    private static NavigationPoint pointOf(SurfaceNode node) {
-        return new NavigationPoint(node.centerX(), node.floorY(), node.centerZ());
+    private static WorldPoint pointOf(SurfaceNode node) {
+        return new WorldPoint(node.centerX(), node.floorY(), node.centerZ());
     }
 }

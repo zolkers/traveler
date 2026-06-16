@@ -1,6 +1,6 @@
 package dev.traveler.core.navigation.locomotion;
 
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import java.util.Objects;
 
 public final class JumpTraversalRules {
@@ -11,31 +11,31 @@ public final class JumpTraversalRules {
 
     private JumpTraversalRules() {}
 
-    public static boolean hasReachedLandingHeight(NavigationPoint position, NavigationPoint target) {
-        NavigationPoint current = Objects.requireNonNull(position, "position");
-        NavigationPoint landing = Objects.requireNonNull(target, "target");
+    public static boolean hasReachedLandingHeight(WorldPoint position, WorldPoint target) {
+        WorldPoint current = Objects.requireNonNull(position, "position");
+        WorldPoint landing = Objects.requireNonNull(target, "target");
         return current.y() >= landing.y() - LANDING_HEIGHT_TOLERANCE;
     }
 
-    public static boolean hasLeftTakeoffZone(NavigationPoint position, NavigationPoint segmentStart) {
-        NavigationPoint current = Objects.requireNonNull(position, "position");
-        NavigationPoint takeoff = Objects.requireNonNull(segmentStart, "segmentStart");
+    public static boolean hasLeftTakeoffZone(WorldPoint position, WorldPoint segmentStart) {
+        WorldPoint current = Objects.requireNonNull(position, "position");
+        WorldPoint takeoff = Objects.requireNonNull(segmentStart, "segmentStart");
         return current.horizontalDistanceTo(takeoff) >= TAKEOFF_EXIT_DISTANCE
                 || current.y() >= takeoff.y() + TAKEOFF_EXIT_HEIGHT;
     }
 
     public static boolean hasLeftTakeoffZone(
-            NavigationPoint position,
-            NavigationPoint segmentStart,
-            NavigationPoint actionTarget) {
-        NavigationPoint current = Objects.requireNonNull(position, "position");
-        NavigationPoint takeoff = Objects.requireNonNull(segmentStart, "segmentStart");
-        NavigationPoint target = Objects.requireNonNull(actionTarget, "actionTarget");
+            WorldPoint position,
+            WorldPoint segmentStart,
+            WorldPoint actionTarget) {
+        WorldPoint current = Objects.requireNonNull(position, "position");
+        WorldPoint takeoff = Objects.requireNonNull(segmentStart, "segmentStart");
+        WorldPoint target = Objects.requireNonNull(actionTarget, "actionTarget");
         double verticalExit = takeoff.y() + TAKEOFF_EXIT_HEIGHT;
         if (current.y() >= verticalExit) {
             return true;
         }
-        dev.traveler.core.navigation.spatial.HorizontalVector axis =
+        dev.traveler.core.common.geometry.HorizontalVector axis =
                 takeoff.horizontalVectorTo(target);
         if (axis.isZero()) {
             return current.horizontalDistanceTo(takeoff) >= TAKEOFF_EXIT_DISTANCE;

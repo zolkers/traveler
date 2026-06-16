@@ -4,7 +4,7 @@ import dev.traveler.core.graph.Graph;
 import dev.traveler.core.layer.SurfaceWorldLayer;
 import dev.traveler.core.world.navigation.SurfaceConnectionProvider;
 import dev.traveler.core.world.navigation.SurfaceTransitionResolver;
-import dev.traveler.core.world.navigation.SurfaceTraversalFeatures;
+import dev.traveler.core.route.internal.SurfaceTraversalFeatures;
 import dev.traveler.core.world.navigation.SurfaceTraversalGraph;
 import dev.traveler.core.world.navigation.SurfaceTraversalGraphSettings;
 import dev.traveler.core.world.surface.SurfaceNode;
@@ -25,10 +25,11 @@ final class DefaultSurfaceRouteGraphFactory implements SurfaceRouteGraphFactory 
             List<SurfaceConnectionProvider> connectionProviders,
             SurfaceTransitionResolver transitionResolver) {
         this.connectionProviders = List.copyOf(Objects.requireNonNull(connectionProviders, "connectionProviders"));
-        if (this.connectionProviders.isEmpty()) {
-            throw new IllegalArgumentException("connectionProviders must not be empty");
-        }
         this.transitionResolver = Objects.requireNonNull(transitionResolver, "transitionResolver");
+    }
+
+    List<SurfaceConnectionProvider> connectionProviders() {
+        return connectionProviders;
     }
 
     @Override

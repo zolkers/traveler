@@ -9,15 +9,15 @@ import dev.traveler.core.navigation.plan.ActionIntent;
 import dev.traveler.core.navigation.plan.NavigationPhase;
 import dev.traveler.core.navigation.plan.PlannedMovementMode;
 import dev.traveler.core.navigation.plan.SpeedIntent;
-import dev.traveler.core.navigation.spatial.HorizontalVector;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.HorizontalVector;
+import dev.traveler.core.common.geometry.WorldPoint;
 import java.time.Instant;
 import java.util.Objects;
 
 public record NavigationDebugSnapshot(
         Instant updatedAt,
-        NavigationPoint agentPosition,
-        NavigationPoint movementTarget,
+        WorldPoint agentPosition,
+        WorldPoint movementTarget,
         HorizontalVector movementVector,
         NavigationPhase phase,
         ActionIntent actionIntent,
@@ -34,8 +34,8 @@ public record NavigationDebugSnapshot(
         boolean clearanceWarning) {
     public NavigationDebugSnapshot(
             Instant updatedAt,
-            NavigationPoint agentPosition,
-            NavigationPoint movementTarget,
+            WorldPoint agentPosition,
+            WorldPoint movementTarget,
             HorizontalVector movementVector,
             NavigationPhase phase,
             ActionIntent actionIntent,

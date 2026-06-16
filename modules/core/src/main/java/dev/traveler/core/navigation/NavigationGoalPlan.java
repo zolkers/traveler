@@ -1,6 +1,7 @@
 package dev.traveler.core.navigation;
 
 import dev.traveler.core.route.RouteGoal;
+import dev.traveler.core.route.longdistance.LongDistanceRoutePlan;
 import java.util.Objects;
 
 public record NavigationGoalPlan(
@@ -18,6 +19,15 @@ public record NavigationGoalPlan(
         if (!Double.isFinite(lookaheadReplanDistance) || lookaheadReplanDistance < 0.0) {
             throw new IllegalArgumentException("lookaheadReplanDistance must be finite and non-negative.");
         }
+    }
+
+    public static NavigationGoalPlan from(LongDistanceRoutePlan routePlan) {
+        LongDistanceRoutePlan plan = Objects.requireNonNull(routePlan, "routePlan");
+        return new NavigationGoalPlan(
+                plan.requestedGoal(),
+                plan.activeGoal(),
+                plan.finalSegment(),
+                plan.settings().lookaheadReplanDistance(plan.activeSegmentHorizontalDistance()));
     }
 
     public boolean needsReplanAfterCompletion() {

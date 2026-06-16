@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.follow.PathProgress;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.world.behavior.decision.MovementAction;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -18,7 +18,7 @@ class RouteProgressPolicyTest {
                 point(0.0, 64.0, 0.0),
                 point(0.0, 64.0, 2.0),
                 point(0.0, 64.0, 6.0)));
-        NavigationPoint missedNode = point(0.7, 64.0, 2.4);
+        WorldPoint missedNode = point(0.7, 64.0, 2.4);
 
         PathProgress progress = policy.progress(path, missedNode, PathProgress.start());
 
@@ -31,7 +31,7 @@ class RouteProgressPolicyTest {
                 point(0.0, 64.0, 0.0),
                 point(0.0, 64.0, 2.0),
                 point(0.0, 64.0, 6.0)));
-        NavigationPoint overshotNode = point(0.9, 64.0, 4.0);
+        WorldPoint overshotNode = point(0.9, 64.0, 4.0);
 
         PathProgress progress = policy.progress(path, overshotNode, PathProgress.start());
 
@@ -44,7 +44,7 @@ class RouteProgressPolicyTest {
                 point(0.0, 64.0, 0.0),
                 point(0.0, 64.0, 2.0),
                 point(0.0, 64.0, 6.0)));
-        NavigationPoint beforeNode = point(0.7, 64.0, 1.6);
+        WorldPoint beforeNode = point(0.7, 64.0, 1.6);
 
         PathProgress progress = policy.progress(path, beforeNode, PathProgress.start());
 
@@ -57,7 +57,7 @@ class RouteProgressPolicyTest {
                 point(0.0, 64.0, 0.0),
                 point(0.0, 64.0, 2.0),
                 point(2.0, 64.0, 2.0)));
-        NavigationPoint beforeCorner = point(0.7, 64.0, 1.8);
+        WorldPoint beforeCorner = point(0.7, 64.0, 1.8);
 
         PathProgress progress = policy.progress(path, beforeCorner, PathProgress.start());
 
@@ -72,7 +72,7 @@ class RouteProgressPolicyTest {
                         point(0.0, 65.0, 1.0),
                         point(1.0, 65.0, 1.0)),
                 List.of(MovementAction.JUMP, MovementAction.WALK));
-        NavigationPoint airbornePastLanding = point(0.7, 65.0, 1.2);
+        WorldPoint airbornePastLanding = point(0.7, 65.0, 1.2);
 
         PathProgress progress = policy.progress(path, airbornePastLanding, PathProgress.start());
 
@@ -87,14 +87,14 @@ class RouteProgressPolicyTest {
                         point(0.0, 65.0, 1.0),
                         point(1.0, 65.0, 1.0)),
                 List.of(MovementAction.JUMP, MovementAction.WALK));
-        NavigationPoint landed = point(0.2, 65.0, 1.1);
+        WorldPoint landed = point(0.2, 65.0, 1.1);
 
         PathProgress progress = policy.progress(path, landed, PathProgress.start());
 
         assertEquals(2, progress.nextNodeIndex());
     }
 
-    private static NavigationPoint point(double x, double y, double z) {
-        return new NavigationPoint(x, y, z);
+    private static WorldPoint point(double x, double y, double z) {
+        return new WorldPoint(x, y, z);
     }
 }

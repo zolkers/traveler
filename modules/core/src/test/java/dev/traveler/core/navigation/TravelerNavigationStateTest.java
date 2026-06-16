@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.traveler.core.navigation.follow.NavigationPath;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.route.RouteGoal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -15,8 +15,8 @@ class TravelerNavigationStateTest {
     void storesDefensiveNavigationSessionSnapshot() {
         TravelerNavigationState state = new TravelerNavigationState();
         NavigationPath path = NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(1.0, 64.0, 0.0)));
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(1.0, 64.0, 0.0)));
 
         state.start(path, "testing");
 
@@ -29,8 +29,8 @@ class TravelerNavigationStateTest {
     void stopClearsActiveSession() {
         TravelerNavigationState state = new TravelerNavigationState();
         state.start(NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(1.0, 64.0, 0.0))), "testing");
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(1.0, 64.0, 0.0))), "testing");
 
         state.stop("done");
 
@@ -42,11 +42,11 @@ class TravelerNavigationStateTest {
     void preparesLookaheadSessionWithoutReplacingActiveSession() {
         TravelerNavigationState state = new TravelerNavigationState();
         NavigationPath activePath = NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(4.0, 64.0, 0.0)));
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(4.0, 64.0, 0.0)));
         NavigationPath lookaheadPath = NavigationPath.of(List.of(
-                new NavigationPoint(4.0, 64.0, 0.0),
-                new NavigationPoint(8.0, 64.0, 0.0)));
+                new WorldPoint(4.0, 64.0, 0.0),
+                new WorldPoint(8.0, 64.0, 0.0)));
 
         state.start(activePath, "active", goalPlan(100, 0, 4, 0));
         state.prepareLookahead(lookaheadPath, "lookahead", goalPlan(100, 0, 8, 0));
@@ -59,11 +59,11 @@ class TravelerNavigationStateTest {
     void activatesPreparedLookaheadWhenCurrentSegmentCompletes() {
         TravelerNavigationState state = new TravelerNavigationState();
         NavigationPath activePath = NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(4.0, 64.0, 0.0)));
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(4.0, 64.0, 0.0)));
         NavigationPath lookaheadPath = NavigationPath.of(List.of(
-                new NavigationPoint(4.0, 64.0, 0.0),
-                new NavigationPoint(8.0, 64.0, 0.0)));
+                new WorldPoint(4.0, 64.0, 0.0),
+                new WorldPoint(8.0, 64.0, 0.0)));
 
         state.start(activePath, "active", goalPlan(100, 0, 4, 0));
         state.prepareLookahead(lookaheadPath, "lookahead", goalPlan(100, 0, 8, 0));
@@ -79,11 +79,11 @@ class TravelerNavigationStateTest {
         TravelerNavigationState state = new TravelerNavigationState();
         NavigationGoalPlan activePlan = goalPlan(100, 0, 4, 0);
         NavigationPath activePath = NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(4.0, 64.0, 0.0)));
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(4.0, 64.0, 0.0)));
         NavigationPath lookaheadPath = NavigationPath.of(List.of(
-                new NavigationPoint(4.0, 64.0, 0.0),
-                new NavigationPoint(8.0, 64.0, 0.0)));
+                new WorldPoint(4.0, 64.0, 0.0),
+                new WorldPoint(8.0, 64.0, 0.0)));
 
         state.start(activePath, "active", activePlan);
         state.requestLookaheadReplan(activePlan, "redundant");
@@ -97,14 +97,14 @@ class TravelerNavigationStateTest {
         TravelerNavigationState state = new TravelerNavigationState();
         NavigationGoalPlan activePlan = goalPlan(100, 0, 4, 0);
         NavigationPath activePath = NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(4.0, 64.0, 0.0)));
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(4.0, 64.0, 0.0)));
         NavigationPath lookaheadPath = NavigationPath.of(List.of(
-                new NavigationPoint(4.0, 64.0, 0.0),
-                new NavigationPoint(8.0, 64.0, 0.0)));
+                new WorldPoint(4.0, 64.0, 0.0),
+                new WorldPoint(8.0, 64.0, 0.0)));
         NavigationPath repairPath = NavigationPath.of(List.of(
-                new NavigationPoint(1.0, 64.0, 1.0),
-                new NavigationPoint(4.0, 64.0, 0.0)));
+                new WorldPoint(1.0, 64.0, 1.0),
+                new WorldPoint(4.0, 64.0, 0.0)));
 
         state.start(activePath, "active", activePlan);
         state.prepareLookahead(lookaheadPath, "lookahead", goalPlan(100, 0, 8, 0));

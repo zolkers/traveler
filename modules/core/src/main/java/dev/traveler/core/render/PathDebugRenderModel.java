@@ -6,8 +6,10 @@ import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.graph.GraphPath;
 import dev.traveler.core.navigation.NavigationSession;
 import dev.traveler.core.navigation.TravelerNavigationState;
+import dev.traveler.core.navigation.debug.DebugFrame;
+import dev.traveler.core.navigation.debug.DebugLayer;
 import dev.traveler.core.navigation.follow.NavigationPath;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.path.PathfinderResult;
 import dev.traveler.core.path.PathfinderStatus;
 import dev.traveler.core.world.block.BlockPosition;
@@ -97,6 +99,34 @@ public final class PathDebugRenderModel {
         return combine(frame, navigationFrameFor(debugState.latestNavigation()));
     }
 
+    public DebugFrame debugFrameFor(PathfinderDebugState state, TravelerNavigationState navigationState) {
+        PathfinderDebugState debugState = Objects.requireNonNull(state, "state");
+        TravelerNavigationState travelerNavigationState =
+                Objects.requireNonNull(navigationState, "navigationState");
+        Set<DebugLayer> layers = new LinkedHashSet<>();
+        Optional<NavigationSession> active = travelerNavigationState.activeSession();
+        Optional<NavigationSession> lookahead = travelerNavigationState.preparedLookaheadSession();
+        if (active.isPresent()) {
+            layers.add(DebugLayer.ACTIVE_SEGMENT);
+        }
+        if (lookahead.isPresent()) {
+            layers.add(DebugLayer.PREPARED_SEGMENT);
+        }
+        if (travelerNavigationState.snapshot().pending().isPresent()) {
+            layers.add(DebugLayer.PENDING_SEARCH);
+        }
+        if (active.isEmpty() && lookahead.isEmpty() && debugState.snapshot().isPresent()) {
+            layers.add(DebugLayer.LATEST_REJECTED_SEARCH);
+        }
+        if (debugState.latestNavigation().isPresent()) {
+            layers.add(DebugLayer.TARGET);
+        }
+        if (!junctionWarningFrameFor(active, lookahead).boxes().isEmpty()) {
+            layers.add(DebugLayer.FAILURE_JUNCTION);
+        }
+        return DebugFrame.of(layers);
+    }
+
     public DebugRenderFrame frameFor(Optional<PathfinderDebugSnapshot> snapshot) {
         Optional<PathfinderDebugSnapshot> current = Objects.requireNonNull(snapshot, "snapshot");
         if (current.isEmpty()) {
@@ -156,12 +186,12 @@ public final class PathDebugRenderModel {
         return new DebugRenderFrame(surfaceLinesFor(nodes, lineColor), surfaceBoxesFor(nodes, nodeColor));
     }
 
-    private DebugRenderFrame routeFrameFor(List<NavigationPoint> points, List<SurfaceNode> surfaceNodes) {
+    private DebugRenderFrame routeFrameFor(List<WorldPoint> points, List<SurfaceNode> surfaceNodes) {
         return routeFrameFor(points, surfaceNodes, pathColor, nodeColor);
     }
 
     private DebugRenderFrame routeFrameFor(
-            List<NavigationPoint> points,
+            List<WorldPoint> points,
             List<SurfaceNode> surfaceNodes,
             ColorRgba lineColor,
             ColorRgba nodeColor) {
@@ -217,11 +247,11 @@ public final class PathDebugRenderModel {
         return lines;
     }
 
-    private List<DebugLine> routeLinesFor(List<NavigationPoint> points) {
+    private List<DebugLine> routeLinesFor(List<WorldPoint> points) {
         return routeLinesFor(points, pathColor);
     }
 
-    private List<DebugLine> routeLinesFor(List<NavigationPoint> points, ColorRgba lineColor) {
+    private List<DebugLine> routeLinesFor(List<WorldPoint> points, ColorRgba lineColor) {
         List<DebugLine> lines = new ArrayList<>();
         for (int index = 1; index < points.size(); index++) {
             addLine(lines, routeVertexFor(points.get(index - 1)), routeVertexFor(points.get(index)), lineColor);
@@ -317,8 +347,8 @@ public final class PathDebugRenderModel {
         if (active.isEmpty() || lookahead.isEmpty()) {
             return DebugRenderFrame.empty();
         }
-        NavigationPoint activeEnd = active.orElseThrow().path().lastNode();
-        NavigationPoint lookaheadStart = lookahead.orElseThrow().path().nodeAt(0);
+        WorldPoint activeEnd = active.orElseThrow().path().lastNode();
+        WorldPoint lookaheadStart = lookahead.orElseThrow().path().nodeAt(0);
         if (activeEnd.distanceTo(lookaheadStart) <= JUNCTION_EPSILON) {
             return DebugRenderFrame.empty();
         }
@@ -327,14 +357,14 @@ public final class PathDebugRenderModel {
                 List.of(pointBoxFor(activeEnd, JUNCTION_WARNING_COLOR, JUNCTION_WARNING_BOX_RADIUS)));
     }
 
-    private static DebugBox pointBoxFor(NavigationPoint point, ColorRgba color, double radius) {
+    private static DebugBox pointBoxFor(WorldPoint point, ColorRgba color, double radius) {
         RenderVertex min = new RenderVertex(point.x() - radius, point.y() - radius, point.z() - radius);
         RenderVertex max = new RenderVertex(point.x() + radius, point.y() + radius, point.z() + radius);
         return new DebugBox(min, max, color);
     }
 
     private static DebugBox targetBoxFor(NavigationDebugSnapshot snapshot) {
-        NavigationPoint target = Objects.requireNonNull(snapshot, "snapshot").movementTarget();
+        WorldPoint target = Objects.requireNonNull(snapshot, "snapshot").movementTarget();
         RenderVertex min = new RenderVertex(
                 target.x() - TARGET_BOX_RADIUS,
                 target.y() - TARGET_BOX_RADIUS,
@@ -355,7 +385,7 @@ public final class PathDebugRenderModel {
         return new RenderVertex(node.centerX(), node.floorY() + yOffset, node.centerZ());
     }
 
-    private RenderVertex routeVertexFor(NavigationPoint point) {
+    private RenderVertex routeVertexFor(WorldPoint point) {
         return new RenderVertex(point.x(), point.y() + yOffset, point.z());
     }
 

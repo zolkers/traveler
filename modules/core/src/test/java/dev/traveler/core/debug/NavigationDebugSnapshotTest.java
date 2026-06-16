@@ -22,8 +22,8 @@ import dev.traveler.core.navigation.plan.NavigationPhase;
 import dev.traveler.core.navigation.plan.NavigationSteeringDebug;
 import dev.traveler.core.navigation.plan.PlannedMovementMode;
 import dev.traveler.core.navigation.plan.SpeedIntent;
-import dev.traveler.core.navigation.spatial.HorizontalVector;
-import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.common.geometry.HorizontalVector;
+import dev.traveler.core.common.geometry.WorldPoint;
 import dev.traveler.core.graph.MutableGraphPath;
 import dev.traveler.core.path.PathfinderResult;
 import dev.traveler.core.path.PathfinderStatus;
@@ -41,8 +41,8 @@ class NavigationDebugSnapshotTest {
         assertEquals(NavigationPhase.EXECUTE_ACTION, snapshot.phase());
         assertEquals(LocomotionAction.JUMP, snapshot.actionIntent().action());
         assertEquals(PlannedMovementMode.DIRECT, snapshot.movementMode());
-        assertEquals(new NavigationPoint(1.0, 64.0, 2.0), snapshot.agentPosition());
-        assertEquals(new NavigationPoint(1.0, 65.0, 3.0), snapshot.movementTarget());
+        assertEquals(new WorldPoint(1.0, 64.0, 2.0), snapshot.agentPosition());
+        assertEquals(new WorldPoint(1.0, 65.0, 3.0), snapshot.movementTarget());
         assertEquals(new HorizontalVector(0.0, 1.0), snapshot.movementVector());
         assertTrue(snapshot.intent().jump());
     }
@@ -134,7 +134,7 @@ class NavigationDebugSnapshotTest {
 
     private static NavigationFrameInput frameInput() {
         return new NavigationFrameInput(
-                new NavigationPoint(1.0, 64.0, 2.0),
+                new WorldPoint(1.0, 64.0, 2.0),
                 new CameraAngles(0.0, 0.0),
                 0.016);
     }
@@ -148,7 +148,7 @@ class NavigationDebugSnapshotTest {
         NavigationFramePlan plan = new NavigationFramePlan(
                 NavigationPhase.EXECUTE_ACTION,
                 new PathProgress(2),
-                MovementTarget.follow(new NavigationPoint(1.0, 65.0, 3.0)),
+                MovementTarget.follow(new WorldPoint(1.0, 65.0, 3.0)),
                 new MovementVectorIntent(new HorizontalVector(0.0, 1.0), PlannedMovementMode.DIRECT, true),
                 new CameraAngles(12.0, 0.0),
                 ActionIntent.jump(),
@@ -162,7 +162,7 @@ class NavigationDebugSnapshotTest {
                 state,
                 intent,
                 new CameraAngles(4.0, 0.0),
-                MovementTarget.follow(new NavigationPoint(1.0, 65.0, 3.0)),
+                MovementTarget.follow(new WorldPoint(1.0, 65.0, 3.0)),
                 plan,
                 false);
     }
@@ -170,8 +170,8 @@ class NavigationDebugSnapshotTest {
     private static NavigationDebugSnapshot anomalousSnapshot() {
         return new NavigationDebugSnapshot(
                 Instant.EPOCH,
-                new NavigationPoint(1.0, 64.0, 2.0),
-                new NavigationPoint(1.0, 65.0, 3.0),
+                new WorldPoint(1.0, 64.0, 2.0),
+                new WorldPoint(1.0, 65.0, 3.0),
                 new HorizontalVector(0.0, 0.0),
                 NavigationPhase.EXECUTE_ACTION,
                 ActionIntent.jump(),
@@ -188,8 +188,8 @@ class NavigationDebugSnapshotTest {
     private static NavigationDebugSnapshot passiveClimbDownSnapshot() {
         return new NavigationDebugSnapshot(
                 Instant.EPOCH,
-                new NavigationPoint(1.0, 70.0, 2.0),
-                new NavigationPoint(1.0, 64.0, 2.0),
+                new WorldPoint(1.0, 70.0, 2.0),
+                new WorldPoint(1.0, 64.0, 2.0),
                 new HorizontalVector(0.0, 0.0),
                 NavigationPhase.EXECUTE_ACTION,
                 ActionIntent.climbDown(),
