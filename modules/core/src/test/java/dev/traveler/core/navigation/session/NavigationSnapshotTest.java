@@ -11,10 +11,30 @@ import dev.traveler.core.navigation.api.NavigationSnapshot;
 import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import dev.traveler.core.route.RouteGoal;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class NavigationSnapshotTest {
+    private static final String INTERNAL_SESSION = "dev.traveler.core.navigation.NavigationSession";
+    private static final String INTERNAL_REPLAN_REQUEST = "dev.traveler.core.navigation.NavigationReplanRequest";
+    private static final String INTERNAL_GOAL_PLAN = "dev.traveler.core.navigation.NavigationGoalPlan";
+
+    @Test
+    void navigationSnapshotPublicApiDoesNotMentionInternalNavigationTypes() {
+        for (Method method : NavigationSnapshot.class.getMethods()) {
+            assertFalse(method.toGenericString().contains(INTERNAL_SESSION));
+            assertFalse(method.toGenericString().contains(INTERNAL_REPLAN_REQUEST));
+            assertFalse(method.toGenericString().contains(INTERNAL_GOAL_PLAN));
+        }
+        for (Constructor<?> constructor : NavigationSnapshot.class.getConstructors()) {
+            assertFalse(constructor.toGenericString().contains(INTERNAL_SESSION));
+            assertFalse(constructor.toGenericString().contains(INTERNAL_REPLAN_REQUEST));
+            assertFalse(constructor.toGenericString().contains(INTERNAL_GOAL_PLAN));
+        }
+    }
+
     @Test
     void snapshotReflectsStateTransitionsAndPreservesCompatibilityViews() {
         TravelerNavigationState state = new TravelerNavigationState();

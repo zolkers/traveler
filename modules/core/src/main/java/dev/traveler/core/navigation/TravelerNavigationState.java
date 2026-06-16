@@ -1,9 +1,13 @@
 package dev.traveler.core.navigation;
 
 import dev.traveler.core.navigation.api.NavigationSnapshot;
+import dev.traveler.core.navigation.api.NavigationSnapshot.NavigationGoalPlanSnapshot;
+import dev.traveler.core.navigation.api.NavigationSnapshot.NavigationReplanRequestSnapshot;
+import dev.traveler.core.navigation.api.NavigationSnapshot.NavigationSessionSnapshot;
 import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -174,10 +178,43 @@ public final class TravelerNavigationState {
     }
 
     public synchronized NavigationSnapshot snapshot() {
-        return NavigationSnapshot.of(
-                activeSession,
-                preparedLookaheadSession,
-                pendingReplanRequest,
-                latestMessage);
+        return new NavigationSnapshot(
+                snapshotOf(activeSession),
+                snapshotOf(preparedLookaheadSession),
+                snapshotOf(pendingReplanRequest),
+                Optional.ofNullable(latestMessage));
+    }
+
+    private static Optional<NavigationSessionSnapshot> snapshotOf(NavigationSession session) {
+        if (session == null) {
+            return Optional.empty();
+        }
+        return Optional.of(new NavigationSessionSnapshot(
+                List.copyOf(session.path().nodes()),
+                session.message(),
+                session.startedAt(),
+                session.goalPlan().map(TravelerNavigationState::snapshotOf)));
+    }
+
+    private static Optional<NavigationReplanRequestSnapshot> snapshotOf(NavigationReplanRequest request) {
+        if (request == null) {
+            return Optional.empty();
+        }
+        return Optional.of(new NavigationReplanRequestSnapshot(
+                request.goal(),
+                request.reason(),
+                request.requestedAt(),
+                request.activation(),
+                request.startOverride(),
+                request.goalPlanOverride().map(TravelerNavigationState::snapshotOf)));
+    }
+
+    private static NavigationGoalPlanSnapshot snapshotOf(NavigationGoalPlan goalPlan) {
+        NavigationGoalPlan plan = Objects.requireNonNull(goalPlan, "goalPlan");
+        return new NavigationGoalPlanSnapshot(
+                plan.requestedGoal(),
+                plan.activeGoal(),
+                plan.finalSegment(),
+                plan.lookaheadReplanDistance());
     }
 }

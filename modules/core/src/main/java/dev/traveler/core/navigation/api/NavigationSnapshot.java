@@ -1,13 +1,9 @@
 package dev.traveler.core.navigation.api;
 
-import dev.traveler.core.navigation.NavigationGoalPlan;
 import dev.traveler.core.navigation.NavigationReplanActivation;
-import dev.traveler.core.navigation.NavigationReplanRequest;
-import dev.traveler.core.navigation.NavigationSession;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import dev.traveler.core.route.RouteGoal;
 import java.time.Instant;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -27,53 +23,17 @@ public record NavigationSnapshot(
         return new NavigationSnapshot(Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
     }
 
-    public static NavigationSnapshot of(
-            NavigationSession activeSession,
-            NavigationSession preparedSession,
-            NavigationReplanRequest pendingRequest,
-            String latestMessage) {
-        return new NavigationSnapshot(
-                snapshotOf(activeSession),
-                snapshotOf(preparedSession),
-                snapshotOf(pendingRequest),
-                Optional.ofNullable(latestMessage));
-    }
-
     private static <T> Optional<T> safe(Optional<T> value, String name) {
         return Optional.ofNullable(Objects.requireNonNull(value, name).orElse(null));
     }
 
-    private static Optional<NavigationSessionSnapshot> snapshotOf(NavigationSession session) {
-        if (session == null) {
-            return Optional.empty();
-        }
-        return Optional.of(new NavigationSessionSnapshot(
-                List.copyOf(session.path().nodes()),
-                session.message(),
-                session.startedAt(),
-                session.goalPlan().map(NavigationGoalPlanSnapshot::new)));
-    }
-
-    private static Optional<NavigationReplanRequestSnapshot> snapshotOf(NavigationReplanRequest request) {
-        if (request == null) {
-            return Optional.empty();
-        }
-        return Optional.of(new NavigationReplanRequestSnapshot(
-                request.goal(),
-                request.reason(),
-                request.requestedAt(),
-                request.activation(),
-                request.startOverride(),
-                request.goalPlanOverride().map(NavigationGoalPlanSnapshot::new)));
-    }
-
     public record NavigationSessionSnapshot(
-            List<NavigationPoint> nodes,
+            java.util.List<NavigationPoint> nodes,
             String message,
             Instant startedAt,
             Optional<NavigationGoalPlanSnapshot> goalPlan) {
         public NavigationSessionSnapshot {
-            nodes = List.copyOf(Objects.requireNonNull(nodes, "nodes"));
+            nodes = java.util.List.copyOf(Objects.requireNonNull(nodes, "nodes"));
             Objects.requireNonNull(message, "message");
             Objects.requireNonNull(startedAt, "startedAt");
             goalPlan = safe(goalPlan, "goalPlan");
@@ -102,14 +62,6 @@ public record NavigationSnapshot(
             RouteGoal activeGoal,
             boolean finalSegment,
             double lookaheadReplanDistance) {
-        public NavigationGoalPlanSnapshot(NavigationGoalPlan goalPlan) {
-            this(
-                    Objects.requireNonNull(goalPlan, "goalPlan").requestedGoal(),
-                    goalPlan.activeGoal(),
-                    goalPlan.finalSegment(),
-                    goalPlan.lookaheadReplanDistance());
-        }
-
         public NavigationGoalPlanSnapshot {
             Objects.requireNonNull(requestedGoal, "requestedGoal");
             Objects.requireNonNull(activeGoal, "activeGoal");
