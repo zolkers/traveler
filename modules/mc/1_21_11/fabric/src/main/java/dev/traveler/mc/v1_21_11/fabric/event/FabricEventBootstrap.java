@@ -5,11 +5,19 @@ import dev.traveler.core.event.ClientTickEvent;
 import dev.traveler.core.event.TravelerClientEvents;
 import dev.traveler.core.event.WorldRenderEvent;
 import dev.traveler.core.navigation.NavigationRuntime;
+import dev.traveler.core.navigation.diagnostics.BlockScanSource;
+import dev.traveler.core.navigation.diagnostics.FileMovementFailureReportSink;
+import dev.traveler.core.navigation.diagnostics.MovementFailureReportService;
+import dev.traveler.core.navigation.diagnostics.MovementFailureReporter;
 import dev.traveler.core.render.PathDebugRenderModel;
+import dev.traveler.mc.v1_21_11.common.adapter.diagnostics.MinecraftBlockScanSource;
 import dev.traveler.mc.v1_21_11.fabric.navigation.MinecraftClientNavigationAdapter;
 import dev.traveler.mc.v1_21_11.fabric.render.FabricPathDebugRenderer;
+import java.nio.file.Path;
 import java.util.Objects;
 import java.util.function.Consumer;
+import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.Minecraft;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
@@ -39,7 +47,8 @@ public final class FabricEventBootstrap {
         NavigationRuntime navigationRuntime = new NavigationRuntime(
                 commandModule.navigationState(),
                 MinecraftClientNavigationAdapter.currentClient(),
-                commandModule.debugState());
+                commandModule.debugState(),
+                movementFailureReporter());
         new FabricEventBootstrap(renderer::render, () -> updateClientWork(commandModule, navigationRuntime)).register();
     }
 
@@ -62,6 +71,24 @@ public final class FabricEventBootstrap {
     private static void updateClientWork(TravelerCommandModule commandModule, NavigationRuntime navigationRuntime) {
         commandModule.drainPathJobs();
         navigationRuntime.update(System.nanoTime());
+    }
+
+    private static MovementFailureReporter movementFailureReporter() {
+        return new MovementFailureReportService(
+                FabricEventBootstrap::blockScanSource,
+                new FileMovementFailureReportSink(reportDirectory()));
+    }
+
+    private static Path reportDirectory() {
+        return FabricLoader.getInstance().getConfigDir().resolve("traveler").resolve("reports");
+    }
+
+    private static BlockScanSource blockScanSource() {
+        Minecraft client = Minecraft.getInstance();
+        if (client.level == null) {
+            return null;
+        }
+        return new MinecraftBlockScanSource(client.level);
     }
 
     private void renderWorld(WorldRenderContext context) {

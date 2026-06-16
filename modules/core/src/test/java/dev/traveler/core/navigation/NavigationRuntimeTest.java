@@ -8,6 +8,8 @@ import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.navigation.camera.CameraAngles;
 import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.follow.PathProgress;
+import dev.traveler.core.navigation.diagnostics.MovementFailureReportContext;
+import dev.traveler.core.navigation.diagnostics.MovementFailureReporter;
 import dev.traveler.core.navigation.recovery.MovementHealthSettings;
 import dev.traveler.core.navigation.recovery.MovementProgressMonitor;
 import dev.traveler.core.navigation.control.MovementIntent;
@@ -133,6 +135,37 @@ class NavigationRuntimeTest {
     }
 
     @Test
+    void reportsMovementFailureDiagnosticsBeforeRequestingRecovery() {
+        TravelerNavigationState navigationState = new TravelerNavigationState();
+        TestAgentPort agent = new TestAgentPort(new NavigationPoint(0.0, 64.0, 0.0), new CameraAngles(0.0, 0.0));
+        RecordingFailureReporter reporter = new RecordingFailureReporter();
+        NavigationRuntime runtime = new NavigationRuntime(
+                navigationState,
+                agent,
+                NavigationController.standard(),
+                new PathfinderDebugState(),
+                new MovementProgressMonitor(new MovementHealthSettings(0.05, 0.15, 0.0)),
+                reporter);
+        NavigationGoalPlan goalPlan = new NavigationGoalPlan(
+                RouteGoal.xz(0, 4),
+                RouteGoal.xz(0, 4),
+                true);
+        navigationState.start(NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(0.0, 64.0, 4.0))), "test", goalPlan);
+
+        runtime.update(1_000_000_000L);
+        runtime.update(1_100_000_000L);
+        runtime.update(1_200_000_000L);
+
+        assertEquals(1, reporter.reports.size());
+        MovementFailureReportContext report = reporter.reports.getFirst();
+        assertEquals(navigationState.pendingReplanRequest().orElseThrow().goal(), RouteGoal.xz(0, 4));
+        assertEquals(new NavigationPoint(0.0, 64.0, 0.0), report.input().position());
+        assertEquals(new NavigationPoint(0.0, 64.0, 4.0), report.session().path().lastNode());
+    }
+
+    @Test
     void requestsLookaheadReplanBeforeSegmentCompletionWithoutStoppingCurrentSession() {
         TravelerNavigationState navigationState = new TravelerNavigationState();
         NavigationPoint segmentEnd = new NavigationPoint(20.25, 64.0, 0.75);
@@ -239,6 +272,15 @@ class NavigationRuntimeTest {
         @Override
         public void release() {
             released = true;
+        }
+    }
+
+    private static final class RecordingFailureReporter implements MovementFailureReporter {
+        private final List<MovementFailureReportContext> reports = new ArrayList<>();
+
+        @Override
+        public void report(MovementFailureReportContext context) {
+            reports.add(context);
         }
     }
 }

@@ -1,6 +1,8 @@
 package dev.traveler.core.navigation;
 
 import dev.traveler.core.debug.PathfinderDebugState;
+import dev.traveler.core.navigation.diagnostics.MovementFailureReportContext;
+import dev.traveler.core.navigation.diagnostics.MovementFailureReporter;
 import dev.traveler.core.navigation.recovery.MovementFailure;
 import dev.traveler.core.navigation.recovery.MovementProgressMonitor;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
@@ -17,6 +19,7 @@ public final class NavigationRuntime {
     private final NavigationController controller;
     private final PathfinderDebugState debugState;
     private final MovementProgressMonitor progressMonitor;
+    private final MovementFailureReporter failureReporter;
     private NavigationControllerState controllerState = NavigationControllerState.start();
     private NavigationSession activeSession;
     private long previousNanos = -1L;
@@ -31,6 +34,20 @@ public final class NavigationRuntime {
             NavigationAgentPort agentPort,
             PathfinderDebugState debugState) {
         this(navigationState, agentPort, NavigationController.standard(), debugState);
+    }
+
+    public NavigationRuntime(
+            TravelerNavigationState navigationState,
+            NavigationAgentPort agentPort,
+            PathfinderDebugState debugState,
+            MovementFailureReporter failureReporter) {
+        this(
+                navigationState,
+                agentPort,
+                NavigationController.standard(),
+                debugState,
+                new MovementProgressMonitor(TravelerSettings.standard().movementHealthSettings()),
+                failureReporter);
     }
 
     NavigationRuntime(
@@ -59,11 +76,28 @@ public final class NavigationRuntime {
             NavigationController controller,
             PathfinderDebugState debugState,
             MovementProgressMonitor progressMonitor) {
+        this(
+                navigationState,
+                agentPort,
+                controller,
+                debugState,
+                progressMonitor,
+                MovementFailureReporter.noop());
+    }
+
+    NavigationRuntime(
+            TravelerNavigationState navigationState,
+            NavigationAgentPort agentPort,
+            NavigationController controller,
+            PathfinderDebugState debugState,
+            MovementProgressMonitor progressMonitor,
+            MovementFailureReporter failureReporter) {
         this.navigationState = Objects.requireNonNull(navigationState, "navigationState");
         this.agentPort = Objects.requireNonNull(agentPort, "agentPort");
         this.controller = Objects.requireNonNull(controller, "controller");
         this.debugState = Objects.requireNonNull(debugState, "debugState");
         this.progressMonitor = Objects.requireNonNull(progressMonitor, "progressMonitor");
+        this.failureReporter = Objects.requireNonNull(failureReporter, "failureReporter");
     }
 
     public void update(long nowNanos) {
@@ -103,16 +137,33 @@ public final class NavigationRuntime {
             return Optional.empty();
         }
         Optional<MovementFailure> failure = progressMonitor.update(session.path(), input, frame);
-        failure.ifPresent(value -> handleMovementFailure(session, value));
+        failure.ifPresent(value -> handleMovementFailure(session, input, frame, value));
         return failure;
     }
 
-    private void handleMovementFailure(NavigationSession session, MovementFailure failure) {
+    private void handleMovementFailure(
+            NavigationSession session,
+            NavigationFrameInput input,
+            NavigationControlFrame frame,
+            MovementFailure failure) {
+        reportMovementFailure(session, input, frame, failure);
         String message = "navigation recovery requested reason=" + failure.kind();
         session.goalPlan().ifPresentOrElse(
                 goalPlan -> navigationState.requestReplan(goalPlan, message),
                 () -> navigationState.stop("navigation stopped reason=" + failure.kind()));
         releaseIfNeeded();
+    }
+
+    private void reportMovementFailure(
+            NavigationSession session,
+            NavigationFrameInput input,
+            NavigationControlFrame frame,
+            MovementFailure failure) {
+        try {
+            failureReporter.report(new MovementFailureReportContext(session, input, frame, failure));
+        } catch (RuntimeException ignored) {
+            // Diagnostics must never prevent control release or recovery.
+        }
     }
 
     private void applyFrame(NavigationSession session, NavigationControlFrame frame) {
