@@ -137,10 +137,41 @@ class NavigationSnapshotTest {
         assertThrows(NullPointerException.class, () -> state.requestSegmentRepair(plan, null, startOverride));
         assertThrows(NullPointerException.class, () -> state.requestLookaheadReplan(plan, null));
         assertThrows(NullPointerException.class, () -> state.requestLookaheadReplan(plan, null, startOverride));
+        assertThrows(NullPointerException.class, () -> state.prepareLookahead(path, null, plan));
+        assertThrows(NullPointerException.class, () -> state.replaceActiveSession(path, null, plan));
 
         state.start(path, "active", plan);
         assertThrows(NullPointerException.class, () -> state.prepareLookahead(path, null, plan));
         assertThrows(NullPointerException.class, () -> state.replaceActiveSession(path, null, plan));
+    }
+
+    @Test
+    void requestSegmentRepairSnapshotUsesReplaceActiveSessionBranch() {
+        TravelerNavigationState state = new TravelerNavigationState();
+        NavigationPath activePath = navigationPath(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(4.0, 64.0, 0.0));
+        NavigationGoalPlan activePlan = goalPlan(100, 0, 4, 0);
+        NavigationPoint repairStart = new NavigationPoint(2.0, 64.0, 1.0);
+
+        state.start(activePath, "active", activePlan);
+        state.requestSegmentRepair(activePlan, "repair", repairStart);
+
+        NavigationSnapshot snapshot = state.snapshot();
+
+        assertTrue(snapshot.pending().isPresent());
+        assertEquals(
+                NavigationSnapshot.ReplanActivation.REPLACE_ACTIVE_SESSION,
+                snapshot.pending().orElseThrow().activation());
+        assertEquals(RouteGoal.xz(4, 0), snapshot.pending().orElseThrow().goal());
+        assertEquals(repairStart, snapshot.pending().orElseThrow().startOverride().orElseThrow());
+        assertTrue(snapshot.pending().orElseThrow().goalPlanOverride().isPresent());
+        assertEquals(
+                RouteGoal.xz(100, 0),
+                snapshot.pending().orElseThrow().goalPlanOverride().orElseThrow().requestedGoal());
+        assertEquals(
+                RouteGoal.xz(4, 0),
+                snapshot.pending().orElseThrow().goalPlanOverride().orElseThrow().activeGoal());
     }
 
     @Test

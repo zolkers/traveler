@@ -109,28 +109,33 @@ public final class TravelerNavigationState {
     }
 
     public synchronized void prepareLookahead(NavigationPath path, String message, NavigationGoalPlan goalPlan) {
+        Objects.requireNonNull(path, "path");
+        String safeMessage = requireMessage(message);
+        Objects.requireNonNull(goalPlan, "goalPlan");
         if (activeSession == null) {
             return;
         }
-        String safeMessage = requireMessage(message);
         preparedLookaheadSession = new NavigationSession(
-                Objects.requireNonNull(path, "path"),
+                path,
                 safeMessage,
                 Instant.now(),
-                Objects.requireNonNull(goalPlan, "goalPlan"));
+                goalPlan);
         pendingReplanRequest = null;
         latestMessage = safeMessage;
     }
 
     public synchronized void replaceActiveSession(NavigationPath path, String message, NavigationGoalPlan goalPlan) {
+        Objects.requireNonNull(path, "path");
+        String safeMessage = requireMessage(message);
+        Objects.requireNonNull(goalPlan, "goalPlan");
         if (activeSession == null) {
             return;
         }
         activate(new NavigationSession(
-                Objects.requireNonNull(path, "path"),
-                requireMessage(message),
+                path,
+                safeMessage,
                 Instant.now(),
-                Objects.requireNonNull(goalPlan, "goalPlan")));
+                goalPlan));
     }
 
     public synchronized boolean activatePreparedLookahead() {
