@@ -41,6 +41,7 @@ public final class SurfaceTraversalGraphProfileWorkload {
         int measuredSearches = smoothing ? SMOOTH_MEASURED_SEARCHES : MEASURED_SEARCHES;
         ProfileSurfaceWorldLayer world = new ProfileSurfaceWorldLayer();
         runSearches(world, warmupSearches, smoothing);
+        world.resetBlockReads();
         long startNanos = System.nanoTime();
         int found = runSearches(world, measuredSearches, smoothing);
         long elapsedNanos = System.nanoTime() - startNanos;
@@ -116,8 +117,13 @@ public final class SurfaceTraversalGraphProfileWorkload {
 
         @Override
         public SurfaceBlock surfaceBlock(BlockPosition position) {
+            return surfaceBlock(position.x(), position.y(), position.z());
+        }
+
+        @Override
+        public SurfaceBlock surfaceBlock(int x, int y, int z) {
             blockReads++;
-            if (position.y() != 63 || isBlocked(position)) {
+            if (y != 63 || isBlocked(x, z)) {
                 return AIR;
             }
             return GROUND;
@@ -127,19 +133,27 @@ public final class SurfaceTraversalGraphProfileWorkload {
             return blockReads;
         }
 
-        private static boolean isBlocked(BlockPosition position) {
-            if (position.equals(START_BLOCK) || position.equals(GOAL_BLOCK)) {
+        private void resetBlockReads() {
+            blockReads = 0;
+        }
+
+        private static boolean isBlocked(int x, int z) {
+            if (sameColumn(x, z, START_BLOCK) || sameColumn(x, z, GOAL_BLOCK)) {
                 return false;
             }
-            return verticalBarrier(position) || horizontalBarrier(position);
+            return verticalBarrier(x, z) || horizontalBarrier(x, z);
         }
 
-        private static boolean verticalBarrier(BlockPosition position) {
-            return Math.floorMod(position.x(), 9) == 4 && Math.floorMod(position.z(), 11) != 5;
+        private static boolean sameColumn(int x, int z, BlockPosition position) {
+            return x == position.x() && z == position.z();
         }
 
-        private static boolean horizontalBarrier(BlockPosition position) {
-            return Math.floorMod(position.z(), 13) == 7 && Math.floorMod(position.x(), 10) != 3;
+        private static boolean verticalBarrier(int x, int z) {
+            return Math.floorMod(x, 9) == 4 && Math.floorMod(z, 11) != 5;
+        }
+
+        private static boolean horizontalBarrier(int x, int z) {
+            return Math.floorMod(z, 13) == 7 && Math.floorMod(x, 10) != 3;
         }
     }
 }

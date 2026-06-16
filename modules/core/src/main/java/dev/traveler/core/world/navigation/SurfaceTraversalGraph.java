@@ -287,7 +287,9 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
         SurfaceBlock block = surfaceBlock(blockX, blockY, blockZ);
         double floorHeight = block.shape().floorHeightForCellOrNaN(cellX, cellZ);
         if (Double.isNaN(floorHeight)) {
-            return swimSurfaceNode(block, blockX, blockY, blockZ, cellX, cellZ);
+            return capabilities.canSwim()
+                    ? swimSurfaceNode(block, blockX, blockY, blockZ, cellX, cellZ)
+                    : null;
         }
         if (!block.behavior().supportsStanding(capabilities)) {
             return null;
@@ -311,9 +313,8 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
     }
 
     private boolean isTopFluidSurface(SurfaceBlock block, BlockPosition position) {
-        return capabilities.canSwim()
-                && hasFluid(block)
-                && !hasFluid(surfaceBlock(position.above()));
+        return hasFluid(block)
+                && !hasFluid(surfaceBlock(position.x(), position.y() + 1, position.z()));
     }
 
     private static boolean hasFluid(SurfaceBlock block) {

@@ -29,7 +29,7 @@ final class SurfaceBlockCache {
 
     SurfaceBlock get(int x, int y, int z) {
         if (!bounds.contains(x, y, z)) {
-            return worldLayer.surfaceBlock(new BlockPosition(x, y, z));
+            return worldLayer.surfaceBlock(x, y, z);
         }
         return cached(x, y, z);
     }
@@ -37,7 +37,7 @@ final class SurfaceBlockCache {
     private SurfaceBlock cached(int x, int y, int z) {
         int index = indexOf(x, y, z);
         if (!loaded[index]) {
-            blocks[index] = worldLayer.surfaceBlock(new BlockPosition(x, y, z));
+            blocks[index] = worldLayer.surfaceBlock(x, y, z);
             loaded[index] = true;
         }
         return blocks[index];
