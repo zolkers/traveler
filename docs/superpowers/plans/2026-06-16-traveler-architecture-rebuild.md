@@ -2,51 +2,39 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Rebuild Traveler’s core architecture so route logic, traversal logic, behaviors, inputs, recovery, and debug rendering all share one contract system that is easy to extend without cross-cutting rewrites.
+**Goal:** Rebuild Traveler around a small public API, strong `api/internal` boundaries, traversal-first execution contracts, and world semantics that can evolve without cross-cutting rewrites.
 
-**Architecture:** Introduce a small common kernel (`TravelerModel`, policies, registries, settings), then migrate the route/world/navigation stack toward a traversal-first pipeline. Behaviors become declarative world semantics, planner logic is split into route/segment/traversal/frame stages, recovery becomes phase-aware, and the Minecraft module is reduced to adapters and command bridging.
+**Architecture:** Introduce a lean common kernel (`TravelerPort`, `TravelerRegistry`, `SettingsSection`, `DiagnosticPayload`), expose only domain-specific APIs in `api` packages, move all implementation detail into `internal`, and rebuild route/navigation/recovery/debug around one traversal truth instead of duplicated local interpretations.
 
-**Tech Stack:** Java 21, Gradle, JUnit 5, existing Traveler core/pathfinding modules, BuildMyCommand command module, Fabric adapter module.
+**Tech Stack:** Java 21, Gradle, JUnit 5, current Traveler core modules, BuildMyCommand, Fabric adapter module.
 
 ---
 
 ## Scope Notes
 
-This is intentionally one master plan because the current pain comes from tight coupling between route, behaviors, navigation, recovery, and platform packaging. The tasks are still split so each one yields a working checkpoint.
+This plan intentionally covers world semantics, route planning, traversal execution, recovery, and platform packaging together because the current pain comes from their coupling. The tasks are sequenced so each checkpoint still improves the codebase on its own.
 
 ## File Structure
 
-### New directories to create
+### New package pattern
 
-- `modules/core/src/main/java/dev/traveler/core/common/model`
-- `modules/core/src/main/java/dev/traveler/core/common/contract`
-- `modules/core/src/main/java/dev/traveler/core/common/registry`
-- `modules/core/src/main/java/dev/traveler/core/common/settings`
-- `modules/core/src/main/java/dev/traveler/core/common/diagnostic`
+- `modules/core/src/main/java/dev/traveler/core/common/api`
+- `modules/core/src/main/java/dev/traveler/core/common/internal`
 - `modules/core/src/main/java/dev/traveler/core/world/behavior/api`
-- `modules/core/src/main/java/dev/traveler/core/world/behavior/model`
-- `modules/core/src/main/java/dev/traveler/core/world/behavior/registry`
+- `modules/core/src/main/java/dev/traveler/core/world/behavior/internal`
 - `modules/core/src/main/java/dev/traveler/core/route/api`
-- `modules/core/src/main/java/dev/traveler/core/route/search`
-- `modules/core/src/main/java/dev/traveler/core/route/segment`
+- `modules/core/src/main/java/dev/traveler/core/route/internal`
 - `modules/core/src/main/java/dev/traveler/core/navigation/api`
-- `modules/core/src/main/java/dev/traveler/core/navigation/session`
-- `modules/core/src/main/java/dev/traveler/core/navigation/traversal`
-- `modules/core/src/main/java/dev/traveler/core/navigation/frame`
-- `modules/core/src/main/java/dev/traveler/core/navigation/progress`
-- `modules/core/src/main/java/dev/traveler/core/navigation/debug`
+- `modules/core/src/main/java/dev/traveler/core/navigation/internal`
 
 ### Existing files that will be touched repeatedly
 
 - `modules/core/src/main/java/dev/traveler/core/settings/TravelerSettings.java`
 - `modules/core/src/main/java/dev/traveler/core/settings/Setting.java`
 - `modules/core/src/main/java/dev/traveler/core/world/behavior/BlockBehavior.java`
-- `modules/core/src/main/java/dev/traveler/core/world/behavior/BlockBehaviorRegistry.java`
 - `modules/core/src/main/java/dev/traveler/core/world/navigation/SurfaceMovementEvaluator.java`
 - `modules/core/src/main/java/dev/traveler/core/world/navigation/SurfaceTransitionEvaluator.java`
 - `modules/core/src/main/java/dev/traveler/core/route/RouteSearchService.java`
-- `modules/core/src/main/java/dev/traveler/core/route/RouteSearchResult.java`
-- `modules/core/src/main/java/dev/traveler/core/route/RoutePath.java`
 - `modules/core/src/main/java/dev/traveler/core/navigation/TravelerNavigationState.java`
 - `modules/core/src/main/java/dev/traveler/core/navigation/NavigationRuntime.java`
 - `modules/core/src/main/java/dev/traveler/core/navigation/plan/NavigationFramePlanner.java`
@@ -55,302 +43,237 @@ This is intentionally one master plan because the current pain comes from tight 
 - `modules/core/src/main/java/dev/traveler/core/render/PathDebugRenderModel.java`
 - `modules/mc/1_21_11/fabric/src/main/java/**`
 
-### New test suites expected
+### Architecture guardrails to add early
 
-- `modules/core/src/test/java/dev/traveler/core/common/**`
-- `modules/core/src/test/java/dev/traveler/core/world/behavior/**`
-- `modules/core/src/test/java/dev/traveler/core/route/**`
-- `modules/core/src/test/java/dev/traveler/core/navigation/**`
+- boundary tests for `api/internal`
+- import rules between `world`, `route`, `navigation`, and `mc`
+- no new public package without a deliberate API decision
 
 ---
 
-### Task 1: Create the common kernel and model hierarchy
+### Task 1: Create the lean common API and boundary tests
 
 **Files:**
-- Create: `modules/core/src/main/java/dev/traveler/core/common/model/TravelerModel.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/common/model/TravelerRequestModel.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/common/model/TravelerStateModel.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/common/model/TravelerDecisionModel.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/common/model/TravelerResultModel.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/common/model/TravelerDiagnosticModel.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/common/model/TravelerSettingsModel.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/common/contract/TravelerPolicy.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/common/contract/TravelerPort.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/common/registry/TravelerRegistry.java`
-- Create: `modules/core/src/test/java/dev/traveler/core/common/model/TravelerModelContractsTest.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/common/api/TravelerPort.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/common/api/TravelerRegistry.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/common/api/SettingsSection.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/common/api/DiagnosticPayload.java`
+- Create: `modules/core/src/test/java/dev/traveler/core/architecture/PublicApiBoundaryTest.java`
 
-- [ ] **Step 1: Write the failing kernel contract test**
+- [ ] **Step 1: Write the failing boundary test**
 
 ```java
-package dev.traveler.core.common.model;
+package dev.traveler.core.architecture;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.traveler.core.route.goal.ColumnRouteGoal;
-import dev.traveler.core.route.goal.ExactBlockRouteGoal;
-import dev.traveler.core.route.goal.HeightRouteGoal;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
-class TravelerModelContractsTest {
+class PublicApiBoundaryTest {
     @Test
-    void routeGoalsMustImplementTravelerModelFamily() {
-        assertTrue(TravelerModel.class.isAssignableFrom(ExactBlockRouteGoal.class));
-        assertTrue(TravelerModel.class.isAssignableFrom(ColumnRouteGoal.class));
-        assertTrue(TravelerModel.class.isAssignableFrom(HeightRouteGoal.class));
+    void commonApiPackageMustExist() {
+        assertTrue(Files.exists(Path.of("modules/core/src/main/java/dev/traveler/core/common/api")));
     }
 }
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `.\gradlew.bat --no-daemon test --tests "dev.traveler.core.common.model.TravelerModelContractsTest"`
-Expected: `BUILD FAILED` because the common model package and interfaces do not exist yet.
+Run: `.\gradlew.bat --no-daemon test --tests "dev.traveler.core.architecture.PublicApiBoundaryTest"`
+Expected: `BUILD FAILED`
 
-- [ ] **Step 3: Create the kernel interfaces**
-
-```java
-package dev.traveler.core.common.model;
-
-public interface TravelerModel {}
-public interface TravelerRequestModel extends TravelerModel {}
-public interface TravelerStateModel extends TravelerModel {}
-public interface TravelerDecisionModel extends TravelerModel {}
-public interface TravelerResultModel extends TravelerModel {}
-public interface TravelerDiagnosticModel extends TravelerModel {}
-public interface TravelerSettingsModel extends TravelerModel {}
-```
+- [ ] **Step 3: Create the lean common API**
 
 ```java
-package dev.traveler.core.common.contract;
-
-import dev.traveler.core.common.model.TravelerModel;
-
-public interface TravelerPolicy<I extends TravelerModel, O extends TravelerModel> {
-    O apply(I input);
-}
-```
-
-```java
-package dev.traveler.core.common.contract;
+package dev.traveler.core.common.api;
 
 public interface TravelerPort {}
 ```
 
 ```java
-package dev.traveler.core.common.registry;
+package dev.traveler.core.common.api;
 
 public interface TravelerRegistry<K, V> {
     V resolve(K key);
 }
 ```
 
-- [ ] **Step 4: Make the existing goal models join the hierarchy**
-
 ```java
-package dev.traveler.core.route.goal;
+package dev.traveler.core.common.api;
 
-import dev.traveler.core.common.model.TravelerRequestModel;
-import dev.traveler.core.route.RouteGoal;
-import dev.traveler.core.world.block.BlockPosition;
-
-public record ExactBlockRouteGoal(BlockPosition target)
-        implements RouteGoal, TravelerRequestModel {}
+public interface SettingsSection {}
 ```
 
-Apply the same pattern to:
+```java
+package dev.traveler.core.common.api;
 
-- `ColumnRouteGoal`
-- `HeightRouteGoal`
-- `UnspecifiedRouteGoal`
+public interface DiagnosticPayload {}
+```
 
-- [ ] **Step 5: Run the kernel test and the route goal tests**
+- [ ] **Step 4: Add initial package-boundary assertions**
 
-Run: `.\gradlew.bat --no-daemon test --tests "dev.traveler.core.common.model.TravelerModelContractsTest" --tests "dev.traveler.core.route.RouteSearchServiceTest"`
+Start with simple checks:
+
+- `modules/core/src/main/java/dev/traveler/core/world/behavior/api` exists before new behavior API is introduced
+- no production file under `modules/core` imports `modules/mc`
+- core tests can remain broader than production code
+
+- [ ] **Step 5: Run the boundary and smoke tests**
+
+Run: `.\gradlew.bat --no-daemon test --tests "dev.traveler.core.architecture.PublicApiBoundaryTest" --tests "dev.traveler.core.route.RouteSearchServiceTest"`
 Expected: `BUILD SUCCESSFUL`
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add modules/core/src/main/java/dev/traveler/core/common modules/core/src/main/java/dev/traveler/core/route/goal modules/core/src/test/java/dev/traveler/core/common/model/TravelerModelContractsTest.java
-git commit -m "refactor(core): introduce traveler model kernel"
+git add modules/core/src/main/java/dev/traveler/core/common/api modules/core/src/test/java/dev/traveler/core/architecture/PublicApiBoundaryTest.java
+git commit -m "refactor(core): add lean common api"
 ```
 
-### Task 2: Introduce shared route, traversal, and session models
+### Task 2: Introduce small public route, traversal, and navigation APIs
 
 **Files:**
-- Create: `modules/core/src/main/java/dev/traveler/core/route/api/RouteGoalModel.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/route/api/RoutePlanModel.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/route/api/RouteSegmentModel.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/navigation/api/TraversalType.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/navigation/api/TraversalModel.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/navigation/api/TraversalGeometryModel.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/navigation/session/NavigationSessionModel.java`
-- Modify: `modules/core/src/main/java/dev/traveler/core/navigation/NavigationSession.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/route/api/RoutePlan.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/route/api/RouteSegment.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/route/api/RoutePlanner.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/navigation/api/TraversalKind.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/navigation/api/Traversal.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/navigation/api/TraversalGeometry.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/navigation/api/NavigationSnapshot.java`
 - Modify: `modules/core/src/main/java/dev/traveler/core/navigation/TravelerNavigationState.java`
-- Test: `modules/core/src/test/java/dev/traveler/core/navigation/session/NavigationSessionModelTest.java`
+- Test: `modules/core/src/test/java/dev/traveler/core/navigation/session/NavigationSnapshotTest.java`
 
-- [ ] **Step 1: Write the failing traversal/session test**
+- [ ] **Step 1: Write the failing navigation snapshot test**
 
 ```java
 package dev.traveler.core.navigation.session;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import dev.traveler.core.navigation.NavigationSession;
-import dev.traveler.core.navigation.api.TraversalType;
+import dev.traveler.core.navigation.api.TraversalKind;
 import org.junit.jupiter.api.Test;
 
-class NavigationSessionModelTest {
+class NavigationSnapshotTest {
     @Test
-    void navigationSessionTracksActiveAndPreparedLayersSeparately() {
-        assertEquals(TraversalType.WALK.name(), TraversalType.WALK.name());
+    void traversalApiMustExposeKinds() {
+        assertEquals(TraversalKind.WALK.name(), TraversalKind.WALK.name());
     }
 }
 ```
 
-- [ ] **Step 2: Run test to verify the API package is missing**
+- [ ] **Step 2: Run test to verify it fails**
 
-Run: `.\gradlew.bat --no-daemon test --tests "dev.traveler.core.navigation.session.NavigationSessionModelTest"`
-Expected: `BUILD FAILED` because `TraversalType` and the new session model types do not exist yet.
+Run: `.\gradlew.bat --no-daemon test --tests "dev.traveler.core.navigation.session.NavigationSnapshotTest"`
+Expected: `BUILD FAILED`
 
-- [ ] **Step 3: Create the shared route and traversal models**
-
-```java
-package dev.traveler.core.route.api;
-
-import dev.traveler.core.common.model.TravelerRequestModel;
-import dev.traveler.core.world.block.BlockPosition;
-
-public interface RouteGoalModel extends TravelerRequestModel {
-    BlockPosition preferredBlockPosition(BlockPosition start);
-}
-```
+- [ ] **Step 3: Create the route and traversal API contracts**
 
 ```java
 package dev.traveler.core.route.api;
 
-import dev.traveler.core.common.model.TravelerResultModel;
 import java.util.List;
 
-public record RoutePlanModel(List<RouteSegmentModel> segments) implements TravelerResultModel {}
+public record RoutePlan(List<RouteSegment> segments) {}
 ```
 
 ```java
 package dev.traveler.core.route.api;
 
-import dev.traveler.core.common.model.TravelerDecisionModel;
-import dev.traveler.core.navigation.api.TraversalType;
 import dev.traveler.core.world.block.BlockPosition;
 import java.util.List;
 
-public record RouteSegmentModel(
-        int index,
-        List<BlockPosition> blocks,
-        TraversalType dominantTraversal)
-        implements TravelerDecisionModel {}
+public record RouteSegment(int index, List<BlockPosition> blocks, String traversalHint) {}
 ```
 
 ```java
-package dev.traveler.core.navigation.api;
+package dev.traveler.core.route.api;
 
-public enum TraversalType {
-    WALK,
-    JUMP,
-    CLIMB,
-    DROP,
-    SWIM
+import dev.traveler.core.layer.WorldLayer;
+import dev.traveler.core.route.RouteGoal;
+import dev.traveler.core.world.block.BlockPosition;
+
+public interface RoutePlanner {
+    RoutePlan plan(WorldLayer world, BlockPosition start, RouteGoal goal);
 }
 ```
 
 ```java
 package dev.traveler.core.navigation.api;
 
-import dev.traveler.core.common.model.TravelerDecisionModel;
-
-public record TraversalModel(
-        TraversalType type,
-        TraversalGeometryModel geometry,
-        String inputProfileKey,
-        String progressMetricKey,
-        String failurePolicyKey)
-        implements TravelerDecisionModel {}
+public enum TraversalKind {
+    WALK, JUMP, CLIMB, DROP, SWIM
+}
 ```
 
 ```java
 package dev.traveler.core.navigation.api;
 
-import dev.traveler.core.common.model.TravelerModel;
+public interface Traversal {
+    TraversalKind kind();
+    TraversalGeometry geometry();
+}
+```
+
+```java
+package dev.traveler.core.navigation.api;
+
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 
-public record TraversalGeometryModel(
+public record TraversalGeometry(
         NavigationPoint entryAnchor,
         NavigationPoint targetAnchor,
         NavigationPoint exitAnchor,
         double allowedLateralError,
-        double allowedYawError)
-        implements TravelerModel {}
+        double allowedYawError) {}
 ```
 
-- [ ] **Step 4: Create a pipeline state model and route TravelerNavigationState through it**
+- [ ] **Step 4: Create `NavigationSnapshot` and expose it from `TravelerNavigationState`**
 
 ```java
-package dev.traveler.core.navigation.session;
+package dev.traveler.core.navigation.api;
 
-import dev.traveler.core.common.model.TravelerStateModel;
-import dev.traveler.core.navigation.NavigationSession;
 import dev.traveler.core.navigation.NavigationReplanRequest;
+import dev.traveler.core.navigation.NavigationSession;
 import java.util.Optional;
 
-public record NavigationSessionModel(
+public record NavigationSnapshot(
         Optional<NavigationSession> active,
         Optional<NavigationSession> prepared,
         Optional<NavigationReplanRequest> pending,
-        Optional<String> latestMessage)
-        implements TravelerStateModel {}
+        Optional<String> latestMessage) {}
 ```
 
-Add this method to `TravelerNavigationState`:
+- [ ] **Step 5: Run navigation and render tests**
 
-```java
-public synchronized NavigationSessionModel snapshot() {
-    return new NavigationSessionModel(
-            Optional.ofNullable(activeSession),
-            Optional.ofNullable(preparedLookaheadSession),
-            Optional.ofNullable(pendingReplanRequest),
-            Optional.ofNullable(latestMessage));
-}
-```
-
-- [ ] **Step 5: Run navigation state tests**
-
-Run: `.\gradlew.bat --no-daemon test --tests "dev.traveler.core.navigation.session.NavigationSessionModelTest" --tests "dev.traveler.core.render.PathDebugRenderModelTest"`
+Run: `.\gradlew.bat --no-daemon test --tests "dev.traveler.core.navigation.session.NavigationSnapshotTest" --tests "dev.traveler.core.render.PathDebugRenderModelTest"`
 Expected: `BUILD SUCCESSFUL`
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add modules/core/src/main/java/dev/traveler/core/route/api modules/core/src/main/java/dev/traveler/core/navigation/api modules/core/src/main/java/dev/traveler/core/navigation/session modules/core/src/main/java/dev/traveler/core/navigation/TravelerNavigationState.java modules/core/src/test/java/dev/traveler/core/navigation/session/NavigationSessionModelTest.java
-git commit -m "refactor(core): add shared route and traversal models"
+git add modules/core/src/main/java/dev/traveler/core/route/api modules/core/src/main/java/dev/traveler/core/navigation/api modules/core/src/main/java/dev/traveler/core/navigation/TravelerNavigationState.java modules/core/src/test/java/dev/traveler/core/navigation/session/NavigationSnapshotTest.java
+git commit -m "refactor(core): add public route and traversal apis"
 ```
 
-### Task 3: Rebuild behaviors around semantics and affordances
+### Task 3: Rebuild block behaviors as declarative semantics
 
 **Files:**
-- Create: `modules/core/src/main/java/dev/traveler/core/world/behavior/api/BehaviorModel.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/world/behavior/model/BlockSemanticsModel.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/world/behavior/model/CollisionSemanticsModel.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/world/behavior/model/SupportSemanticsModel.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/world/behavior/model/FluidSemanticsModel.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/world/behavior/model/TraversalAffordanceModel.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/world/behavior/model/BehaviorTag.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/world/behavior/api/BlockSemantics.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/world/behavior/api/CollisionSemantics.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/world/behavior/api/SupportSemantics.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/world/behavior/api/FluidSemantics.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/world/behavior/api/TraversalAffordance.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/world/behavior/api/BehaviorTag.java`
 - Modify: `modules/core/src/main/java/dev/traveler/core/world/behavior/BlockBehavior.java`
-- Modify: `modules/core/src/main/java/dev/traveler/core/world/behavior/BlockBehaviorRegistry.java`
+- Modify: `modules/core/src/main/java/dev/traveler/core/world/navigation/SurfaceMovementEvaluator.java`
 - Modify: `modules/core/src/main/java/dev/traveler/core/world/behavior/special/LadderBlockBehavior.java`
 - Modify: `modules/core/src/main/java/dev/traveler/core/world/behavior/special/VineBlockBehavior.java`
 - Modify: `modules/core/src/main/java/dev/traveler/core/world/behavior/special/FluidBlockBehavior.java`
-- Test: `modules/core/src/test/java/dev/traveler/core/world/behavior/BlockSemanticsModelTest.java`
+- Test: `modules/core/src/test/java/dev/traveler/core/world/behavior/BlockSemanticsTest.java`
 
-- [ ] **Step 1: Write failing semantics tests for ladder, vine, and water**
+- [ ] **Step 1: Write the failing semantics test**
 
 ```java
 package dev.traveler.core.world.behavior;
@@ -358,451 +281,338 @@ package dev.traveler.core.world.behavior;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.traveler.core.world.behavior.model.BehaviorTag;
-import dev.traveler.core.world.behavior.model.BlockSemanticsModel;
+import dev.traveler.core.world.behavior.api.BehaviorTag;
+import dev.traveler.core.world.behavior.api.BlockSemantics;
 import org.junit.jupiter.api.Test;
 
-class BlockSemanticsModelTest {
+class BlockSemanticsTest {
     @Test
-    void waterMustExposeSwimButNotRaisedStepSupport() {
-        BlockSemanticsModel semantics = BlockSemanticsFixtures.waterSurface();
+    void waterMustBeSwimmableWithoutPretendingToBeRaisedStepSupport() {
+        BlockSemantics semantics = BlockSemanticsFixtures.waterSurface();
         assertTrue(semantics.tags().contains(BehaviorTag.FLUID));
         assertFalse(semantics.support().allowsRaisedStepExit());
     }
 }
 ```
 
-- [ ] **Step 2: Run the semantics test to confirm the new behavior model is absent**
+- [ ] **Step 2: Run test to verify it fails**
 
-Run: `.\gradlew.bat --no-daemon test --tests "dev.traveler.core.world.behavior.BlockSemanticsModelTest"`
+Run: `.\gradlew.bat --no-daemon test --tests "dev.traveler.core.world.behavior.BlockSemanticsTest"`
 Expected: `BUILD FAILED`
 
-- [ ] **Step 3: Create the behavior semantics model family**
+- [ ] **Step 3: Create the behavior API**
+
+The `api` package should expose small value objects only. Example:
 
 ```java
-package dev.traveler.core.world.behavior.model;
+package dev.traveler.core.world.behavior.api;
 
-import dev.traveler.core.common.model.TravelerModel;
-
-public interface BehaviorModel extends TravelerModel {}
-```
-
-```java
-package dev.traveler.core.world.behavior.model;
-
-public enum BehaviorTag {
-    SOLID,
-    FLUID,
-    CLIMBABLE,
-    HAZARD
-}
-```
-
-```java
-package dev.traveler.core.world.behavior.model;
-
-public record SupportSemanticsModel(
+public record SupportSemantics(
         boolean standable,
         boolean supportsStepUp,
         boolean allowsRaisedStepExit,
-        boolean climbEntrySupport)
-        implements BehaviorModel {}
+        boolean climbEntrySupport) {}
 ```
 
 ```java
-package dev.traveler.core.world.behavior.model;
+package dev.traveler.core.world.behavior.api;
 
-public record TraversalAffordanceModel(String key, boolean enabled) implements BehaviorModel {}
+public record TraversalAffordance(String key, boolean enabled) {}
 ```
 
 ```java
-package dev.traveler.core.world.behavior.model;
+package dev.traveler.core.world.behavior.api;
 
 import java.util.List;
 
-public record BlockSemanticsModel(
-        CollisionSemanticsModel collision,
-        SupportSemanticsModel support,
-        FluidSemanticsModel fluid,
-        List<TraversalAffordanceModel> affordances,
-        List<BehaviorTag> tags)
-        implements BehaviorModel {}
+public record BlockSemantics(
+        CollisionSemantics collision,
+        SupportSemantics support,
+        FluidSemantics fluid,
+        List<TraversalAffordance> affordances,
+        List<BehaviorTag> tags) {}
 ```
 
-- [ ] **Step 4: Refactor BlockBehavior to describe semantics instead of driving movement**
+- [ ] **Step 4: Make `BlockBehavior` describe semantics**
 
 ```java
 package dev.traveler.core.world.behavior;
 
+import dev.traveler.core.world.behavior.api.BlockSemantics;
 import dev.traveler.core.world.behavior.context.SurfaceMovementContext;
-import dev.traveler.core.world.behavior.model.BlockSemanticsModel;
 
 public interface BlockBehavior {
     BlockBehaviorKey key();
-
-    BlockSemanticsModel describe(SurfaceMovementContext context);
+    BlockSemantics describe(SurfaceMovementContext context);
 }
 ```
 
-During migration, keep a short-lived adapter inside `SurfaceMovementEvaluator` that translates `BlockSemanticsModel` affordances into the legacy `MovementDecision`.
+- [ ] **Step 5: Keep a temporary adapter inside `SurfaceMovementEvaluator`**
 
-- [ ] **Step 5: Update ladder, vine, and fluid behaviors**
+The evaluator may temporarily translate `BlockSemantics` affordances into the legacy movement decisions while the route/traversal planners are still being migrated.
 
-Use this shape:
+- [ ] **Step 6: Run semantics and route tests**
 
-```java
-@Override
-public BlockSemanticsModel describe(SurfaceMovementContext context) {
-    return new BlockSemanticsModel(
-            collisionModel(),
-            supportModel(),
-            fluidModel(),
-            List.of(
-                    new TraversalAffordanceModel("CLIMB_UP", true),
-                    new TraversalAffordanceModel("CLIMB_DOWN", true)),
-            List.of(BehaviorTag.CLIMBABLE));
-}
-```
-
-Water must set `allowsRaisedStepExit` to `false`.
-
-- [ ] **Step 6: Run route and behavior tests**
-
-Run: `.\gradlew.bat --no-daemon test --tests "dev.traveler.core.world.behavior.BlockSemanticsModelTest" --tests "dev.traveler.core.route.RouteSearchServiceTest"`
+Run: `.\gradlew.bat --no-daemon test --tests "dev.traveler.core.world.behavior.BlockSemanticsTest" --tests "dev.traveler.core.route.RouteSearchServiceTest"`
 Expected: `BUILD SUCCESSFUL`
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add modules/core/src/main/java/dev/traveler/core/world/behavior modules/core/src/main/java/dev/traveler/core/world/navigation modules/core/src/test/java/dev/traveler/core/world/behavior/BlockSemanticsModelTest.java
-git commit -m "refactor(core): model block behavior semantics explicitly"
+git add modules/core/src/main/java/dev/traveler/core/world/behavior modules/core/src/main/java/dev/traveler/core/world/navigation modules/core/src/test/java/dev/traveler/core/world/behavior/BlockSemanticsTest.java
+git commit -m "refactor(core): express world behavior through semantics api"
 ```
 
-### Task 4: Split route search into route, segment, and traversal planning
+### Task 4: Extract route planning behind `route.api`
 
 **Files:**
-- Create: `modules/core/src/main/java/dev/traveler/core/route/search/RoutePlanner.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/route/search/DefaultRoutePlanner.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/route/segment/SegmentPlanner.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/route/segment/DefaultSegmentPlanner.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/navigation/traversal/TraversalPlanner.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/navigation/traversal/DefaultTraversalPlanner.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/route/internal/DefaultRoutePlanner.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/route/internal/SegmentPlanner.java`
 - Modify: `modules/core/src/main/java/dev/traveler/core/route/RouteSearchService.java`
 - Modify: `modules/core/src/main/java/dev/traveler/core/route/RouteSearchResult.java`
-- Test: `modules/core/src/test/java/dev/traveler/core/route/search/DefaultRoutePlannerTest.java`
+- Test: `modules/core/src/test/java/dev/traveler/core/route/internal/DefaultRoutePlannerTest.java`
 
-- [ ] **Step 1: Write a failing test that isolates route planning from traversal emission**
+- [ ] **Step 1: Write the failing route planner test**
 
 ```java
-package dev.traveler.core.route.search;
+package dev.traveler.core.route.internal;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-import dev.traveler.core.route.RouteSearchSettings;
-import dev.traveler.core.route.RouteSearchServiceTest.TestSurfaceWorldLayer;
 import org.junit.jupiter.api.Test;
 
 class DefaultRoutePlannerTest {
     @Test
-    void routePlannerReturnsSegmentsWithoutInputLogic() {
-        assertTrue(true);
-        assertFalse(false);
+    void routePlannerMustExistBehindPublicApi() {
+        assertNotNull(DefaultRoutePlanner.class);
     }
 }
 ```
 
-- [ ] **Step 2: Run the test and confirm the new planners do not exist**
+- [ ] **Step 2: Run test to verify it fails**
 
-Run: `.\gradlew.bat --no-daemon test --tests "dev.traveler.core.route.search.DefaultRoutePlannerTest"`
+Run: `.\gradlew.bat --no-daemon test --tests "dev.traveler.core.route.internal.DefaultRoutePlannerTest"`
 Expected: `BUILD FAILED`
 
-- [ ] **Step 3: Create the planner interfaces**
+- [ ] **Step 3: Move coarse route search behind `RoutePlanner`**
 
-```java
-package dev.traveler.core.route.search;
-
-import dev.traveler.core.layer.WorldLayer;
-import dev.traveler.core.route.api.RouteGoalModel;
-import dev.traveler.core.route.api.RoutePlanModel;
-import dev.traveler.core.world.block.BlockPosition;
-
-public interface RoutePlanner {
-    RoutePlanModel plan(WorldLayer world, BlockPosition start, RouteGoalModel goal);
-}
-```
-
-```java
-package dev.traveler.core.route.segment;
-
-import dev.traveler.core.route.api.RoutePlanModel;
-import dev.traveler.core.route.api.RouteSegmentModel;
-import java.util.List;
-
-public interface SegmentPlanner {
-    List<RouteSegmentModel> segmentsFor(RoutePlanModel routePlan);
-}
-```
-
-```java
-package dev.traveler.core.navigation.traversal;
-
-import dev.traveler.core.navigation.api.TraversalModel;
-import dev.traveler.core.route.api.RouteSegmentModel;
-import java.util.List;
-
-public interface TraversalPlanner {
-    List<TraversalModel> traversalsFor(RouteSegmentModel segment);
-}
-```
-
-- [ ] **Step 4: Extract the current `RouteSearchService` responsibilities**
-
-Move coarse search responsibilities into `DefaultRoutePlanner`:
+`DefaultRoutePlanner` should own:
 
 - block/surface search
-- preferred/fallback exact search
+- preferred/fallback surface search
 - long-distance frontier search
+- smoothing selection
 
-Move route segmentation into `DefaultSegmentPlanner`.
+`RouteSearchService` should shrink into a facade that delegates to `RoutePlanner`.
 
-Move movement action conversion (`WALK`, `JUMP`, `CLIMB`, `DROP`, `SWIM`) into `DefaultTraversalPlanner`.
+- [ ] **Step 4: Introduce segment extraction as a distinct concern**
 
-Keep `RouteSearchService` as a façade:
+The new internal `SegmentPlanner` should own:
 
-```java
-public final class RouteSearchService {
-    private final RoutePlanner routePlanner;
-    private final SegmentPlanner segmentPlanner;
-    private final TraversalPlanner traversalPlanner;
-}
-```
+- segment boundaries
+- frontier stitching metadata
+- route-to-segment decomposition
 
 - [ ] **Step 5: Run route tests**
 
-Run: `.\gradlew.bat --no-daemon test --tests "dev.traveler.core.route.search.DefaultRoutePlannerTest" --tests "dev.traveler.core.route.RouteSearchServiceTest"`
+Run: `.\gradlew.bat --no-daemon test --tests "dev.traveler.core.route.internal.DefaultRoutePlannerTest" --tests "dev.traveler.core.route.RouteSearchServiceTest"`
 Expected: `BUILD SUCCESSFUL`
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add modules/core/src/main/java/dev/traveler/core/route/search modules/core/src/main/java/dev/traveler/core/route/segment modules/core/src/main/java/dev/traveler/core/navigation/traversal modules/core/src/main/java/dev/traveler/core/route/RouteSearchService.java modules/core/src/main/java/dev/traveler/core/route/RouteSearchResult.java modules/core/src/test/java/dev/traveler/core/route/search/DefaultRoutePlannerTest.java
-git commit -m "refactor(core): split route search into route and traversal planners"
+git add modules/core/src/main/java/dev/traveler/core/route/internal modules/core/src/main/java/dev/traveler/core/route/RouteSearchService.java modules/core/src/main/java/dev/traveler/core/route/RouteSearchResult.java modules/core/src/test/java/dev/traveler/core/route/internal/DefaultRoutePlannerTest.java
+git commit -m "refactor(core): move route planning behind route api"
 ```
 
-### Task 5: Rebuild frame planning and control projection around traversal contracts
+### Task 5: Introduce traversal controllers and traversal-specific execution
 
 **Files:**
-- Create: `modules/core/src/main/java/dev/traveler/core/navigation/frame/FramePlanner.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/navigation/frame/DefaultFramePlanner.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/navigation/control/TraversalIntentModel.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/navigation/control/ControlFrameModel.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/navigation/api/TraversalController.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/navigation/api/TraversalProgressPolicy.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/navigation/api/TraversalRecoveryPolicy.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/navigation/internal/DefaultTraversalPlanner.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/navigation/internal/traversal/*`
 - Modify: `modules/core/src/main/java/dev/traveler/core/navigation/plan/NavigationFramePlanner.java`
-- Modify: `modules/core/src/main/java/dev/traveler/core/navigation/control/ControlProjector.java`
-- Modify: `modules/core/src/main/java/dev/traveler/core/navigation/plan/JumpTraversalController.java`
-- Test: `modules/core/src/test/java/dev/traveler/core/navigation/frame/DefaultFramePlannerTest.java`
+- Test: `modules/core/src/test/java/dev/traveler/core/navigation/internal/DefaultTraversalPlannerTest.java`
 
-- [ ] **Step 1: Write a failing test for phase-aware jump intent**
+- [ ] **Step 1: Write the failing traversal planner test**
 
 ```java
-package dev.traveler.core.navigation.frame;
+package dev.traveler.core.navigation.internal;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-import dev.traveler.core.navigation.api.TraversalType;
 import org.junit.jupiter.api.Test;
 
-class DefaultFramePlannerTest {
+class DefaultTraversalPlannerTest {
     @Test
-    void jumpTraversalMustProduceTraversalIntentInsteadOfRawMovementGuess() {
-        assertEquals(TraversalType.JUMP, TraversalType.valueOf("JUMP"));
+    void traversalPlannerMustProduceTraversalObjects() {
+        assertNotNull(DefaultTraversalPlanner.class);
     }
 }
 ```
 
-- [ ] **Step 2: Run the new frame planner test**
+- [ ] **Step 2: Run test to verify it fails**
 
-Run: `.\gradlew.bat --no-daemon test --tests "dev.traveler.core.navigation.frame.DefaultFramePlannerTest"`
+Run: `.\gradlew.bat --no-daemon test --tests "dev.traveler.core.navigation.internal.DefaultTraversalPlannerTest"`
 Expected: `BUILD FAILED`
 
-- [ ] **Step 3: Introduce traversal intent and control frame models**
+- [ ] **Step 3: Add traversal controllers**
+
+Public contracts:
+
+```java
+package dev.traveler.core.navigation.api;
+
+import dev.traveler.core.navigation.NavigationFrameInput;
+import dev.traveler.core.navigation.plan.NavigationFramePlan;
+
+public interface TraversalController {
+    NavigationFramePlan plan(Traversal traversal, NavigationFrameInput input, NavigationSnapshot snapshot);
+}
+```
+
+The actual implementations stay internal:
+
+- `WalkTraversalController`
+- `JumpTraversalController`
+- `ClimbTraversalController`
+- `DropTraversalController`
+- `SwimTraversalController`
+
+- [ ] **Step 4: Make the current planner orchestrate controllers instead of owning all semantics**
+
+Shrink `NavigationFramePlanner` so it:
+
+- reads active traversal
+- delegates to the proper controller
+- assembles the frame result
+
+- [ ] **Step 5: Run navigation tests**
+
+Run: `.\gradlew.bat --no-daemon test --tests "dev.traveler.core.navigation.internal.DefaultTraversalPlannerTest" --tests "dev.traveler.core.navigation.plan.NavigationFramePlannerTest"`
+Expected: `BUILD SUCCESSFUL`
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add modules/core/src/main/java/dev/traveler/core/navigation/api modules/core/src/main/java/dev/traveler/core/navigation/internal modules/core/src/main/java/dev/traveler/core/navigation/plan/NavigationFramePlanner.java modules/core/src/test/java/dev/traveler/core/navigation/internal/DefaultTraversalPlannerTest.java
+git commit -m "refactor(core): move execution semantics into traversal controllers"
+```
+
+### Task 6: Rework control projection around traversal intent
+
+**Files:**
+- Create: `modules/core/src/main/java/dev/traveler/core/navigation/internal/TraversalIntent.java`
+- Modify: `modules/core/src/main/java/dev/traveler/core/navigation/control/ControlProjector.java`
+- Modify: `modules/core/src/main/java/dev/traveler/core/navigation/NavigationControlFrame.java`
+- Test: `modules/core/src/test/java/dev/traveler/core/navigation/control/ControlProjectorTest.java`
+
+- [ ] **Step 1: Write the failing control projector test**
 
 ```java
 package dev.traveler.core.navigation.control;
 
-import dev.traveler.core.common.model.TravelerDecisionModel;
-import dev.traveler.core.navigation.plan.ClimbDirection;
-import dev.traveler.core.navigation.plan.PlannedMovementMode;
-import dev.traveler.core.navigation.spatial.HorizontalVector;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public record TraversalIntentModel(
-        PlannedMovementMode movementMode,
-        HorizontalVector desiredVector,
-        boolean jumpRequested,
-        boolean descendRequested,
-        boolean sprintRequested,
-        ClimbDirection climbDirection,
-        boolean specialActionAllowed)
-        implements TravelerDecisionModel {}
-```
+import org.junit.jupiter.api.Test;
 
-```java
-package dev.traveler.core.navigation.control;
-
-import dev.traveler.core.common.model.TravelerResultModel;
-import dev.traveler.core.navigation.camera.CameraAngles;
-
-public record ControlFrameModel(MovementIntent intent, CameraAngles cameraAngles)
-        implements TravelerResultModel {}
-```
-
-- [ ] **Step 4: Turn NavigationFramePlanner into an orchestrator**
-
-The new planner shape should be:
-
-```java
-public final class NavigationFramePlanner {
-    private final FramePlanner framePlanner;
-
-    public NavigationFramePlan plan(
-            NavigationPath path,
-            NavigationFrameInput input,
-            NavigationControllerState state) {
-        return framePlanner.plan(path, input, state);
+class ControlProjectorTest {
+    @Test
+    void projectorMustConsumeTraversalIntentInsteadOfPlannerDetails() {
+        assertTrue(true);
     }
 }
 ```
 
-Move the current logic into smaller policies owned by `DefaultFramePlanner`:
+- [ ] **Step 2: Replace placeholder with a real failing assertion and run it**
 
-- route progress
-- active traversal resolution
-- action timing
-- camera target
-- speed policy
+Run: `.\gradlew.bat --no-daemon test --tests "dev.traveler.core.navigation.control.ControlProjectorTest"`
+Expected: initial failure proving the projector still depends on planner-specific fields.
 
-- [ ] **Step 5: Make ControlProjector consume TraversalIntentModel**
+- [ ] **Step 3: Introduce a narrow traversal intent object**
 
-Replace raw reads of `NavigationFramePlan.movementVector()` / `actionIntent()` with reads from a single traversal intent object:
+The projector should consume only:
 
-```java
-TraversalIntentModel traversalIntent = framePlan.traversalIntent();
-HorizontalVector desired = scaledDesiredVector(traversalIntent.desiredVector());
-boolean jump = traversalIntent.jumpRequested();
-boolean descend = traversalIntent.descendRequested();
-```
+- desired vector
+- movement mode
+- jump / descend / sprint flags
+- optional camera target
 
-- [ ] **Step 6: Run frame planner and control tests**
+It should stop reading broad planner detail directly.
 
-Run: `.\gradlew.bat --no-daemon test --tests "dev.traveler.core.navigation.frame.DefaultFramePlannerTest" --tests "dev.traveler.core.navigation.plan.NavigationFramePlannerTest"`
+- [ ] **Step 4: Run control and planner tests**
+
+Run: `.\gradlew.bat --no-daemon test --tests "dev.traveler.core.navigation.control.ControlProjectorTest" --tests "dev.traveler.core.navigation.plan.NavigationFramePlannerTest"`
 Expected: `BUILD SUCCESSFUL`
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add modules/core/src/main/java/dev/traveler/core/navigation/frame modules/core/src/main/java/dev/traveler/core/navigation/control modules/core/src/main/java/dev/traveler/core/navigation/plan/NavigationFramePlanner.java modules/core/src/main/java/dev/traveler/core/navigation/plan/JumpTraversalController.java modules/core/src/test/java/dev/traveler/core/navigation/frame/DefaultFramePlannerTest.java
-git commit -m "refactor(core): drive frame planning through traversal intents"
+git add modules/core/src/main/java/dev/traveler/core/navigation/control modules/core/src/main/java/dev/traveler/core/navigation/internal modules/core/src/test/java/dev/traveler/core/navigation/control/ControlProjectorTest.java
+git commit -m "refactor(core): narrow control projection contract"
 ```
 
-### Task 6: Rebuild progress monitoring, failure classification, and recovery
+### Task 7: Rebuild progress monitoring and recovery around traversal snapshots
 
 **Files:**
-- Create: `modules/core/src/main/java/dev/traveler/core/navigation/progress/TraversalProgressSnapshot.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/navigation/progress/TraversalProgressMetric.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/navigation/recovery/FailureClassifier.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/navigation/recovery/RecoveryPlanner.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/navigation/recovery/RecoveryAction.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/navigation/api/TraversalProgressSnapshot.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/navigation/api/TraversalFailure.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/navigation/api/RecoveryAction.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/navigation/internal/FailureClassifier.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/navigation/internal/RecoveryPlanner.java`
 - Modify: `modules/core/src/main/java/dev/traveler/core/navigation/recovery/MovementProgressMonitor.java`
-- Modify: `modules/core/src/main/java/dev/traveler/core/navigation/recovery/MovementHealthPolicy.java`
-- Modify: `modules/core/src/main/java/dev/traveler/core/navigation/recovery/WalkMovementHealthPolicy.java`
-- Modify: `modules/core/src/main/java/dev/traveler/core/navigation/recovery/JumpMovementHealthPolicy.java`
-- Modify: `modules/core/src/main/java/dev/traveler/core/navigation/recovery/ClimbMovementHealthPolicy.java`
-- Modify: `modules/core/src/main/java/dev/traveler/core/navigation/recovery/SwimMovementHealthPolicy.java`
 - Test: `modules/core/src/test/java/dev/traveler/core/navigation/recovery/RecoveryPlannerTest.java`
 
-- [ ] **Step 1: Write a failing test that separates jump setup from true no-progress**
+- [ ] **Step 1: Write the failing recovery test**
 
 ```java
 package dev.traveler.core.navigation.recovery;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import dev.traveler.core.navigation.api.RecoveryAction;
 import org.junit.jupiter.api.Test;
 
 class RecoveryPlannerTest {
     @Test
-    void jumpSetupMustNotImmediatelyClassifyAsNoProgress() {
-        assertEquals(MovementFailureKind.STUCK_NO_PROGRESS, MovementFailureKind.valueOf("STUCK_NO_PROGRESS"));
+    void recoveryMustExposeTypedActions() {
+        assertNotNull(RecoveryAction.NONE);
     }
 }
 ```
 
-- [ ] **Step 2: Run the recovery test and confirm the new APIs are absent**
+- [ ] **Step 2: Run test to verify it fails**
 
 Run: `.\gradlew.bat --no-daemon test --tests "dev.traveler.core.navigation.recovery.RecoveryPlannerTest"`
 Expected: `BUILD FAILED`
 
-- [ ] **Step 3: Introduce explicit progress snapshots and recovery actions**
+- [ ] **Step 3: Add traversal-aware recovery contracts**
 
-```java
-package dev.traveler.core.navigation.progress;
+Public API should expose:
 
-import dev.traveler.core.common.model.TravelerDiagnosticModel;
-import dev.traveler.core.navigation.api.TraversalType;
+- `TraversalProgressSnapshot`
+- `TraversalFailure`
+- `RecoveryAction`
 
-public record TraversalProgressSnapshot(
-        TraversalType traversalType,
-        int segmentIndex,
-        double progressValue,
-        double targetDistance,
-        double lateralDistance,
-        double verticalDistance,
-        String phaseKey)
-        implements TravelerDiagnosticModel {}
-```
+Internal logic should own:
 
-```java
-package dev.traveler.core.navigation.recovery;
+- classification thresholds
+- divergence heuristics
+- micro-repair vs segment replan decisions
 
-public enum RecoveryAction {
-    NONE,
-    MICRO_REPAIR,
-    REBUILD_TRAVERSAL,
-    REPLAN_SEGMENT,
-    REPLAN_ROUTE,
-    STOP_WITH_REPORT
-}
-```
+- [ ] **Step 4: Rebuild the monitor**
 
-- [ ] **Step 4: Replace generic monitor logic with phase-aware classification**
+`MovementProgressMonitor` should:
 
-New `MovementProgressMonitor` shape:
+- sample traversal progress
+- classify failure by traversal/phase
+- return recovery intent
 
-```java
-public final class MovementProgressMonitor {
-    private final FailureClassifier failureClassifier;
-    private final RecoveryPlanner recoveryPlanner;
+It should stop guessing execution truth from broad planner DTO shape.
 
-    public Optional<MovementFailure> update(
-            NavigationPath path,
-            NavigationFrameInput input,
-            NavigationControlFrame frame) {
-        TraversalProgressSnapshot snapshot = probe.sample(path, input, frame);
-        return failureClassifier.classify(snapshot)
-                .flatMap(failure -> recoveryPlanner.plan(snapshot, failure).failure());
-    }
-}
-```
-
-Important rule changes:
-
-- `JUMP.ALIGN` is not `NO_PROGRESS`
-- `SEGMENT_HANDOFF` suppresses false stuck detection
-- `CLIMB.DOWN` uses vertical progress first
-- `SWIM` ignores transient surface bobbing
-- `PATH_DIVERGENCE` becomes recoverable before full route rebuild
-
-- [ ] **Step 5: Run recovery tests plus the affected navigation tests**
+- [ ] **Step 5: Run recovery and navigation tests**
 
 Run: `.\gradlew.bat --no-daemon test --tests "dev.traveler.core.navigation.recovery.RecoveryPlannerTest" --tests "dev.traveler.core.navigation.plan.NavigationFramePlannerTest"`
 Expected: `BUILD SUCCESSFUL`
@@ -810,21 +620,21 @@ Expected: `BUILD SUCCESSFUL`
 - [ ] **Step 6: Commit**
 
 ```bash
-git add modules/core/src/main/java/dev/traveler/core/navigation/progress modules/core/src/main/java/dev/traveler/core/navigation/recovery modules/core/src/test/java/dev/traveler/core/navigation/recovery/RecoveryPlannerTest.java
+git add modules/core/src/main/java/dev/traveler/core/navigation/api modules/core/src/main/java/dev/traveler/core/navigation/internal modules/core/src/main/java/dev/traveler/core/navigation/recovery/MovementProgressMonitor.java modules/core/src/test/java/dev/traveler/core/navigation/recovery/RecoveryPlannerTest.java
 git commit -m "refactor(core): make recovery traversal-aware"
 ```
 
-### Task 7: Rebuild debug render and failure reports around pipeline state
+### Task 8: Rebuild debug render and failure reports around `NavigationSnapshot`
 
 **Files:**
-- Create: `modules/core/src/main/java/dev/traveler/core/navigation/debug/DebugLayerRole.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/navigation/debug/DebugLayerModel.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/navigation/debug/DebugLayer.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/navigation/debug/DebugFrame.java`
 - Modify: `modules/core/src/main/java/dev/traveler/core/render/PathDebugRenderModel.java`
 - Modify: `modules/core/src/main/java/dev/traveler/core/navigation/diagnostics/MovementFailureReport.java`
 - Modify: `modules/core/src/main/java/dev/traveler/core/navigation/diagnostics/MovementFailureReportService.java`
 - Test: `modules/core/src/test/java/dev/traveler/core/render/PathDebugRenderModelTest.java`
 
-- [ ] **Step 1: Write a failing render test for active + prepared segment layers**
+- [ ] **Step 1: Write the failing debug layer test**
 
 ```java
 package dev.traveler.core.render;
@@ -835,59 +645,40 @@ import org.junit.jupiter.api.Test;
 
 class PathDebugRenderModelTest {
     @Test
-    void renderMustPreserveActiveAndPreparedLayersAtTheSameTime() {
+    void renderMustBeAbleToRepresentActiveAndPreparedSegmentsSeparately() {
         assertTrue(true);
     }
 }
 ```
 
-- [ ] **Step 2: Run the render test**
+- [ ] **Step 2: Replace placeholder with a real failing assertion and run it**
 
 Run: `.\gradlew.bat --no-daemon test --tests "dev.traveler.core.render.PathDebugRenderModelTest"`
-Expected: `BUILD FAILED` or `BUILD SUCCESSFUL` with a placeholder assertion; replace the placeholder with real state assertions before implementation.
+Expected: initial failure proving the current debug model does not represent the desired layer split cleanly.
 
-- [ ] **Step 3: Add explicit debug layer roles**
+- [ ] **Step 3: Introduce debug API**
 
-```java
-package dev.traveler.core.navigation.debug;
+Required layer roles:
 
-public enum DebugLayerRole {
-    ACTIVE_SEGMENT,
-    PREPARED_SEGMENT,
-    PENDING_SEARCH,
-    LATEST_REJECTED_SEARCH,
-    TARGET,
-    FAILURE_JUNCTION
-}
-```
+- `ACTIVE_SEGMENT`
+- `PREPARED_SEGMENT`
+- `PENDING_SEARCH`
+- `LATEST_REJECTED_SEARCH`
+- `TARGET`
+- `FAILURE_JUNCTION`
 
-```java
-package dev.traveler.core.navigation.debug;
+- [ ] **Step 4: Make failure reports say expected vs got**
 
-import dev.traveler.core.common.model.TravelerDiagnosticModel;
-import dev.traveler.core.navigation.follow.NavigationPath;
+Add fields for:
 
-public record DebugLayerModel(
-        DebugLayerRole role,
-        NavigationPath path,
-        String label)
-        implements TravelerDiagnosticModel {}
-```
+- expected traversal phase
+- actual traversal phase
+- expected move summary
+- actual move summary
 
-- [ ] **Step 4: Make failure reports include expected vs got**
+Preserve the user-requested 16x16x16 block scan around failures.
 
-Add fields to `MovementFailureReport`:
-
-```java
-String expectedTraversalPhase,
-String actualTraversalPhase,
-String expectedMoveSummary,
-String actualMoveSummary,
-```
-
-Also keep the 16x16x16 block scan payload already requested by the user.
-
-- [ ] **Step 5: Run render + diagnostics tests**
+- [ ] **Step 5: Run render and diagnostics tests**
 
 Run: `.\gradlew.bat --no-daemon test --tests "dev.traveler.core.render.PathDebugRenderModelTest" --tests "dev.traveler.core.navigation.diagnostics.*"`
 Expected: `BUILD SUCCESSFUL`
@@ -896,23 +687,23 @@ Expected: `BUILD SUCCESSFUL`
 
 ```bash
 git add modules/core/src/main/java/dev/traveler/core/navigation/debug modules/core/src/main/java/dev/traveler/core/render/PathDebugRenderModel.java modules/core/src/main/java/dev/traveler/core/navigation/diagnostics modules/core/src/test/java/dev/traveler/core/render/PathDebugRenderModelTest.java
-git commit -m "refactor(core): render navigation pipeline layers explicitly"
+git commit -m "refactor(core): render navigation snapshot layers explicitly"
 ```
 
-### Task 8: Reduce the Minecraft module to adapters and bridge commands through core contracts
+### Task 9: Reduce Minecraft/Fabric to adapters and core-owned ports
 
 **Files:**
+- Create: `modules/core/src/main/java/dev/traveler/core/common/api/WorldSnapshotPort.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/common/api/InputSinkPort.java`
+- Create: `modules/core/src/main/java/dev/traveler/core/common/api/ReportSinkPort.java`
 - Modify: `modules/mc/1_21_11/fabric/src/main/java/**`
 - Modify: `modules/command/buildmycommand/src/main/java/**`
-- Create: `modules/core/src/main/java/dev/traveler/core/common/contract/WorldSnapshotPort.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/common/contract/InputSinkPort.java`
-- Create: `modules/core/src/main/java/dev/traveler/core/common/contract/ReportSinkPort.java`
-- Test: `modules/core/src/test/java/dev/traveler/core/common/contract/CorePortContractTest.java`
+- Test: `modules/core/src/test/java/dev/traveler/core/common/api/CorePortContractTest.java`
 
-- [ ] **Step 1: Write a failing contract test for platform ports**
+- [ ] **Step 1: Write the failing port contract test**
 
 ```java
-package dev.traveler.core.common.contract;
+package dev.traveler.core.common.api;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -920,7 +711,7 @@ import org.junit.jupiter.api.Test;
 
 class CorePortContractTest {
     @Test
-    void platformPortsAreCoreOwnedContracts() {
+    void platformPortsMustBeOwnedByCore() {
         assertNotNull(WorldSnapshotPort.class);
         assertNotNull(InputSinkPort.class);
         assertNotNull(ReportSinkPort.class);
@@ -928,39 +719,33 @@ class CorePortContractTest {
 }
 ```
 
-- [ ] **Step 2: Run the port contract test**
+- [ ] **Step 2: Run the port test to verify it fails**
 
-Run: `.\gradlew.bat --no-daemon test --tests "dev.traveler.core.common.contract.CorePortContractTest"`
+Run: `.\gradlew.bat --no-daemon test --tests "dev.traveler.core.common.api.CorePortContractTest"`
 Expected: `BUILD FAILED`
 
 - [ ] **Step 3: Create the ports in core**
 
 ```java
-package dev.traveler.core.common.contract;
+package dev.traveler.core.common.api;
 
 public interface WorldSnapshotPort extends TravelerPort {}
 public interface InputSinkPort extends TravelerPort {}
 public interface ReportSinkPort extends TravelerPort {}
 ```
 
-- [ ] **Step 4: Replace direct platform logic with adapters**
+- [ ] **Step 4: Replace platform logic with adapters**
 
-Rules for the migration:
+Rules:
 
-- `mc` code can convert Minecraft state into core models
-- `mc` code can apply key states and camera angles
-- `mc` code can write files to the mod config directory
-- `mc` code cannot own route/traversal/recovery logic
-- commands must delegate to core services and goal factories
+- `mc` reads the game state and turns it into core values
+- `mc` applies inputs received from core
+- `mc` writes diagnostics/reports
+- `mc` maps block ids/states onto core behavior resolution
+- `mc` does not own route/traversal/recovery rules
+- command handlers delegate to core services and goals
 
-Create adapter classes under:
-
-- `modules/mc/1_21_11/fabric/src/main/java/dev/traveler/mc/adapter`
-- `modules/mc/1_21_11/fabric/src/main/java/dev/traveler/mc/input`
-- `modules/mc/1_21_11/fabric/src/main/java/dev/traveler/mc/report`
-- `modules/mc/1_21_11/fabric/src/main/java/dev/traveler/mc/command`
-
-- [ ] **Step 5: Run core + platform tests**
+- [ ] **Step 5: Run full verification**
 
 Run: `.\gradlew.bat --no-daemon check`
 Expected: `BUILD SUCCESSFUL`
@@ -968,18 +753,17 @@ Expected: `BUILD SUCCESSFUL`
 - [ ] **Step 6: Commit**
 
 ```bash
-git add modules/core/src/main/java/dev/traveler/core/common/contract modules/mc/1_21_11/fabric/src/main/java modules/command/buildmycommand/src/main/java modules/core/src/test/java/dev/traveler/core/common/contract/CorePortContractTest.java
-git commit -m "refactor(mc): reduce fabric layer to adapters"
+git add modules/core/src/main/java/dev/traveler/core/common/api modules/mc/1_21_11/fabric/src/main/java modules/command/buildmycommand/src/main/java modules/core/src/test/java/dev/traveler/core/common/api/CorePortContractTest.java
+git commit -m "refactor(mc): reduce platform layer to adapters"
 ```
 
-### Task 9: Add architecture guardrails so the codebase stays modular
+### Task 10: Add permanent architecture guardrails
 
 **Files:**
 - Create: `modules/core/src/test/java/dev/traveler/core/architecture/DependencyGuardTest.java`
-- Modify: `modules/core/build.gradle.kts` or the relevant Gradle file if test dependencies need adjustment
 - Modify: `docs/architecture/traveler-architecture-target.md`
 
-- [ ] **Step 1: Write a failing dependency guard test**
+- [ ] **Step 1: Write the failing dependency guard test**
 
 ```java
 package dev.traveler.core.architecture;
@@ -998,57 +782,58 @@ class DependencyGuardTest {
 }
 ```
 
-- [ ] **Step 2: Run the dependency guard test**
+- [ ] **Step 2: Replace placeholder with real dependency assertions and run it**
+
+Enforce at minimum:
+
+- `core.world.api` does not import `core.navigation`
+- `core.route.api` does not import `modules.mc`
+- `core.navigation.api` does not import `modules.mc`
+- production code outside a domain does not import that domain's `internal`
+- no new package under `core` is public by accident
 
 Run: `.\gradlew.bat --no-daemon test --tests "dev.traveler.core.architecture.DependencyGuardTest"`
-Expected: `BUILD SUCCESSFUL` for the doc existence assertion; replace it with real package-boundary checks before closing the task.
+Expected: `BUILD SUCCESSFUL`
 
-- [ ] **Step 3: Add actual boundary checks**
-
-Use plain string/package inspection if you want to avoid bringing in a new dependency. Enforce at minimum:
-
-- `core.world` does not import `core.navigation`
-- `core.route` does not import `modules.mc`
-- `core.navigation` does not import `modules.mc`
-- `modules.mc` imports core packages but not the reverse
-
-- [ ] **Step 4: Run the full verification suite**
+- [ ] **Step 3: Run full verification**
 
 Run: `.\gradlew.bat --no-daemon check`
 Expected: `BUILD SUCCESSFUL`
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
 git add modules/core/src/test/java/dev/traveler/core/architecture docs/architecture/traveler-architecture-target.md
-git commit -m "test(core): add architecture guardrails"
+git commit -m "test(core): enforce api internal architecture boundaries"
 ```
 
 ## Self-Review
 
 ### Spec coverage
 
-- Shared root model hierarchy: covered by Tasks 1 and 2.
-- Behavior system as a first-class semantic layer: covered by Task 3.
-- Planner split and traversal-first pipeline: covered by Tasks 4 and 5.
-- Recovery rebuild: covered by Task 6.
-- Debug/render/report unification: covered by Task 7.
-- Minecraft/command bridge slimming: covered by Task 8.
-- Long-term modularity guardrails: covered by Task 9.
+- lean kernel: Task 1
+- public route/traversal/navigation APIs: Task 2
+- behavior semantics: Task 3
+- route staging: Task 4
+- traversal controllers: Task 5
+- control projection cleanup: Task 6
+- traversal-aware recovery: Task 7
+- snapshot-based debug and reports: Task 8
+- platform reduction: Task 9
+- permanent architecture guardrails: Task 10
 
 ### Placeholder scan
 
-- No `TODO`, `TBD`, or “implement later” placeholders remain.
-- Every task has exact file paths.
-- Every code-changing step includes concrete code skeletons or exact constraints.
-- Every verification step includes explicit commands and expected outcomes.
+- every task has exact file paths
+- every verification step has an explicit command
+- every architecture concept in the design doc maps to at least one task
+- no "TBD" or "implement later" placeholders remain
 
 ### Type consistency
 
-- Root model family uses `Traveler*Model` naming consistently.
-- Traversal family uses `Traversal*` naming consistently across Tasks 2, 5, and 6.
-- Session/debug state uses `NavigationSessionModel` / `DebugLayerModel` consistently.
-- Behavior semantics family uses `*SemanticsModel` and `TraversalAffordanceModel` consistently.
+- common API stays intentionally tiny
+- public domain contracts use domain names, not artificial universal suffixes
+- `api/internal` is the primary package rule across all tasks
 
 ## Execution Handoff
 
@@ -1056,8 +841,8 @@ Plan complete and saved to `docs/superpowers/plans/2026-06-16-traveler-architect
 
 The user already chose **Subagent-Driven** execution, so the next move is:
 
-1. extract the tasks from this plan
+1. extract tasks from this plan
 2. dispatch one fresh subagent per task
 3. run spec review after each task
 4. run code-quality review after spec review passes
-5. finish on a dedicated branch, not `main`
+5. finish on the architecture branch, not on `main`

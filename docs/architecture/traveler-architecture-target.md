@@ -2,242 +2,226 @@
 
 ## Purpose
 
-Traveler already has strong execution instincts, but the codebase is hard to evolve because the same movement is reinterpreted by too many layers. Jump, climb, swim, smoothing, recovery, debug render, and the platform bridge do not all speak the same language. This document defines the new shared language.
+Traveler already does many things well at runtime, but the codebase is hard to evolve because one movement is described differently by route search, traversal execution, input projection, recovery, and debug rendering. This document defines the corrected target architecture: small public APIs, explicit pipeline stages, strong world semantics, and strict `api/internal` boundaries.
 
-## Current Failure Pattern
+## Diagnosis
 
-Today the codebase leaks responsibility across layers:
+The problem is not "too few abstractions." The problem is "too many overlapping meanings."
 
-- [RouteSearchService](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/route/RouteSearchService.java) owns route search, smoothing, preferred/fallback surface selection, long-distance fallback, and diagnostics assembly.
-- [NavigationFramePlanner](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/navigation/plan/NavigationFramePlanner.java) mixes route progress, action choice, jump alignment, steering choice, timing, camera targeting, climb direction, and speed choice.
-- [MovementProgressMonitor](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/navigation/recovery/MovementProgressMonitor.java) evaluates progress from abstractions that are only partially aligned with the traversal being executed.
-- [ControlProjector](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/navigation/control/ControlProjector.java) converts movement vectors into `ZQSD`-style inputs without a first-class traversal contract.
-- [BlockBehavior](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/world/behavior/BlockBehavior.java) mixes world semantics with path smoothing and local movement decisions.
-- [TravelerNavigationState](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/navigation/TravelerNavigationState.java) stores active/prepared/pending path state, but that state is not yet the single source of truth for debug layers and recovery.
+Today:
 
-The result is a mathematical gap:
+- [RouteSearchService](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/route/RouteSearchService.java) mixes pathfinding, smoothing, progress fallback, and diagnostics assembly.
+- [NavigationFramePlanner](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/navigation/plan/NavigationFramePlanner.java) mixes route progress, action choice, jump/climb steering, timing, camera targeting, speed, and debug detail.
+- [MovementProgressMonitor](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/navigation/recovery/MovementProgressMonitor.java) re-derives execution truth from planner artifacts instead of consuming a stable traversal contract.
+- [ControlProjector](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/navigation/control/ControlProjector.java) translates vectors into inputs without a first-class traversal profile.
+- [BlockBehavior](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/world/behavior/BlockBehavior.java) still carries movement-evaluation assumptions that belong higher in the stack.
+- [PathDebugRenderModel](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/render/PathDebugRenderModel.java) is forced to understand internal pipeline details.
 
-1. Route logic thinks in block/surface transitions.
-2. Traversal execution thinks in continuous positions and phases.
-3. Input projection thinks in camera-relative axes.
-4. Recovery thinks in deltas and timeouts.
-5. Debug render shows whichever intermediate artifact is convenient.
+That creates a mathematical gap:
 
-When those layers disagree, simple tuning becomes expensive.
+1. route logic thinks in blocks and surfaces
+2. traversal logic thinks in movement phases and constraints
+3. input logic thinks in camera-relative axes
+4. recovery logic thinks in thresholds and time windows
+5. render logic thinks in whatever intermediate objects it can see
 
-## Codebase Audit Anchors
+When these disagree, tuning one detail becomes cross-cutting surgery.
 
-### Model families that already exist but have no common roots
+## Audit Anchors
 
-These are the biggest semantic families currently floating without shared contracts:
+### Model families that exist but are not aligned
 
-1. **Spatial/world-position models**
+1. **Spatial values**
    - [BlockPosition](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/world/block/BlockPosition.java)
    - [NavigationPoint](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/navigation/spatial/NavigationPoint.java)
    - [SurfaceNode](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/world/surface/SurfaceNode.java)
    - [RenderVertex](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/render/RenderVertex.java)
 
-   They are all public carriers of “where is something in the world?”, but they do not share even a minimal spatial contract.
-
-2. **Path and segment models**
+2. **Path/segment values**
    - [RoutePath](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/route/RoutePath.java)
    - [RouteStep](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/route/RouteStep.java)
    - [NavigationPath](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/navigation/follow/NavigationPath.java)
    - [NavigationSegmentIntent](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/navigation/follow/NavigationSegmentIntent.java)
 
-   The route planner and the route follower are describing the same journey in two unrelated vocabularies.
-
-3. **Movement/traversal intent models**
+3. **Movement intent values**
    - [MovementAction](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/world/behavior/decision/MovementAction.java)
    - [LocomotionAction](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/navigation/locomotion/LocomotionAction.java)
    - [ActionIntent](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/navigation/plan/ActionIntent.java)
    - [LocomotionPlan](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/navigation/locomotion/LocomotionPlan.java)
 
-   These are all forms of “what movement are we executing?”, but they are not bound to one root family.
+These families matter, but they do **not** need a universal parent tree. They need clear ownership and stable boundaries.
 
-4. **Render models**
-   - [DebugRenderFrame](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/render/DebugRenderFrame.java)
-   - [DebugLine](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/render/DebugLine.java)
-   - [DebugBox](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/render/DebugBox.java)
+### Coupling hotspots that justify the redesign
 
-   Even inside rendering, Traveler is modeling “frame made of primitives” without a shared root contract.
+1. `NavigationFramePlanner` is the current policy choke point.
+2. `NavigationFramePlan` and `NavigationControlFrame` are overloaded cross-layer carriers.
+3. Route generation, smoothing, and execution targets are too tightly fused.
+4. Recovery duplicates movement semantics instead of consuming them.
+5. Debug/render and failure reports are wired into live navigation internals.
 
-5. **Settings sections**
-   - [RouteSearchSettings](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/route/RouteSearchSettings.java)
-   - [LongDistanceRouteSettings](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/route/longdistance/LongDistanceRouteSettings.java)
-   - [PathFollowSettings](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/navigation/follow/PathFollowSettings.java)
-   - [PathSteeringSettings](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/navigation/steering/PathSteeringSettings.java)
-   - [MovementHealthSettings](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/navigation/recovery/MovementHealthSettings.java)
+## The 10/10 Correction
 
-   They already behave like configuration sections, but they are not modeled as one configuration family.
+The first rebuild direction was close, but too abstract. A great Java architecture here is **not** "every public record implements `TravelerModel`." A great Java architecture is:
 
-### Coupling hotspots that justify the rebuild
+- a tiny common kernel
+- small, explicit public APIs
+- plain immutable values where possible
+- `api/internal` as the main boundary
+- domain-specific contracts instead of universal generic families
 
-1. **Planner choke point**
-   - [NavigationFramePlanner](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/navigation/plan/NavigationFramePlanner.java)
-   - [MovementActionPolicy](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/navigation/plan/MovementActionPolicy.java)
-   - [JumpTraversalController](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/navigation/plan/JumpTraversalController.java)
-   - [MovementVectorPolicy](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/navigation/plan/MovementVectorPolicy.java)
-
-   These files currently share responsibility for movement interpretation, which is why jump/climb/swim tuning becomes cross-cutting.
-
-2. **Overloaded cross-layer frame DTOs**
-   - [NavigationFramePlan](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/navigation/plan/NavigationFramePlan.java)
-   - [NavigationControlFrame](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/navigation/NavigationControlFrame.java)
-   - [ControlProjector](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/navigation/control/ControlProjector.java)
-   - [RouteMovementHealthProbe](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/navigation/recovery/RouteMovementHealthProbe.java)
-
-   These objects are carrying planner, projector, monitor, and debug meaning all at once.
-
-3. **Route generation fused with execution targets**
-   - [RouteSearchService](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/route/RouteSearchService.java)
-   - [DefaultSurfaceRouteStepProvider](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/route/step/DefaultSurfaceRouteStepProvider.java)
-   - [ClimbSurfaceRouteStepProvider](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/route/step/ClimbSurfaceRouteStepProvider.java)
-   - [SurfaceSmoothingPolicy](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/world/navigation/SurfaceSmoothingPolicy.java)
-
-   Smoothing and runtime action targets are too closely tied to route construction.
-
-4. **Recovery re-derives movement semantics**
-   - [MovementProgressMonitor](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/navigation/recovery/MovementProgressMonitor.java)
-   - [JumpMovementHealthPolicy](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/navigation/recovery/JumpMovementHealthPolicy.java)
-   - [ClimbMovementHealthPolicy](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/navigation/recovery/ClimbMovementHealthPolicy.java)
-   - [SwimMovementHealthPolicy](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/navigation/recovery/SwimMovementHealthPolicy.java)
-
-   Recovery is currently forced to guess execution truth from partial planner artifacts.
-
-5. **Debug/render tightly coupled to navigation internals**
-   - [PathDebugRenderModel](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/render/PathDebugRenderModel.java)
-   - [MovementFailureReport](/C:/Users/vriegert/traveler/modules/core/src/main/java/dev/traveler/core/navigation/diagnostics/MovementFailureReport.java)
-
-   Debug is not merely observing the pipeline; it depends on the current internal shape of the pipeline.
+This is closer to how strong Java projects age well.
 
 ## Architecture Laws
 
-These laws are intentionally strict:
-
-1. One movement meaning, one contract.
-2. No feature may redefine route, traversal, control, progress, or failure semantics locally.
-3. Behaviors describe the world; controllers drive the player.
-4. Recovery reacts to typed traversal progress, never to anonymous motion alone.
-5. Debug render reads navigation state, not ad hoc intermediate results.
-6. `mc`/`fabric` adapts data and inputs only; it never becomes a second core.
+1. Core defines the laws; features attach to the laws.
+2. Behaviors describe the world; they never drive inputs or recovery.
+3. Route planning, traversal planning, frame planning, recovery, and debug all share the same traversal truth.
+4. `mc`/`fabric` is a bridge, never a second core.
+5. Public API is intentionally small.
+6. Internal code is free to move as long as API contracts stay stable.
 
 ## Layer Model
 
 ```text
 common
-  -> root models, contracts, registries, settings, diagnostics
+  -> tiny shared interfaces and utilities
 world
-  -> behavior semantics, collision/support/fluid/climb affordances
+  -> block semantics, affordances, geometry
 route
-  -> route goals, route plans, segment plans, long-distance strategy
+  -> route goals, route search, long-distance routing
 navigation
-  -> traversal plans, frame plans, input projection, progress, recovery, debug
+  -> traversal planning, frame planning, control projection, progress, recovery, debug
 platform
-  -> Minecraft/Fabric adapters, command bridge, reports, rendering hooks
+  -> Minecraft/Fabric adapters, commands, reports, render hooks
 ```
 
 Dependency rules:
 
-- `common` has no dependency on feature layers.
-- `world` depends only on `common`.
-- `route` depends on `common` + `world`.
-- `navigation` depends on `common` + `world` + `route`.
-- `platform` depends on everything else, but no core package depends on `platform`.
+- `common` depends on nothing else
+- `world` depends on `common`
+- `route` depends on `common` + `world`
+- `navigation` depends on `common` + `world` + `route`
+- `platform` depends on all core APIs, but core never depends on `platform`
 
-## Root Contracts
+## Package Strategy: `api` and `internal`
 
-Every public model implements a common parent. No more public records that float without a family.
+This is the most important structural rule.
 
-```java
-package dev.traveler.core.common.model;
-
-public interface TravelerModel {}
-public interface TravelerRequestModel extends TravelerModel {}
-public interface TravelerStateModel extends TravelerModel {}
-public interface TravelerDecisionModel extends TravelerModel {}
-public interface TravelerResultModel extends TravelerModel {}
-public interface TravelerDiagnosticModel extends TravelerModel {}
-public interface TravelerSettingsModel extends TravelerModel {}
+```text
+dev.traveler.core.<domain>.api
+dev.traveler.core.<domain>.internal
 ```
 
-Core logic contracts:
+Rules:
+
+- everything in `api` is intentionally consumable outside the domain
+- everything in `internal` is implementation detail
+- cross-domain production code depends on `api`, not `internal`
+- tests may inspect `internal`; production callers should not
+
+This gives us real modularity without overbuilding a shared type system.
+
+## Lean Common Kernel
+
+The common layer should contain only contracts that create real leverage:
 
 ```java
-package dev.traveler.core.common.contract;
-
-import dev.traveler.core.common.model.TravelerModel;
-
-public interface TravelerPolicy<I extends TravelerModel, O extends TravelerModel> {
-    O apply(I input);
-}
+package dev.traveler.core.common.api;
 
 public interface TravelerPort {}
 ```
 
-Registry contract:
-
 ```java
-package dev.traveler.core.common.registry;
+package dev.traveler.core.common.api;
 
 public interface TravelerRegistry<K, V> {
     V resolve(K key);
 }
 ```
 
-## Shared Domain Models
+```java
+package dev.traveler.core.common.api;
 
-The key is not “more models.” The key is “fewer meanings.”
+public interface SettingsSection {}
+```
 
-### Route Family
+```java
+package dev.traveler.core.common.api;
 
-- `RouteGoalModel`
-- `RoutePlanModel`
-- `RouteSegmentModel`
-- `RouteFailureModel`
-- `LongDistancePlanModel`
+public interface DiagnosticPayload {}
+```
 
-### Traversal Family
+That is enough. We do **not** force request/state/result/decision marker hierarchies across the whole project.
 
-- `TraversalModel`
-- `TraversalGeometryModel`
-- `TraversalPhaseModel`
-- `TraversalIntentModel`
-- `TraversalProgressModel`
-- `TraversalFailureModel`
-- `TraversalRecoveryModel`
+## Public API Surfaces
 
-### Session / Debug Family
+### World API
 
-- `NavigationSessionModel`
-- `NavigationPipelineStateModel`
-- `DebugLayerModel`
-- `DebugFrameModel`
-- `FailureReportModel`
+- `BlockBehavior`
+- `BehaviorResolver`
+- `BlockSemantics`
+- `TraversalAffordance`
+- `SupportSemantics`
+- `FluidSemantics`
+- `CollisionSemantics`
 
-### Settings Family
+### Route API
 
-- `TravelerSettingsModel`
-- `RouteSettingsModel`
-- `TraversalSettingsModel`
-- `RecoverySettingsModel`
-- `RenderSettingsModel`
+- `RouteGoal`
+- `RoutePlanner`
+- `RoutePlan`
+- `RouteSegment`
+- `LongDistancePlanner`
+
+### Navigation / Traversal API
+
+- `TraversalKind`
+- `Traversal`
+- `TraversalGeometry`
+- `TraversalPlanner`
+- `TraversalController`
+- `TraversalProgressPolicy`
+- `TraversalRecoveryPolicy`
+- `NavigationSession`
+- `NavigationSnapshot`
+
+### Debug / Diagnostics API
+
+- `DebugLayer`
+- `DebugFrame`
+- `FailureReport`
+
+## Value Object Discipline
+
+We keep plain immutable values plain.
+
+Examples:
+
+- `BlockPosition`
+- `NavigationPoint`
+- `SurfaceNode`
+- `RenderVertex`
+
+These are related values, but they are not the same abstraction. They stay separate unless there is a real shared behavior to extract. Similar shape is not enough reason to force inheritance.
 
 ## Behaviors: World Semantics, Not Micro-AI
 
-Behaviors are fundamental, but they must be disciplined.
+Behaviors are fundamental, but they must stay declarative.
 
 Bad behavior design:
 
-- behavior chooses when to jump
-- behavior owns recovery
-- behavior rewrites smoothing rules on the fly
-- behavior manipulates input booleans directly
+- decides when to jump
+- owns recovery rules
+- rewrites smoothing directly
+- manipulates input booleans
 
 Good behavior design:
 
-- behavior describes what a block or local structure allows
-- route/traversal layers consume those affordances
+- describes support
+- describes collision
+- describes fluid rules
+- exposes traversal affordances
+- exposes local hazards or restrictions
 
 Behavior contract:
 
@@ -245,27 +229,25 @@ Behavior contract:
 package dev.traveler.core.world.behavior.api;
 
 import dev.traveler.core.world.behavior.context.BlockBehaviorContext;
-import dev.traveler.core.world.behavior.model.BlockSemanticsModel;
 
 public interface BlockBehavior {
-    BlockSemanticsModel describe(BlockBehaviorContext context);
+    BlockSemantics describe(BlockBehaviorContext context);
 }
 ```
 
-Block semantics:
+Semantics shape:
 
 ```java
-package dev.traveler.core.world.behavior.model;
+package dev.traveler.core.world.behavior.api;
 
 import java.util.List;
 
-public record BlockSemanticsModel(
-        CollisionSemanticsModel collision,
-        SupportSemanticsModel support,
-        FluidSemanticsModel fluid,
-        List<TraversalAffordanceModel> affordances,
-        List<BehaviorTag> tags)
-        implements BehaviorModel {}
+public record BlockSemantics(
+        CollisionSemantics collision,
+        SupportSemantics support,
+        FluidSemantics fluid,
+        List<TraversalAffordance> affordances,
+        List<BehaviorTag> tags) {}
 ```
 
 Example affordances:
@@ -280,98 +262,88 @@ Example affordances:
 - `BLOCKED`
 - `HAZARD`
 
-This lets water explicitly expose “swimmable” without pretending to be a step-up support.
+This is the right place to encode "water is swimmable but not a raised step support."
 
 ## Planner Decomposition
 
-The current planner stack needs to become a pipeline.
+The pipeline becomes explicit:
 
 ```text
-Goal -> RoutePlanner -> RoutePlanModel
-RoutePlanModel -> SegmentPlanner -> RouteSegmentModel
-RouteSegmentModel -> TraversalPlanner -> TraversalModel
-TraversalModel -> FramePlanner -> TraversalIntentModel
-TraversalIntentModel -> InputProjector -> ControlFrameModel
+Goal -> RoutePlanner -> RoutePlan
+RoutePlan -> SegmentPlanner -> RouteSegment
+RouteSegment -> TraversalPlanner -> Traversal
+Traversal -> FramePlanner -> TraversalIntent
+TraversalIntent -> InputProjector -> ControlFrame
 ```
 
 Responsibilities:
 
-- `RoutePlanner`: finds the coarse route and handles long-distance segmentation.
-- `SegmentPlanner`: turns route steps into segment-level boundaries and frontier policy.
-- `TraversalPlanner`: emits precise `WALK`, `JUMP`, `CLIMB`, `DROP`, `SWIM` traversals with geometry.
-- `FramePlanner`: decides what the current frame should do inside the active traversal.
-- `InputProjector`: translates traversal intent into camera + input booleans, nothing more.
+- `RoutePlanner`: coarse route and long-distance strategy
+- `SegmentPlanner`: segment boundaries and segment stitching rules
+- `TraversalPlanner`: concrete `WALK`, `JUMP`, `CLIMB`, `DROP`, `SWIM` traversals
+- `FramePlanner`: phase-aware per-frame intent for the active traversal
+- `InputProjector`: translates intent into inputs and camera goals
 
-## Traversal Is the Missing Contract
+## Traversal Is the Shared Truth
 
-The most important model in the rebuild is `TraversalModel`.
+The most important contract in the system is `Traversal`.
 
 ```java
-public record TraversalModel(
-        TraversalType type,
-        NavigationAnchorModel entryAnchor,
-        TraversalGeometryModel geometry,
-        AlignmentWindowModel alignmentWindow,
-        SupportWindowModel supportWindow,
-        InputProfileKey inputProfile,
-        ProgressMetricKey progressMetric,
-        FailurePolicyKey failurePolicy)
-        implements TravelerDecisionModel {}
+package dev.traveler.core.navigation.api;
+
+public interface Traversal {
+    TraversalKind kind();
+    TraversalGeometry geometry();
+    TraversalController controller();
+    TraversalProgressPolicy progressPolicy();
+    TraversalRecoveryPolicy recoveryPolicy();
+}
 ```
 
-That one model closes the gap between:
+This is what closes the gap between route logic, execution, monitoring, recovery, and debug.
 
-- evaluation
-- steering
-- input projection
-- progress monitoring
-- recovery
-- debug rendering
+### Jump traversal carries
 
-### Example: Jump
-
-`TraversalModel` for jump carries:
-
-- entry block / takeoff anchor
+- entry/takeoff anchor
+- lateral alignment window
 - allowed yaw band
-- allowed lateral error
+- commit conditions
 - landing zone
 - airborne corridor
-- commit conditions
-- expected progress metric
+- progress policy
+- recovery policy
 
-Then:
+### Climb traversal carries
 
-- traversal planner validates the jump
-- frame planner aligns and commits it
-- projector knows which axes are legal during jump phases
-- progress monitor knows the difference between setup, commit, airborne, and landing
-- debug render shows the actual jump geometry, not a guessed line
-
-### Example: Climb
-
-Climb traversal carries:
-
-- climb surface anchor
-- climb face / column
-- climb direction (`UP`, `DOWN`, `LEVEL`)
+- climb column / face
+- direction (`UP`, `DOWN`, `LEVEL`)
 - entry window
 - exit window
-- smoothing preservation rule
+- preserved nodes / no-smoothing constraints
+- climb progress policy
+- climb recovery policy
 
-## Recovery Is Not a Global Panic Button
+### Swim traversal carries
 
-Recovery becomes typed and phase-aware.
+- surface preference
+- submerged allowance
+- fluid exit rules
+- swim corridor tolerance
+- swim progress policy
+
+## Recovery Is Typed, Not Global
+
+Recovery should consume traversal-aware progress snapshots:
 
 ```text
 TraversalProgressSnapshot
 -> FailureClassifier
--> FailureKind
+-> TraversalFailure
 -> RecoveryPlanner
 -> RecoveryAction
 ```
 
-Failure kinds must be explicit:
+Failure kinds:
 
 - `NO_PROGRESS`
 - `PATH_DIVERGENCE`
@@ -381,7 +353,7 @@ Failure kinds must be explicit:
 - `WORLD_STATE_INVALIDATED`
 - `UNLOADED_FRONTIER`
 
-Recovery actions must also be explicit:
+Recovery actions:
 
 - `NONE`
 - `MICRO_REPAIR`
@@ -390,11 +362,11 @@ Recovery actions must also be explicit:
 - `REPLAN_ROUTE`
 - `STOP_WITH_REPORT`
 
-This is better than the current pattern where unrelated problems collapse into the same “stuck” branch.
+This is far better than today's implicit "everything eventually becomes stuck or divergence."
 
-## Debug Render Reads Pipeline State
+## Debug Render Reads Navigation Snapshot
 
-Debug rendering must come from `NavigationPipelineStateModel`, not from whichever raw path result arrived most recently.
+Debug must read stable snapshot state, not planner internals.
 
 Required layers:
 
@@ -405,49 +377,43 @@ Required layers:
 - `TARGET`
 - `FAILURE_JUNCTION`
 
-This is what keeps old/new segments visible at the same time without lying about what the bot is actually following.
+That is how we keep old/new segments visible without lying about what is actually active.
 
 ## Settings Become a Real Domain
 
-`Setting<T>` and `TravelerSettings` are a good start, but settings must map to the rebuilt domains:
+`Setting<T>` and `TravelerSettings` stay, but settings sections become small domain units implementing `SettingsSection`.
 
-- `RouteSettingsModel`
-- `TraversalExecutionSettingsModel`
-- `ProgressMonitorSettingsModel`
-- `RecoverySettingsModel`
-- `DebugRenderSettingsModel`
-- `BehaviorSettingsModel`
+Examples:
 
-Each policy receives only the settings model it needs.
+- `RouteSearchSettings`
+- `LongDistanceRouteSettings`
+- `TraversalExecutionSettings`
+- `PathFollowSettings`
+- `MovementHealthSettings`
+- `DebugRenderSettings`
+
+Each policy receives the smallest settings section it needs.
 
 ## Target Package Map
 
 ```text
-modules/core/src/main/java/dev/traveler/core/common/model
-modules/core/src/main/java/dev/traveler/core/common/contract
-modules/core/src/main/java/dev/traveler/core/common/registry
+modules/core/src/main/java/dev/traveler/core/common/api
+modules/core/src/main/java/dev/traveler/core/common/internal
 modules/core/src/main/java/dev/traveler/core/common/settings
-modules/core/src/main/java/dev/traveler/core/common/diagnostic
 
 modules/core/src/main/java/dev/traveler/core/world/behavior/api
-modules/core/src/main/java/dev/traveler/core/world/behavior/model
+modules/core/src/main/java/dev/traveler/core/world/behavior/internal
 modules/core/src/main/java/dev/traveler/core/world/behavior/context
-modules/core/src/main/java/dev/traveler/core/world/behavior/registry
-modules/core/src/main/java/dev/traveler/core/world/behavior/standard
 modules/core/src/main/java/dev/traveler/core/world/geometry
 
 modules/core/src/main/java/dev/traveler/core/route/api
+modules/core/src/main/java/dev/traveler/core/route/internal
 modules/core/src/main/java/dev/traveler/core/route/goal
-modules/core/src/main/java/dev/traveler/core/route/search
-modules/core/src/main/java/dev/traveler/core/route/segment
 modules/core/src/main/java/dev/traveler/core/route/longdistance
 
 modules/core/src/main/java/dev/traveler/core/navigation/api
-modules/core/src/main/java/dev/traveler/core/navigation/session
-modules/core/src/main/java/dev/traveler/core/navigation/traversal
-modules/core/src/main/java/dev/traveler/core/navigation/frame
+modules/core/src/main/java/dev/traveler/core/navigation/internal
 modules/core/src/main/java/dev/traveler/core/navigation/control
-modules/core/src/main/java/dev/traveler/core/navigation/progress
 modules/core/src/main/java/dev/traveler/core/navigation/recovery
 modules/core/src/main/java/dev/traveler/core/navigation/debug
 
@@ -458,25 +424,38 @@ modules/mc/1_21_11/fabric/src/main/java/dev/traveler/mc/report
 modules/mc/1_21_11/fabric/src/main/java/dev/traveler/mc/command
 ```
 
+## What We Explicitly Avoid
+
+To keep this architecture strong, Traveler should avoid:
+
+- a universal "everything is a `TravelerModel`" tree
+- giant manager classes
+- public exposure of internal planner DTOs
+- behavior classes that secretly drive navigation
+- debug code that depends on internal planner structure
+- platform modules that reimplement core logic
+
 ## Why This Is Better
 
-This structure is better because:
+This version is better because:
 
-1. one feature no longer redefines the laws of another feature
-2. models have families, so navigation concepts become searchable and teachable
-3. behavior semantics become reusable across route, traversal, and diagnostics
-4. recovery becomes explainable instead of heuristic soup
-5. platform upgrades become easier because `mc` is only a bridge
-6. tuning jump/climb/swim/smoothing becomes local policy work instead of cross-cutting surgery
-7. beginners can add a behavior or traversal by filling a known set of contracts
+1. the public API is small enough to learn
+2. internal refactors become cheaper
+3. behaviors become reusable semantics instead of mixed-control objects
+4. jump/climb/swim tuning becomes local traversal work
+5. recovery becomes explainable and traversal-aware
+6. the Minecraft module becomes easier to swap and upgrade
+7. beginners can add a feature by implementing a few contracts, not by editing five unrelated subsystems
 
 ## Migration Principle
 
-We do not freeze development for a “big bang rewrite.” The migration path is:
+We do not do a big-bang rewrite. We migrate by stages:
 
-1. introduce the contracts beside the current code
-2. migrate one pipeline stage at a time
-3. keep compatibility shims only as short-lived adapters
-4. delete legacy abstractions as soon as their replacements are wired and tested
+1. introduce `api/internal` boundaries
+2. introduce the lean common kernel
+3. extract behavior semantics API
+4. extract route/traversal/navigation APIs
+5. move current logic behind those APIs
+6. delete legacy cross-layer carriers as soon as their replacements are proven
 
-That is how we turn the current mod into a framework without losing the execution quality it already has.
+That is how Traveler becomes a framework without losing the runtime quality it already has.
