@@ -174,10 +174,10 @@ public final class TravelerNavigationState {
     }
 
     public synchronized NavigationSnapshot snapshot() {
-        return new NavigationSnapshot(
-                Optional.ofNullable(activeSession),
-                Optional.ofNullable(preparedLookaheadSession),
-                Optional.ofNullable(pendingReplanRequest),
-                Optional.ofNullable(latestMessage));
+        return NavigationSnapshot.of(
+                activeSession,
+                preparedLookaheadSession,
+                pendingReplanRequest,
+                latestMessage);
     }
 }

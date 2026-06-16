@@ -1,12 +1,7 @@
 package dev.traveler.core.navigation.api;
 
-import java.util.Objects;
+public interface Traversal {
+    TraversalKind kind();
 
-public record Traversal(
-        TraversalKind kind,
-        TraversalGeometry geometry) {
-    public Traversal {
-        Objects.requireNonNull(kind, "kind");
-        Objects.requireNonNull(geometry, "geometry");
-    }
+    TraversalGeometry geometry();
 }
