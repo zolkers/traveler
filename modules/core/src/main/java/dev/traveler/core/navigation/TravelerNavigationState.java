@@ -1,5 +1,6 @@
 package dev.traveler.core.navigation;
 
+import dev.traveler.core.navigation.api.NavigationSnapshot;
 import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import java.time.Instant;
@@ -170,5 +171,13 @@ public final class TravelerNavigationState {
 
     public synchronized Optional<String> latestMessage() {
         return Optional.ofNullable(latestMessage);
+    }
+
+    public synchronized NavigationSnapshot snapshot() {
+        return new NavigationSnapshot(
+                Optional.ofNullable(activeSession),
+                Optional.ofNullable(preparedLookaheadSession),
+                Optional.ofNullable(pendingReplanRequest),
+                Optional.ofNullable(latestMessage));
     }
 }
