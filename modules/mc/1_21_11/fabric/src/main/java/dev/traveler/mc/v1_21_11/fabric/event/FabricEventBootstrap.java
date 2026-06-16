@@ -32,7 +32,10 @@ public final class FabricEventBootstrap {
     public static void registerClientEvents(TravelerCommandModule module) {
         TravelerCommandModule commandModule = Objects.requireNonNull(module, "module");
         FabricPathDebugRenderer renderer =
-                new FabricPathDebugRenderer(PathDebugRenderModel.defaultModel(), commandModule.debugState());
+                new FabricPathDebugRenderer(
+                        PathDebugRenderModel.defaultModel(),
+                        commandModule.debugState(),
+                        commandModule.navigationState());
         NavigationRuntime navigationRuntime = new NavigationRuntime(
                 commandModule.navigationState(),
                 MinecraftClientNavigationAdapter.currentClient(),

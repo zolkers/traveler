@@ -95,6 +95,29 @@ class TravelerPathSearchResultTest {
     }
 
     @Test
+    void navigationPathStartsAtExactRequestedAnchorWhenProvided() {
+        SurfaceNode start = node(1);
+        SurfaceNode goal = node(2);
+        NavigationPoint exactAnchor = new NavigationPoint(1.3, 64.0, 0.5);
+        RoutePath route = RoutePath.of(List.of(new RouteStep(start, goal, MovementAction.WALK, 1.0)));
+        TravelerPathSearchResult result = new TravelerPathSearchResult(
+                new RouteSearchResult(
+                        blockResult(start, goal),
+                        Optional.empty(),
+                        Optional.of(route),
+                        RouteSearchDiagnostics.none(1, 1)),
+                "path",
+                Optional.empty(),
+                Optional.of(exactAnchor));
+
+        NavigationPath path = result.navigationPath().orElseThrow();
+
+        assertEquals(exactAnchor, path.nodeAt(0));
+        assertEquals(new NavigationPoint(2.25, 64.0, 0.25), path.nodeAt(1));
+        assertEquals(MovementAction.WALK, path.actionBeforeNode(1));
+    }
+
+    @Test
     void debugSnapshotKeepsRouteExecutionPointsForRendering() {
         SurfaceNode start = node(0);
         SurfaceNode landing = node(1);

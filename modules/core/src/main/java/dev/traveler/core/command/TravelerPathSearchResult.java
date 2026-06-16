@@ -17,19 +17,32 @@ import java.util.Optional;
 public record TravelerPathSearchResult(
         RouteSearchResult searchResult,
         String message,
-        Optional<LongDistanceRoutePlan> routePlan) {
+        Optional<LongDistanceRoutePlan> routePlan,
+        Optional<NavigationPoint> navigationStartOverride) {
     public TravelerPathSearchResult(RouteSearchResult searchResult, String message) {
-        this(searchResult, message, Optional.empty());
+        this(searchResult, message, Optional.empty(), Optional.empty());
     }
 
     public TravelerPathSearchResult(RouteSearchResult searchResult, String message, LongDistanceRoutePlan routePlan) {
-        this(searchResult, message, Optional.of(Objects.requireNonNull(routePlan, "routePlan")));
+        this(
+                searchResult,
+                message,
+                Optional.of(Objects.requireNonNull(routePlan, "routePlan")),
+                Optional.empty());
+    }
+
+    public TravelerPathSearchResult(
+            RouteSearchResult searchResult,
+            String message,
+            Optional<LongDistanceRoutePlan> routePlan) {
+        this(searchResult, message, routePlan, Optional.empty());
     }
 
     public TravelerPathSearchResult {
         Objects.requireNonNull(searchResult, "searchResult");
         Objects.requireNonNull(message, "message");
         routePlan = Objects.requireNonNull(routePlan, "routePlan");
+        navigationStartOverride = Objects.requireNonNull(navigationStartOverride, "navigationStartOverride");
     }
 
     public void updateDebug(PathfinderDebugState debugState) {
@@ -53,11 +66,11 @@ public record TravelerPathSearchResult(
             return Optional.empty();
         }
         Optional<NavigationPath> routePath =
-                searchResult.route().map(TravelerPathSearchResult::navigationPathFromRoute);
+                searchResult.route().map(route -> navigationPathFromRoute(route, navigationStartOverride));
         if (routePath.isPresent()) {
             return routePath;
         }
-        return navigationPath(fallbackNavigationPoints());
+        return navigationPath(anchoredPoints(fallbackNavigationPoints(), navigationStartOverride));
     }
 
     public Optional<NavigationGoalPlan> navigationGoalPlan() {
@@ -96,12 +109,27 @@ public record TravelerPathSearchResult(
         return Optional.of(NavigationPath.of(points));
     }
 
-    private static NavigationPath navigationPathFromRoute(RoutePath route) {
+    private static NavigationPath navigationPathFromRoute(
+            RoutePath route,
+            Optional<NavigationPoint> startOverride) {
         return NavigationPath.withIntents(
-                route.points(),
+                anchoredPoints(route.points(), startOverride),
                 route.steps().stream()
                         .map(TravelerPathSearchResult::segmentIntent)
                         .toList());
+    }
+
+    private static List<NavigationPoint> anchoredPoints(
+            List<NavigationPoint> points,
+            Optional<NavigationPoint> startOverride) {
+        List<NavigationPoint> safePoints = List.copyOf(Objects.requireNonNull(points, "points"));
+        Optional<NavigationPoint> override = Objects.requireNonNull(startOverride, "startOverride");
+        if (override.isEmpty() || safePoints.isEmpty()) {
+            return safePoints;
+        }
+        java.util.ArrayList<NavigationPoint> anchored = new java.util.ArrayList<>(safePoints);
+        anchored.set(0, override.orElseThrow());
+        return List.copyOf(anchored);
     }
 
     private static NavigationSegmentIntent segmentIntent(dev.traveler.core.route.RouteStep step) {

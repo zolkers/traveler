@@ -1,6 +1,7 @@
 package dev.traveler.core.navigation;
 
 import dev.traveler.core.navigation.follow.NavigationPath;
+import dev.traveler.core.navigation.spatial.NavigationPoint;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
@@ -47,12 +48,44 @@ public final class TravelerNavigationState {
         latestMessage = message;
     }
 
+    public synchronized void requestReplan(
+            NavigationGoalPlan goalPlan,
+            String message,
+            NavigationPoint startOverride) {
+        NavigationGoalPlan plan = Objects.requireNonNull(goalPlan, "goalPlan");
+        activeSession = null;
+        preparedLookaheadSession = null;
+        pendingReplanRequest = new NavigationReplanRequest(
+                plan.requestedGoal(),
+                message,
+                Instant.now(),
+                Objects.requireNonNull(startOverride, "startOverride"));
+        latestMessage = message;
+    }
+
     public synchronized void requestLookaheadReplan(NavigationGoalPlan goalPlan, String message) {
         NavigationGoalPlan plan = Objects.requireNonNull(goalPlan, "goalPlan");
         if (pendingReplanRequest != null || preparedLookaheadSession != null) {
             return;
         }
         pendingReplanRequest = new NavigationReplanRequest(plan.requestedGoal(), message, Instant.now(), true);
+        latestMessage = message;
+    }
+
+    public synchronized void requestLookaheadReplan(
+            NavigationGoalPlan goalPlan,
+            String message,
+            NavigationPoint startOverride) {
+        NavigationGoalPlan plan = Objects.requireNonNull(goalPlan, "goalPlan");
+        if (pendingReplanRequest != null || preparedLookaheadSession != null) {
+            return;
+        }
+        pendingReplanRequest = new NavigationReplanRequest(
+                plan.requestedGoal(),
+                message,
+                Instant.now(),
+                true,
+                Objects.requireNonNull(startOverride, "startOverride"));
         latestMessage = message;
     }
 

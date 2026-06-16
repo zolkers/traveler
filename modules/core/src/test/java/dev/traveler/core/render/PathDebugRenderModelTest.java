@@ -6,18 +6,27 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.graph.MutableGraphPath;
+import dev.traveler.core.navigation.NavigationGoalPlan;
+import dev.traveler.core.navigation.TravelerNavigationState;
 import dev.traveler.core.navigation.NavigationFrameInput;
 import dev.traveler.core.navigation.camera.CameraAngles;
+import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.testing.NavigationDebugFrames;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import dev.traveler.core.path.PathfinderResult;
 import dev.traveler.core.path.PathfinderStatus;
+import dev.traveler.core.route.RouteGoal;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.surface.SurfaceNode;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class PathDebugRenderModelTest {
+    private static final ColorRgba ACTIVE_SEGMENT_COLOR = new ColorRgba(0.1f, 0.75f, 1.0f, 0.9f);
+    private static final ColorRgba LOOKAHEAD_SEGMENT_COLOR = new ColorRgba(0.2f, 1.0f, 0.35f, 0.85f);
+    private static final ColorRgba LATEST_SEARCH_COLOR = new ColorRgba(0.7f, 0.75f, 0.8f, 0.55f);
+    private static final ColorRgba JUNCTION_WARNING_COLOR = new ColorRgba(1.0f, 0.48f, 0.08f, 0.8f);
+
     @Test
     void emptyStateProducesEmptyFrame() {
         PathDebugRenderModel model = PathDebugRenderModel.defaultModel();
@@ -174,6 +183,46 @@ class PathDebugRenderModelTest {
     }
 
     @Test
+    void navigationStateRendersActiveLookaheadAndLatestSearchAsSeparateLayers() {
+        PathDebugRenderModel model = PathDebugRenderModel.defaultModel();
+        PathfinderDebugState debugState = new PathfinderDebugState();
+        TravelerNavigationState navigationState = new TravelerNavigationState();
+        navigationState.start(navigationPath(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(10.0, 64.0, 0.0)), "active", goalPlan());
+        navigationState.prepareLookahead(navigationPath(
+                new NavigationPoint(10.0, 64.0, 0.0),
+                new NavigationPoint(20.0, 64.0, 0.0)), "lookahead", goalPlan());
+        debugState.update(foundPath(
+                new BlockPosition(50, 64, 0),
+                new BlockPosition(51, 64, 0),
+                new BlockPosition(52, 64, 0)));
+
+        DebugRenderFrame frame = model.frameFor(debugState, navigationState);
+
+        assertTrue(frame.lines().stream().anyMatch(line -> line.color().equals(ACTIVE_SEGMENT_COLOR)));
+        assertTrue(frame.lines().stream().anyMatch(line -> line.color().equals(LOOKAHEAD_SEGMENT_COLOR)));
+        assertTrue(frame.lines().stream().anyMatch(line -> line.color().equals(LATEST_SEARCH_COLOR)));
+    }
+
+    @Test
+    void mismatchedLookaheadStartRendersJunctionWarningBox() {
+        PathDebugRenderModel model = PathDebugRenderModel.defaultModel();
+        PathfinderDebugState debugState = new PathfinderDebugState();
+        TravelerNavigationState navigationState = new TravelerNavigationState();
+        navigationState.start(navigationPath(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(10.0, 64.0, 0.0)), "active", goalPlan());
+        navigationState.prepareLookahead(navigationPath(
+                new NavigationPoint(10.5, 64.0, 0.0),
+                new NavigationPoint(20.0, 64.0, 0.0)), "lookahead", goalPlan());
+
+        DebugRenderFrame frame = model.frameFor(debugState, navigationState);
+
+        assertTrue(frame.boxes().stream().anyMatch(box -> box.color().equals(JUNCTION_WARNING_COLOR)));
+    }
+
+    @Test
     void colorChannelsMustStayInUnitRange() {
         assertThrows(IllegalArgumentException.class, () -> new ColorRgba(-0.1f, 0.0f, 0.0f, 1.0f));
         assertThrows(IllegalArgumentException.class, () -> new ColorRgba(0.0f, 1.1f, 0.0f, 1.0f));
@@ -194,6 +243,14 @@ class PathDebugRenderModelTest {
         path.addNode(second);
         path.addNode(third);
         return new PathfinderResult<>(PathfinderStatus.FOUND, path);
+    }
+
+    private static NavigationPath navigationPath(NavigationPoint first, NavigationPoint second) {
+        return NavigationPath.of(List.of(first, second));
+    }
+
+    private static NavigationGoalPlan goalPlan() {
+        return new NavigationGoalPlan(RouteGoal.xz(100, 0), RouteGoal.xz(20, 0), false, 8.0);
     }
 
     private static PathfinderResult<SurfaceNode> foundSurfacePath(SurfaceNode first, SurfaceNode second) {

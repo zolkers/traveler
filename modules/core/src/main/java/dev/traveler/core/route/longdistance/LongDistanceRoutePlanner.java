@@ -38,10 +38,22 @@ public final class LongDistanceRoutePlanner {
         int maxAxisDistance = Math.max(Math.abs(deltaX), Math.abs(deltaZ));
         if (horizontalDistance <= effectiveSettings.directHorizontalDistance()
                 && maxAxisDistance <= effectiveSettings.maxSegmentAxisDelta()) {
-            return new LongDistanceRoutePlan(safeGoal, safeGoal, true, horizontalDistance, effectiveSettings);
+            return new LongDistanceRoutePlan(
+                    safeGoal,
+                    safeGoal,
+                    true,
+                    horizontalDistance,
+                    horizontalDistance,
+                    effectiveSettings);
         }
         RouteGoal activeGoal = new FrontierRouteGoal(finalPosition, effectiveSettings);
-        return new LongDistanceRoutePlan(safeGoal, activeGoal, false, horizontalDistance, effectiveSettings);
+        return new LongDistanceRoutePlan(
+                safeGoal,
+                activeGoal,
+                false,
+                horizontalDistance,
+                horizontalDistance(safeStart, activeGoal.preferredPosition(safeStart)),
+                effectiveSettings);
     }
 
     private LongDistanceRouteSettings settingsFor(WorldNavigationBudget budget) {
@@ -66,5 +78,9 @@ public final class LongDistanceRoutePlanner {
         int height = settings.frontierCaptureVerticalMargin() * 2 + 1;
         int horizontalSpan = (int) Math.floor(Math.sqrt((double) settings.targetSnapshotBlockBudget() / height));
         return Math.max(1, horizontalSpan - settings.frontierCaptureHorizontalMargin() * 2 - 1);
+    }
+
+    private static double horizontalDistance(BlockPosition start, BlockPosition end) {
+        return Math.hypot(end.x() - start.x(), end.z() - start.z());
     }
 }

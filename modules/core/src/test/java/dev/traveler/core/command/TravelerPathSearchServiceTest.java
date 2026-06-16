@@ -8,7 +8,10 @@ import dev.traveler.core.layer.NavigationBudgetProvider;
 import dev.traveler.core.layer.SnapshotCaptureSession;
 import dev.traveler.core.layer.SurfaceWorldLayer;
 import dev.traveler.core.layer.WorldNavigationBudget;
+import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.route.RouteGoal;
 import dev.traveler.core.world.block.BlockPosition;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class TravelerPathSearchServiceTest {
@@ -89,6 +92,23 @@ class TravelerPathSearchServiceTest {
         assertEquals(new BlockPosition(32, 64, 32), captured.target);
         assertEquals(8, captured.horizontalMargin);
         assertEquals(16, captured.verticalMargin);
+    }
+
+    @Test
+    void replanSnapshotSearchUsesExplicitSegmentStartInsteadOfCurrentSourcePosition() {
+        CapturableLayer layer = new CapturableLayer(1_000L);
+        TravelerPathSearchService service = new TravelerPathSearchService(() -> layer);
+        TravelerCommandSource source = new TestSource(new BlockPosition(14, 64, 0));
+        BlockPosition segmentEnd = new BlockPosition(20, 64, 0);
+
+        TravelerPathSearchSubmission submission = service.goalPathSubmission(
+                source,
+                RouteGoal.xz(10_000, 0),
+                "navigate:block",
+                Optional.of(new NavigationPoint(segmentEnd.x() + 0.25, segmentEnd.y(), segmentEnd.z() + 0.75)));
+
+        assertTrue(submission.snapshotSearch().isPresent());
+        assertEquals(segmentEnd, layer.start);
     }
 
     private static class CapturableLayer extends EmptySnapshotCapturableWorldLayer {

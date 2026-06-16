@@ -7,6 +7,7 @@ import dev.traveler.core.layer.NavigationBudgetProvider;
 import dev.traveler.core.layer.SnapshotCaptureSession;
 import dev.traveler.core.layer.SnapshotCapturableWorldLayer;
 import dev.traveler.core.layer.WorldLayer;
+import dev.traveler.core.navigation.spatial.NavigationPoint;
 import dev.traveler.core.path.PathfinderStatus;
 import dev.traveler.core.route.RouteGoal;
 import dev.traveler.core.route.RouteSearchDiagnostics;
@@ -57,8 +58,16 @@ final class TravelerPathSearchService {
             TravelerCommandSource source,
             RouteGoal goal,
             String purpose) {
+        return goalPathSubmission(source, goal, purpose, Optional.empty());
+    }
+
+    TravelerPathSearchSubmission goalPathSubmission(
+            TravelerCommandSource source,
+            RouteGoal goal,
+            String purpose,
+            Optional<NavigationPoint> startOverride) {
         RouteGoal safeGoal = Objects.requireNonNull(goal, "goal");
-        BlockPosition start = startPosition(source, safeGoal);
+        BlockPosition start = startPosition(source, safeGoal, startOverride);
         WorldLayer worldLayer = worldLayerSupplier.get();
         LongDistanceRoutePlan plan = longDistancePlan(start, safeGoal, worldLayer);
         RouteGoal activeGoal = plan.activeGoal();
@@ -78,10 +87,11 @@ final class TravelerPathSearchService {
                             activeBlockGoal,
                             margins,
                             plan,
-                            purpose));
+                            purpose,
+                            startOverride));
         }
         return TravelerPathSearchSubmission.queued(
-                pathJob(worldLayer, start, activeGoal, activeBlockGoal, plan, purpose));
+                pathJob(worldLayer, start, activeGoal, activeBlockGoal, plan, purpose, startOverride));
     }
 
     private static LongDistanceRoutePlan longDistancePlan(
@@ -133,10 +143,18 @@ final class TravelerPathSearchService {
             RouteGoal goal,
             BlockPosition activeBlockGoal,
             LongDistanceRoutePlan plan,
-            String purpose) {
+            String purpose,
+            Optional<NavigationPoint> navigationStartOverride) {
         return new PathJob<>(
                 purpose,
-                () -> searchGoalPath(ROUTE_SEARCH_SERVICE, worldLayer, start, goal, activeBlockGoal, plan),
+                () -> searchGoalPath(
+                        ROUTE_SEARCH_SERVICE,
+                        worldLayer,
+                        start,
+                        goal,
+                        activeBlockGoal,
+                        plan,
+                        navigationStartOverride),
                 TravelerPathSearchService::jobState);
     }
 
@@ -146,15 +164,24 @@ final class TravelerPathSearchService {
             BlockPosition start,
             RouteGoal goal,
             BlockPosition activeBlockGoal,
-            LongDistanceRoutePlan plan) {
+            LongDistanceRoutePlan plan,
+            Optional<NavigationPoint> navigationStartOverride) {
         RouteSearchResult result = routeSearchService.search(worldLayer, start, goal);
         return new TravelerPathSearchResult(
                 result,
                 blockMessage(worldLayer, goal, activeBlockGoal, plan, result),
-                plan);
+                Optional.of(plan),
+                navigationStartOverride);
     }
 
-    private static BlockPosition startPosition(TravelerCommandSource source, RouteGoal goal) {
+    private static BlockPosition startPosition(
+            TravelerCommandSource source,
+            RouteGoal goal,
+            Optional<NavigationPoint> startOverride) {
+        Optional<NavigationPoint> override = Objects.requireNonNull(startOverride, "startOverride");
+        if (override.isPresent()) {
+            return blockPosition(override.orElseThrow());
+        }
         BlockPosition sourcePosition = Objects.requireNonNull(source, "source").blockPosition();
         if (sourcePosition == null) {
             return goal.requestedTarget()
@@ -162,6 +189,14 @@ final class TravelerPathSearchService {
                     .orElseGet(() -> goal.preferredPosition(new BlockPosition(0, 64, 0)));
         }
         return sourcePosition;
+    }
+
+    private static BlockPosition blockPosition(NavigationPoint point) {
+        NavigationPoint safePoint = Objects.requireNonNull(point, "point");
+        return new BlockPosition(
+                (int) Math.floor(safePoint.x()),
+                (int) Math.floor(safePoint.y()),
+                (int) Math.floor(safePoint.z()));
     }
 
     private static String blockMessage(
@@ -266,6 +301,7 @@ final class TravelerPathSearchService {
         private final SnapshotMargins margins;
         private final LongDistanceRoutePlan plan;
         private final String purpose;
+        private final Optional<NavigationPoint> navigationStartOverride;
 
         private SnapshotBlockSearch(
                 SnapshotCapturableWorldLayer worldLayer,
@@ -274,7 +310,8 @@ final class TravelerPathSearchService {
                 BlockPosition target,
                 SnapshotMargins margins,
                 LongDistanceRoutePlan plan,
-                String purpose) {
+                String purpose,
+                Optional<NavigationPoint> navigationStartOverride) {
             this.captureSession = worldLayer.captureSession(
                     start, target, margins.horizontal(), margins.vertical());
             this.start = Objects.requireNonNull(start, "start");
@@ -283,6 +320,8 @@ final class TravelerPathSearchService {
             this.margins = Objects.requireNonNull(margins, "margins");
             this.plan = Objects.requireNonNull(plan, "plan");
             this.purpose = Objects.requireNonNull(purpose, "purpose");
+            this.navigationStartOverride =
+                    Objects.requireNonNull(navigationStartOverride, "navigationStartOverride");
         }
 
         boolean captureNext(int blockBudget, long deadlineNanos) {
@@ -305,7 +344,14 @@ final class TravelerPathSearchService {
             RouteSearchService routeSearchService = new RouteSearchService(routeSearchSettings());
             return new PathJob<>(
                     purpose,
-                    () -> searchGoalPath(routeSearchService, captureSession.snapshot(), start, goal, target, plan),
+                    () -> searchGoalPath(
+                            routeSearchService,
+                            captureSession.snapshot(),
+                            start,
+                            goal,
+                            target,
+                            plan,
+                            navigationStartOverride),
                     TravelerPathSearchService::jobState);
         }
     }

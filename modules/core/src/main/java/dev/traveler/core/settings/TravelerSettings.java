@@ -49,6 +49,14 @@ public final class TravelerSettings {
             positiveInteger("long-distance.target-snapshot-block-budget", 160_000);
     public static final Setting<Integer> LONG_DISTANCE_FRONTIER_FALLBACK_SURFACE_GOAL_LIMIT =
             positiveInteger("long-distance.frontier-fallback-surface-goal-limit", 16);
+    public static final Setting<Double> LONG_DISTANCE_MINIMUM_LOOKAHEAD_REPLAN_DISTANCE =
+            positiveDouble("long-distance.minimum-lookahead-replan-distance", 48.0);
+    public static final Setting<Double> LONG_DISTANCE_LOOKAHEAD_REPLAN_DISTANCE_RATIO =
+            positiveDouble("long-distance.lookahead-replan-distance-ratio", 0.5);
+    public static final Setting<Double> LONG_DISTANCE_MAXIMUM_LOOKAHEAD_REPLAN_DISTANCE =
+            positiveDouble("long-distance.maximum-lookahead-replan-distance", 96.0);
+    public static final Setting<Double> LONG_DISTANCE_LOOKAHEAD_REPLAN_SEGMENT_CAP_RATIO =
+            positiveDouble("long-distance.lookahead-replan-segment-cap-ratio", 0.75);
 
     public static final Setting<Double> ENTITY_WIDTH =
             positiveDouble("entity.width", 0.6);
@@ -99,6 +107,14 @@ public final class TravelerSettings {
             positiveDouble("movement-health.stuck-after-seconds", 1.5);
     public static final Setting<Double> MOVEMENT_HEALTH_RECOVERY_COOLDOWN_SECONDS =
             nonNegativeDouble("movement-health.recovery-cooldown-seconds", 1.0);
+    public static final Setting<Double> MOVEMENT_HEALTH_PATH_DIVERGENCE_DISTANCE =
+            nonNegativeDouble("movement-health.path-divergence-distance", 1.2);
+    public static final Setting<Double> MOVEMENT_HEALTH_PATH_DIVERGENCE_AFTER_SECONDS =
+            positiveDouble("movement-health.path-divergence-after-seconds", 0.75);
+    public static final Setting<Double> MOVEMENT_HEALTH_ACTION_SETUP_TIMEOUT_SECONDS =
+            positiveDouble("movement-health.action-setup-timeout-seconds", 2.0);
+    public static final Setting<Double> MOVEMENT_HEALTH_JUMP_GRACE_SECONDS =
+            nonNegativeDouble("movement-health.jump-grace-seconds", 0.35);
 
     public static final Setting<Double> STEERING_PREDICTION_SECONDS =
             nonNegativeDouble("steering.prediction-seconds", 0.25);
@@ -203,7 +219,11 @@ public final class TravelerSettings {
                 get(LONG_DISTANCE_FRONTIER_CAPTURE_VERTICAL_MARGIN),
                 get(LONG_DISTANCE_VISIBILITY_EDGE_SAFETY_BLOCKS),
                 get(LONG_DISTANCE_TARGET_SNAPSHOT_BLOCK_BUDGET),
-                get(LONG_DISTANCE_FRONTIER_FALLBACK_SURFACE_GOAL_LIMIT));
+                get(LONG_DISTANCE_FRONTIER_FALLBACK_SURFACE_GOAL_LIMIT),
+                get(LONG_DISTANCE_MINIMUM_LOOKAHEAD_REPLAN_DISTANCE),
+                get(LONG_DISTANCE_LOOKAHEAD_REPLAN_DISTANCE_RATIO),
+                get(LONG_DISTANCE_MAXIMUM_LOOKAHEAD_REPLAN_DISTANCE),
+                get(LONG_DISTANCE_LOOKAHEAD_REPLAN_SEGMENT_CAP_RATIO));
     }
 
     public MovementProfile movementProfile() {
@@ -258,7 +278,11 @@ public final class TravelerSettings {
         return new MovementHealthSettings(
                 get(MOVEMENT_HEALTH_MINIMUM_PROGRESS_DISTANCE),
                 get(MOVEMENT_HEALTH_STUCK_AFTER_SECONDS),
-                get(MOVEMENT_HEALTH_RECOVERY_COOLDOWN_SECONDS));
+                get(MOVEMENT_HEALTH_RECOVERY_COOLDOWN_SECONDS),
+                get(MOVEMENT_HEALTH_PATH_DIVERGENCE_DISTANCE),
+                get(MOVEMENT_HEALTH_PATH_DIVERGENCE_AFTER_SECONDS),
+                get(MOVEMENT_HEALTH_ACTION_SETUP_TIMEOUT_SECONDS),
+                get(MOVEMENT_HEALTH_JUMP_GRACE_SECONDS));
     }
 
     public MovementVectorSettings movementVectorSettings() {

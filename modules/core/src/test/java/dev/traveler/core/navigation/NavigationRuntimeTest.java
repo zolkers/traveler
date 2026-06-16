@@ -135,6 +135,7 @@ class NavigationRuntimeTest {
     @Test
     void requestsLookaheadReplanBeforeSegmentCompletionWithoutStoppingCurrentSession() {
         TravelerNavigationState navigationState = new TravelerNavigationState();
+        NavigationPoint segmentEnd = new NavigationPoint(20.25, 64.0, 0.75);
         TestAgentPort agent = new TestAgentPort(new NavigationPoint(14.0, 64.0, 0.0), new CameraAngles(0.0, 0.0));
         NavigationRuntime runtime = new NavigationRuntime(navigationState, agent);
         NavigationGoalPlan goalPlan = new NavigationGoalPlan(
@@ -144,16 +145,40 @@ class NavigationRuntimeTest {
                 8.0);
         navigationState.start(NavigationPath.of(List.of(
                 new NavigationPoint(0.0, 64.0, 0.0),
-                new NavigationPoint(20.0, 64.0, 0.0))), "test", goalPlan);
+                segmentEnd)), "test", goalPlan);
 
         runtime.update(1_000_000_000L);
 
         NavigationReplanRequest request = navigationState.pendingReplanRequest().orElseThrow();
         assertEquals(RouteGoal.xz(100, 0), request.goal());
+        assertEquals(segmentEnd, request.startOverride().orElseThrow());
         assertTrue(request.preserveActiveSession());
         assertTrue(navigationState.activeSession().isPresent());
         assertFalse(agent.released);
         assertFalse(agent.intents.isEmpty());
+    }
+
+    @Test
+    void requestsCompletionReplanFromCompletedSegmentEnd() {
+        TravelerNavigationState navigationState = new TravelerNavigationState();
+        NavigationPoint segmentEnd = new NavigationPoint(20.25, 64.0, 0.75);
+        TestAgentPort agent = new TestAgentPort(segmentEnd, new CameraAngles(0.0, 0.0));
+        NavigationRuntime runtime = new NavigationRuntime(navigationState, agent);
+        NavigationGoalPlan goalPlan = new NavigationGoalPlan(
+                RouteGoal.xz(100, 0),
+                RouteGoal.xz(20, 0),
+                false,
+                8.0);
+        navigationState.start(NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                segmentEnd)), "test", goalPlan);
+
+        runtime.update(1_000_000_000L);
+
+        NavigationReplanRequest request = navigationState.pendingReplanRequest().orElseThrow();
+        assertEquals(RouteGoal.xz(100, 0), request.goal());
+        assertEquals(segmentEnd, request.startOverride().orElseThrow());
+        assertFalse(request.preserveActiveSession());
     }
 
     @Test

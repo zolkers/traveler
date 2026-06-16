@@ -9,6 +9,7 @@ import dev.traveler.core.navigation.NavigationGoalPlan;
 import dev.traveler.core.navigation.NavigationReplanRequest;
 import dev.traveler.core.navigation.TravelerNavigationState;
 import dev.traveler.core.navigation.follow.NavigationPath;
+import dev.traveler.core.navigation.spatial.NavigationPoint;
 import dev.traveler.core.route.RouteGoal;
 import dev.traveler.core.world.block.BlockPosition;
 import java.util.ArrayList;
@@ -99,8 +100,21 @@ final class TravelerPathJobService implements AutoCloseable {
             RouteGoal goal,
             String purpose,
             PathCompletion completion) {
+        return submit(source, goal, purpose, completion, Optional.empty());
+    }
+
+    private synchronized QueueOutcome submit(
+            TravelerCommandSource source,
+            RouteGoal goal,
+            String purpose,
+            PathCompletion completion,
+            Optional<NavigationPoint> startOverride) {
         cancelActiveJob(purpose);
-        TravelerPathSearchSubmission submission = searchService.goalPathSubmission(source, goal, purpose);
+        TravelerPathSearchSubmission submission = searchService.goalPathSubmission(
+                source,
+                goal,
+                purpose,
+                startOverride);
         if (submission.immediateResult().isPresent()) {
             return QueueOutcome.immediate(submission.immediateResult().orElseThrow());
         }
@@ -123,7 +137,12 @@ final class TravelerPathJobService implements AutoCloseable {
         PathCompletion completion = replan.preserveActiveSession()
                 ? this::completeNavigationLookahead
                 : this::completeNavigation;
-        QueueOutcome outcome = submit(lastNavigationSource, replan.goal(), NAVIGATE_PURPOSE, completion);
+        QueueOutcome outcome = submit(
+                lastNavigationSource,
+                replan.goal(),
+                NAVIGATE_PURPOSE,
+                completion,
+                replan.startOverride());
         if (outcome.immediateResult().isPresent()) {
             completion.apply(outcome.immediateResult().orElseThrow(), lastNavigationSource::reply);
             return;

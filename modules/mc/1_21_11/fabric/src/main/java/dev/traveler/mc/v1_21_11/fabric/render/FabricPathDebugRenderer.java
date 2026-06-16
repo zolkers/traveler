@@ -3,6 +3,7 @@ package dev.traveler.mc.v1_21_11.fabric.render;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import dev.traveler.core.debug.PathfinderDebugState;
+import dev.traveler.core.navigation.TravelerNavigationState;
 import dev.traveler.core.render.ColorRgba;
 import dev.traveler.core.render.DebugBox;
 import dev.traveler.core.render.DebugLine;
@@ -24,17 +25,29 @@ public final class FabricPathDebugRenderer {
 
     private final PathDebugRenderModel renderModel;
     private final PathfinderDebugState debugState;
+    private final TravelerNavigationState navigationState;
 
     public FabricPathDebugRenderer(PathDebugRenderModel renderModel, PathfinderDebugState debugState) {
+        this(renderModel, debugState, null);
+    }
+
+    public FabricPathDebugRenderer(
+            PathDebugRenderModel renderModel,
+            PathfinderDebugState debugState,
+            TravelerNavigationState navigationState) {
         this.renderModel = Objects.requireNonNull(renderModel, "renderModel");
         this.debugState = Objects.requireNonNull(debugState, "debugState");
+        this.navigationState = navigationState;
     }
 
     public void render(WorldRenderContext context) {
         if (context == null) {
             return;
         }
-        render(context, renderModel.frameFor(debugState));
+        DebugRenderFrame frame = navigationState == null
+                ? renderModel.frameFor(debugState)
+                : renderModel.frameFor(debugState, navigationState);
+        render(context, frame);
     }
 
     private void render(WorldRenderContext context, DebugRenderFrame frame) {

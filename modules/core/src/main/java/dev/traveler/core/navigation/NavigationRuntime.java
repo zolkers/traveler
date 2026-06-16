@@ -3,6 +3,7 @@ package dev.traveler.core.navigation;
 import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.navigation.recovery.MovementFailure;
 import dev.traveler.core.navigation.recovery.MovementProgressMonitor;
+import dev.traveler.core.navigation.spatial.NavigationPoint;
 import dev.traveler.core.settings.TravelerSettings;
 import java.util.Objects;
 import java.util.Optional;
@@ -101,7 +102,7 @@ public final class NavigationRuntime {
         if (frame.completed()) {
             return Optional.empty();
         }
-        Optional<MovementFailure> failure = progressMonitor.update(input, frame.intent());
+        Optional<MovementFailure> failure = progressMonitor.update(session.path(), input, frame);
         failure.ifPresent(value -> handleMovementFailure(session, value));
         return failure;
     }
@@ -120,7 +121,8 @@ public final class NavigationRuntime {
                 if (!navigationState.activatePreparedLookahead()) {
                     navigationState.requestReplan(
                             session.goalPlan().orElseThrow(),
-                            "navigation segment completed; replan requested");
+                            "navigation segment completed; replan requested",
+                            replanStart(session));
                 }
             } else {
                 navigationState.stop("navigation completed");
@@ -143,11 +145,16 @@ public final class NavigationRuntime {
                 .filter(goalPlan -> goalPlan.needsLookaheadReplan(distanceToSegmentEnd(session, input)))
                 .ifPresent(goalPlan -> navigationState.requestLookaheadReplan(
                         goalPlan,
-                        "navigation segment near frontier; lookahead replan requested"));
+                        "navigation segment near frontier; lookahead replan requested",
+                        replanStart(session)));
     }
 
     private static double distanceToSegmentEnd(NavigationSession session, NavigationFrameInput input) {
         return input.position().horizontalDistanceTo(session.path().lastNode());
+    }
+
+    private static NavigationPoint replanStart(NavigationSession session) {
+        return session.path().lastNode();
     }
 
     private void resetProgressWhenSessionChanges(NavigationSession session) {

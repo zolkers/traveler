@@ -9,6 +9,7 @@ public record LongDistanceRoutePlan(
         RouteGoal activeGoal,
         boolean finalSegment,
         double remainingHorizontalDistance,
+        double activeSegmentHorizontalDistance,
         LongDistanceRouteSettings settings) {
     public LongDistanceRoutePlan {
         Objects.requireNonNull(requestedGoal, "requestedGoal");
@@ -17,9 +18,16 @@ public record LongDistanceRoutePlan(
         if (!Double.isFinite(remainingHorizontalDistance) || remainingHorizontalDistance < 0.0) {
             throw new IllegalArgumentException("remainingHorizontalDistance must be finite and non-negative.");
         }
+        if (!Double.isFinite(activeSegmentHorizontalDistance) || activeSegmentHorizontalDistance < 0.0) {
+            throw new IllegalArgumentException("activeSegmentHorizontalDistance must be finite and non-negative.");
+        }
     }
 
     public NavigationGoalPlan navigationGoalPlan() {
-        return new NavigationGoalPlan(requestedGoal, activeGoal, finalSegment, settings.replanDistance());
+        return new NavigationGoalPlan(
+                requestedGoal,
+                activeGoal,
+                finalSegment,
+                settings.lookaheadReplanDistance(activeSegmentHorizontalDistance));
     }
 }
