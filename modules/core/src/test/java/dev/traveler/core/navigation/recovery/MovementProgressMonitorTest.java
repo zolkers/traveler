@@ -4,12 +4,23 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.traveler.core.navigation.camera.CameraAngles;
-import dev.traveler.core.navigation.NavigationFrameInput;
 import dev.traveler.core.navigation.NavigationControlFrame;
+import dev.traveler.core.navigation.NavigationControllerState;
+import dev.traveler.core.navigation.NavigationFrameInput;
 import dev.traveler.core.navigation.control.MovementIntent;
+import dev.traveler.core.navigation.follow.MovementTarget;
 import dev.traveler.core.navigation.follow.NavigationPath;
-import dev.traveler.core.navigation.testing.NavigationDebugFrames;
+import dev.traveler.core.navigation.follow.PathProgress;
+import dev.traveler.core.navigation.locomotion.LocomotionExecutionState;
+import dev.traveler.core.navigation.plan.ActionIntent;
+import dev.traveler.core.navigation.plan.MovementVectorIntent;
+import dev.traveler.core.navigation.plan.NavigationFramePlan;
+import dev.traveler.core.navigation.plan.NavigationPhase;
+import dev.traveler.core.navigation.plan.PlannedMovementMode;
+import dev.traveler.core.navigation.plan.SpeedIntent;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.navigation.spatial.HorizontalVector;
+import dev.traveler.core.navigation.testing.NavigationDebugFrames;
 import dev.traveler.core.world.behavior.decision.MovementAction;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -89,6 +100,38 @@ class MovementProgressMonitorTest {
     }
 
     @Test
+    void alignPhaseWaitsForActionSetupTimeoutInsteadOfNoProgressRecovery() {
+        MovementProgressMonitor monitor = new MovementProgressMonitor(healthSettings());
+        NavigationPath path = path(MovementAction.WALK,
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(10.0, 64.0, 0.0));
+        NavigationControlFrame frame = frame(NavigationPhase.ALIGN);
+
+        assertTrue(monitor.update(path, input(0.0, 64.0, 0.0, 0.10), frame).isEmpty());
+        assertTrue(monitor.update(path, input(0.0, 64.0, 0.0, 0.10), frame).isEmpty());
+        assertTrue(monitor.update(path, input(0.0, 64.0, 0.0, 0.10), frame).isEmpty());
+        assertTrue(monitor.update(path, input(0.0, 64.0, 0.0, 0.10), frame).isEmpty());
+
+        MovementFailure failure = monitor.update(path, input(0.0, 64.0, 0.0, 0.10), frame).orElseThrow();
+        assertEquals(MovementFailureKind.ACTION_SETUP_TIMEOUT, failure.kind());
+    }
+
+    @Test
+    void recoverPhaseDoesNotTriggerNoProgressRecoveryLoop() {
+        MovementProgressMonitor monitor = new MovementProgressMonitor(healthSettings());
+        NavigationPath path = path(MovementAction.WALK,
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(10.0, 64.0, 0.0));
+        NavigationControlFrame frame = frame(NavigationPhase.RECOVER);
+
+        assertTrue(monitor.update(path, input(0.0, 64.0, 0.0, 0.10), frame).isEmpty());
+        assertTrue(monitor.update(path, input(0.0, 64.0, 0.0, 0.10), frame).isEmpty());
+        assertTrue(monitor.update(path, input(0.0, 64.0, 0.0, 0.10), frame).isEmpty());
+        assertTrue(monitor.update(path, input(0.0, 64.0, 0.0, 0.10), frame).isEmpty());
+        assertTrue(monitor.update(path, input(0.0, 64.0, 0.0, 0.10), frame).isEmpty());
+    }
+
+    @Test
     void clearsStuckTimerWhenPositionProgresses() {
         MovementProgressMonitor monitor =
                 new MovementProgressMonitor(new MovementHealthSettings(0.05, 0.25, 0.2));
@@ -113,6 +156,28 @@ class MovementProgressMonitorTest {
 
     private static NavigationPath path(MovementAction action, NavigationPoint first, NavigationPoint second) {
         return NavigationPath.of(List.of(first, second), List.of(action));
+    }
+
+    private static NavigationControlFrame frame(NavigationPhase phase) {
+        MovementIntent intent = new MovementIntent(true, false, false, false, false, true);
+        MovementTarget target = MovementTarget.follow(new NavigationPoint(10.0, 64.0, 0.0));
+        NavigationFramePlan plan = new NavigationFramePlan(
+                phase,
+                PathProgress.start(),
+                target,
+                new MovementVectorIntent(new HorizontalVector(1.0, 0.0), PlannedMovementMode.DIRECT, true),
+                new CameraAngles(0.0, 0.0),
+                phase == NavigationPhase.RECOVER ? ActionIntent.recover() : ActionIntent.none(),
+                new SpeedIntent(1.0, true),
+                LocomotionExecutionState.start(),
+                false);
+        return new NavigationControlFrame(
+                new NavigationControllerState(PathProgress.start(), intent, LocomotionExecutionState.start()),
+                intent,
+                new CameraAngles(0.0, 0.0),
+                target,
+                plan,
+                false);
     }
 
     private static MovementHealthSettings healthSettings() {

@@ -69,9 +69,17 @@ public final class MovementProgressMonitor {
         if (setupFailure.isPresent()) {
             return setupFailure;
         }
+        if (sample.phase() == NavigationPhase.RECOVER) {
+            resetRouteHealth();
+            return Optional.empty();
+        }
         Optional<MovementFailure> divergenceFailure = updatePathDivergence(sample, frameInput.deltaSeconds());
         if (divergenceFailure.isPresent()) {
             return divergenceFailure;
+        }
+        if (sample.phase() == NavigationPhase.ALIGN) {
+            resetStuckHealth();
+            return Optional.empty();
         }
         if (lastRouteProgress == null) {
             lastRouteProgress = sample.routeProgress();
@@ -94,6 +102,17 @@ public final class MovementProgressMonitor {
         stagnantSeconds = 0.0;
         divergentSeconds = 0.0;
         actionSetupSeconds = 0.0;
+    }
+
+    private void resetRouteHealth() {
+        lastRouteProgress = null;
+        stagnantSeconds = 0.0;
+        divergentSeconds = 0.0;
+    }
+
+    private void resetStuckHealth() {
+        lastRouteProgress = null;
+        stagnantSeconds = 0.0;
     }
 
     private Optional<MovementFailure> failureIfStuck() {
