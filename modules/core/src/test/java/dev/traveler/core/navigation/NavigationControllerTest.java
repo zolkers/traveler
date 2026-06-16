@@ -232,6 +232,27 @@ class NavigationControllerTest {
     }
 
     @Test
+    void keepsJumpSegmentActiveUntilLandingIsActuallyReached() {
+        NavigationPath path = NavigationPath.of(
+                List.of(
+                        new NavigationPoint(0.0, 64.0, 0.0),
+                        new NavigationPoint(0.0, 65.0, 1.0),
+                        new NavigationPoint(2.0, 65.0, 1.0)),
+                List.of(MovementAction.JUMP, MovementAction.WALK));
+        NavigationFrameInput input = new NavigationFrameInput(
+                new NavigationPoint(0.7, 65.0, 1.2),
+                new CameraAngles(0.0, 0.0),
+                0.016);
+
+        NavigationControlFrame frame =
+                controller.update(path, input, NavigationControllerState.start());
+
+        assertEquals(1, frame.state().progress().nextNodeIndex());
+        assertEquals(new NavigationPoint(0.0, 65.0, 1.0), frame.movementTarget().point());
+        assertTrue(frame.plan().actionIntent().jumpRequested());
+    }
+
+    @Test
     void waitsForStableGroundContactBeforeTriggeringConsecutiveJump() {
         NavigationPath path = NavigationPath.of(List.of(
                 new NavigationPoint(0.0, 64.0, 0.0),

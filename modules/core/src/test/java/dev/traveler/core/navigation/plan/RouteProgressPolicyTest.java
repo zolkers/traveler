@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.follow.PathProgress;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.world.behavior.decision.MovementAction;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -61,6 +62,36 @@ class RouteProgressPolicyTest {
         PathProgress progress = policy.progress(path, beforeCorner, PathProgress.start());
 
         assertEquals(1, progress.nextNodeIndex());
+    }
+
+    @Test
+    void keepsSpecialActionNodeUntilLandingIsActuallyReached() {
+        NavigationPath path = NavigationPath.of(
+                List.of(
+                        point(0.0, 64.0, 0.0),
+                        point(0.0, 65.0, 1.0),
+                        point(1.0, 65.0, 1.0)),
+                List.of(MovementAction.JUMP, MovementAction.WALK));
+        NavigationPoint airbornePastLanding = point(0.7, 65.0, 1.2);
+
+        PathProgress progress = policy.progress(path, airbornePastLanding, PathProgress.start());
+
+        assertEquals(1, progress.nextNodeIndex());
+    }
+
+    @Test
+    void advancesSpecialActionNodeWhenLandingIsCloseEnough() {
+        NavigationPath path = NavigationPath.of(
+                List.of(
+                        point(0.0, 64.0, 0.0),
+                        point(0.0, 65.0, 1.0),
+                        point(1.0, 65.0, 1.0)),
+                List.of(MovementAction.JUMP, MovementAction.WALK));
+        NavigationPoint landed = point(0.2, 65.0, 1.1);
+
+        PathProgress progress = policy.progress(path, landed, PathProgress.start());
+
+        assertEquals(2, progress.nextNodeIndex());
     }
 
     private static NavigationPoint point(double x, double y, double z) {

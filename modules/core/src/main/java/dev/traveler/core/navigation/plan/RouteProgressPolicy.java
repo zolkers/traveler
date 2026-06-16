@@ -4,6 +4,7 @@ import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.follow.PathProgress;
 import dev.traveler.core.navigation.spatial.HorizontalVector;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
+import dev.traveler.core.world.behavior.decision.MovementAction;
 import java.util.Objects;
 
 public final class RouteProgressPolicy {
@@ -44,7 +45,30 @@ public final class RouteProgressPolicy {
         if (position.distanceTo(path.nodeAt(nextIndex)) <= reachedDistance) {
             return true;
         }
+        if (requiresPreciseReach(path.actionBeforeNode(nextIndex))) {
+            return hasClearlySkippedSpecialActionNode(path, position, nextIndex);
+        }
         return hasPassedNodeGate(path, position, nextIndex) || hasSkippedNodeOnCorridor(path, position, nextIndex);
+    }
+
+    private static boolean requiresPreciseReach(MovementAction action) {
+        return action == MovementAction.JUMP
+                || action == MovementAction.STEP_UP
+                || action == MovementAction.DROP;
+    }
+
+    private boolean hasClearlySkippedSpecialActionNode(NavigationPath path, NavigationPoint position, int nextIndex) {
+        NavigationPoint node = path.nodeAt(nextIndex);
+        NavigationPoint next = path.nodeAt(nextIndex + 1);
+        HorizontalVector outgoing = node.horizontalVectorTo(next);
+        if (!hasCompatibleHeight(position, node, next) || outgoing.isZero()) {
+            return false;
+        }
+        HorizontalVector offset = node.horizontalVectorTo(position);
+        double advanced = offset.dot(outgoing.normalized());
+        double requiredAdvance = reachedDistance * PASSED_NODE_RADIUS_MULTIPLIER;
+        return advanced >= requiredAdvance
+                && lateralDistance(offset, outgoing) <= skippedNodeCorridorRadius();
     }
 
     private boolean hasPassedNodeGate(NavigationPath path, NavigationPoint position, int nextIndex) {
