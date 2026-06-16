@@ -24,12 +24,17 @@ public final class FluidBlockBehavior implements BlockBehavior {
     }
 
     @Override
+    public FluidSemantics fluidSemantics() {
+        return FluidSemantics.SWIMMABLE;
+    }
+
+    @Override
     public BlockSemantics describe(SurfaceMovementContext context) {
         Objects.requireNonNull(context, "context");
         return BlockSemantics.of(
                 CollisionSemantics.PASSABLE,
                 SupportSemantics.NONE,
-                FluidSemantics.SWIMMABLE,
+                fluidSemantics(),
                 Set.of(TraversalAffordance.SWIM));
     }
 }

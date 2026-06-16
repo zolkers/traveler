@@ -10,13 +10,24 @@ import dev.traveler.core.world.behavior.context.SurfaceMovementContext;
 import dev.traveler.core.world.behavior.decision.MovementDecision;
 import dev.traveler.core.world.movement.MovementCapabilities;
 import java.util.EnumSet;
-import java.util.Set;
 import java.util.Objects;
+import java.util.Set;
 
 public interface BlockBehavior {
     BlockBehaviorKey key();
 
-    boolean supportsStanding(MovementCapabilities capabilities);
+    default SupportSemantics supportSemantics(MovementCapabilities capabilities) {
+        Objects.requireNonNull(capabilities, "capabilities");
+        return SupportSemantics.NONE;
+    }
+
+    default FluidSemantics fluidSemantics() {
+        return FluidSemantics.NONE;
+    }
+
+    default boolean supportsStanding(MovementCapabilities capabilities) {
+        return supportSemantics(capabilities).supportsStanding();
+    }
 
     default BlockSemantics describe(SurfaceMovementContext context) {
         SurfaceMovementContext safeContext = Objects.requireNonNull(context, "context");
@@ -32,15 +43,11 @@ public interface BlockBehavior {
             case BLOCKED -> {
             }
         }
-        CollisionSemantics collision = supportsStanding(safeContext.capabilities())
+        SupportSemantics support = supportSemantics(safeContext.capabilities());
+        CollisionSemantics collision = support.supportsStanding()
                 ? CollisionSemantics.SOLID
                 : CollisionSemantics.PASSABLE;
-        SupportSemantics support = supportsStanding(safeContext.capabilities())
-                ? SupportSemantics.STANDABLE
-                : SupportSemantics.NONE;
-        FluidSemantics fluid = decision.action() == dev.traveler.core.world.behavior.decision.MovementAction.SWIM
-                ? FluidSemantics.SWIMMABLE
-                : FluidSemantics.NONE;
+        FluidSemantics fluid = fluidSemantics();
         Set<BehaviorTag> tags = preservesRouteGeometry(safeContext.capabilities())
                 ? Set.of(BehaviorTag.PRESERVE_ROUTE_GEOMETRY)
                 : Set.of();

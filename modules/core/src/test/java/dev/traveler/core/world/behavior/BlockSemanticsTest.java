@@ -16,6 +16,7 @@ import dev.traveler.core.world.behavior.context.HorizontalFacing;
 import dev.traveler.core.world.behavior.context.MovementDirection;
 import dev.traveler.core.world.behavior.context.SurfaceMovementContext;
 import dev.traveler.core.world.behavior.decision.MovementAction;
+import dev.traveler.core.world.behavior.decision.MovementDecision;
 import dev.traveler.core.world.block.BlockPassability;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.geometry.BlockShape;
@@ -24,7 +25,10 @@ import dev.traveler.core.world.movement.MovementCapabilities;
 import dev.traveler.core.world.behavior.special.FluidBlockBehavior;
 import dev.traveler.core.world.behavior.special.FullBlockBehavior;
 import dev.traveler.core.world.behavior.special.StairBlockBehavior;
+import dev.traveler.core.world.navigation.SurfaceTraversalGraph;
 import dev.traveler.core.world.surface.SurfaceNode;
+import dev.traveler.core.layer.SurfaceWorldLayer;
+import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
@@ -129,6 +133,51 @@ class BlockSemanticsTest {
         assertEquals(MovementAction.BLOCKED, exit.evaluateMovement(raisedExit).action());
     }
 
+    @Test
+    void supportCompatibilityDerivesFromSupportSemantics() {
+        BlockBehavior behavior = new SemanticsOnlyBehavior(
+                SupportSemantics.STANDABLE,
+                FluidSemantics.NONE,
+                Set.of(TraversalAffordance.WALK));
+
+        assertTrue(behavior.supportsStanding(WALKER));
+    }
+
+    @Test
+    void movementContextFluidChecksUseFluidSemanticsInsteadOfLegacyKeys() {
+        BlockBehavior semanticFluid = new SemanticsOnlyBehavior(
+                SupportSemantics.NONE,
+                FluidSemantics.SWIMMABLE,
+                Set.of(TraversalAffordance.SWIM));
+        SurfaceMovementContext context = context(
+                node(0, 0, 64.0),
+                node(1, 0, 64.0),
+                passableBlock(semanticFluid, FluidHandling.AVOID),
+                passableBlock(new FullBlockBehavior(), FluidHandling.AVOID),
+                MovementDirection.east(),
+                SWIMMER);
+
+        assertTrue(context.startsInFluid());
+        assertFalse(context.endsInFluid());
+    }
+
+    @Test
+    void surfaceTraversalGraphUsesSupportSemanticsForStandableNodes() {
+        BlockBehavior semanticSupport = new SemanticsOnlyBehavior(
+                SupportSemantics.STANDABLE,
+                FluidSemantics.NONE,
+                Set.of(TraversalAffordance.WALK));
+        SurfaceWorldLayer world = new TestSurfaceWorldLayer(Map.of(
+                new BlockPosition(0, 63, 0),
+                solidBlock(semanticSupport)));
+        SurfaceNode anchor = new SurfaceNode(new BlockPosition(0, 63, 0), 0, 0, 64.0);
+        SurfaceTraversalGraph graph = new SurfaceTraversalGraph(world, anchor, anchor, WALKER, 1, 1);
+
+        SurfaceNode surface = graph.surfaceNodeAt(0, 63, 0);
+
+        assertEquals(anchor, surface);
+    }
+
     private static SurfaceMovementContext context(
             SurfaceNode from,
             SurfaceNode to,
@@ -155,5 +204,65 @@ class BlockSemanticsTest {
                 new BlockClassification(BlockPassability.PASSABLE, FluidHandling.ALLOW),
                 BlockShape.empty(),
                 new FluidBlockBehavior());
+    }
+
+    private static SurfaceBlock passableBlock(BlockBehavior behavior, FluidHandling fluidHandling) {
+        return new SurfaceBlock(
+                new BlockClassification(BlockPassability.PASSABLE, fluidHandling),
+                BlockShape.empty(),
+                behavior);
+    }
+
+    private record TestSurfaceWorldLayer(Map<BlockPosition, SurfaceBlock> blocks) implements SurfaceWorldLayer {
+        @Override
+        public SurfaceBlock surfaceBlock(BlockPosition position) {
+            return blocks.getOrDefault(position, SurfaceBlock.empty());
+        }
+    }
+
+    private static final class SemanticsOnlyBehavior implements BlockBehavior {
+        private final SupportSemantics support;
+        private final FluidSemantics fluid;
+        private final Set<TraversalAffordance> affordances;
+
+        private SemanticsOnlyBehavior(
+                SupportSemantics support,
+                FluidSemantics fluid,
+                Set<TraversalAffordance> affordances) {
+            this.support = support;
+            this.fluid = fluid;
+            this.affordances = affordances;
+        }
+
+        @Override
+        public BlockBehaviorKey key() {
+            return BlockBehaviorKey.AIR;
+        }
+
+        @Override
+        public SupportSemantics supportSemantics(MovementCapabilities capabilities) {
+            return support;
+        }
+
+        @Override
+        public FluidSemantics fluidSemantics() {
+            return fluid;
+        }
+
+        @Override
+        public BlockSemantics describe(SurfaceMovementContext context) {
+            return BlockSemantics.of(
+                    support == SupportSemantics.STANDABLE
+                            ? CollisionSemantics.SOLID
+                            : CollisionSemantics.PASSABLE,
+                    support,
+                    fluid,
+                    affordances);
+        }
+
+        @Override
+        public MovementDecision evaluateMovement(SurfaceMovementContext context) {
+            return BlockBehavior.adaptMovementDecision(context, describe(context));
+        }
     }
 }

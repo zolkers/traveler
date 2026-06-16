@@ -1,5 +1,7 @@
 package dev.traveler.core.world.navigation;
 
+import dev.traveler.core.world.movement.FluidHandling;
+import dev.traveler.core.world.behavior.api.FluidSemantics;
 import dev.traveler.core.world.behavior.context.MovementDirection;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.movement.EntityDimensions;
@@ -7,7 +9,6 @@ import dev.traveler.core.world.movement.MovementCapabilities;
 import dev.traveler.core.world.movement.MovementProfile;
 import dev.traveler.core.world.movement.MovementProfiles;
 import dev.traveler.core.world.movement.TraversalRules;
-import dev.traveler.core.world.movement.FluidHandling;
 import dev.traveler.core.world.surface.SurfaceNode;
 import dev.traveler.core.graph.Connection;
 import dev.traveler.core.graph.KeyedGraph;
@@ -291,7 +292,7 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
                     ? swimSurfaceNode(block, blockX, blockY, blockZ, cellX, cellZ)
                     : null;
         }
-        if (!block.behavior().supportsStanding(capabilities)) {
+        if (!block.behavior().supportSemantics(capabilities).supportsStanding()) {
             return null;
         }
         BlockPosition position = new BlockPosition(blockX, blockY, blockZ);
@@ -318,7 +319,8 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
     }
 
     private static boolean hasFluid(SurfaceBlock block) {
-        return block.classification().fluidHandling() == FluidHandling.ALLOW;
+        return block.behavior().fluidSemantics() == FluidSemantics.SWIMMABLE
+                || block.classification().fluidHandling() == FluidHandling.ALLOW;
     }
 
     @Override
