@@ -134,9 +134,7 @@ final class TravelerPathJobService implements AutoCloseable {
             return;
         }
         NavigationReplanRequest replan = navigationState.consumeReplanRequest().orElseThrow();
-        PathCompletion completion = replan.preserveActiveSession()
-                ? this::completeNavigationLookahead
-                : this::completeNavigation;
+        PathCompletion completion = completionFor(replan);
         QueueOutcome outcome = submit(
                 lastNavigationSource,
                 replan.goal(),
@@ -153,6 +151,16 @@ final class TravelerPathJobService implements AutoCloseable {
                 + replan.goal().displayName()
                 + " reason="
                 + replan.reason());
+    }
+
+    private PathCompletion completionFor(NavigationReplanRequest replan) {
+        return switch (replan.activation()) {
+            case START_NEW_SESSION -> this::completeNavigation;
+            case PREPARE_LOOKAHEAD -> (result, feedback) ->
+                    completeNavigationLookahead(result, feedback, replan.goalPlanOverride());
+            case REPLACE_ACTIVE_SESSION -> (result, feedback) ->
+                    completeNavigationRepair(result, feedback, replan.goalPlanOverride());
+        };
     }
 
     private synchronized boolean hasActiveNavigationSearch() {
@@ -233,6 +241,13 @@ final class TravelerPathJobService implements AutoCloseable {
     }
 
     private void completeNavigationLookahead(TravelerPathSearchResult result, CommandFeedback feedback) {
+        completeNavigationLookahead(result, feedback, Optional.empty());
+    }
+
+    private void completeNavigationLookahead(
+            TravelerPathSearchResult result,
+            CommandFeedback feedback,
+            Optional<NavigationGoalPlan> goalPlanOverride) {
         if (navigationState.activeSession().isEmpty()) {
             result.updateDebug(debugState);
             feedback.reply(navigationFailureMessage(result) + " | stale lookahead ignored");
@@ -240,7 +255,7 @@ final class TravelerPathJobService implements AutoCloseable {
         }
         Optional<NavigationPath> path = result.navigationPath();
         if (path.isPresent()) {
-            prepareNavigationLookahead(result, feedback, path.orElseThrow());
+            prepareNavigationLookahead(result, feedback, path.orElseThrow(), goalPlanOverride);
             return;
         }
         result.updateDebug(debugState);
@@ -250,15 +265,52 @@ final class TravelerPathJobService implements AutoCloseable {
     private void prepareNavigationLookahead(
             TravelerPathSearchResult result,
             CommandFeedback feedback,
-            NavigationPath path) {
+            NavigationPath path,
+            Optional<NavigationGoalPlan> goalPlanOverride) {
         result.updateDebug(debugState);
-        Optional<NavigationGoalPlan> goalPlan = result.navigationGoalPlan();
+        Optional<NavigationGoalPlan> goalPlan = Objects.requireNonNull(goalPlanOverride, "goalPlanOverride")
+                .or(result::navigationGoalPlan);
         if (goalPlan.isEmpty()) {
             feedback.reply(navigationFailureMessage(result) + " | missing goal plan; keeping current segment");
             return;
         }
         String message = result.message().replaceFirst("^path", "navigate") + " | lookahead ready | " + pathSummary();
         navigationState.prepareLookahead(path, message, goalPlan.orElseThrow());
+        feedback.reply(message);
+    }
+
+    private void completeNavigationRepair(
+            TravelerPathSearchResult result,
+            CommandFeedback feedback,
+            Optional<NavigationGoalPlan> goalPlanOverride) {
+        if (navigationState.activeSession().isEmpty()) {
+            result.updateDebug(debugState);
+            feedback.reply(navigationFailureMessage(result) + " | stale repair ignored");
+            return;
+        }
+        Optional<NavigationPath> path = result.navigationPath();
+        if (path.isEmpty()) {
+            result.updateDebug(debugState);
+            feedback.reply(navigationFailureMessage(result) + " | keeping current segment");
+            return;
+        }
+        replaceNavigationSegment(result, feedback, path.orElseThrow(), goalPlanOverride);
+    }
+
+    private void replaceNavigationSegment(
+            TravelerPathSearchResult result,
+            CommandFeedback feedback,
+            NavigationPath path,
+            Optional<NavigationGoalPlan> goalPlanOverride) {
+        result.updateDebug(debugState);
+        Optional<NavigationGoalPlan> goalPlan = Objects.requireNonNull(goalPlanOverride, "goalPlanOverride")
+                .or(result::navigationGoalPlan);
+        if (goalPlan.isEmpty()) {
+            feedback.reply(navigationFailureMessage(result) + " | missing goal plan; keeping current segment");
+            return;
+        }
+        String message = result.message().replaceFirst("^path", "navigate") + " | repair ready | " + pathSummary();
+        navigationState.replaceActiveSession(path, message, goalPlan.orElseThrow());
         feedback.reply(message);
     }
 

@@ -4,6 +4,7 @@ import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.navigation.diagnostics.MovementFailureReportContext;
 import dev.traveler.core.navigation.diagnostics.MovementFailureReporter;
 import dev.traveler.core.navigation.recovery.MovementFailure;
+import dev.traveler.core.navigation.recovery.MovementFailureKind;
 import dev.traveler.core.navigation.recovery.MovementProgressMonitor;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import dev.traveler.core.settings.TravelerSettings;
@@ -148,6 +149,13 @@ public final class NavigationRuntime {
             MovementFailure failure) {
         reportMovementFailure(session, input, frame, failure);
         String message = "navigation recovery requested reason=" + failure.kind();
+        if (failure.kind() == MovementFailureKind.PATH_DIVERGENCE) {
+            session.goalPlan().ifPresentOrElse(
+                    goalPlan -> navigationState.requestSegmentRepair(goalPlan, message, input.position()),
+                    () -> navigationState.stop("navigation stopped reason=" + failure.kind()));
+            progressMonitor.reset();
+            return;
+        }
         session.goalPlan().ifPresentOrElse(
                 goalPlan -> navigationState.requestReplan(goalPlan, message),
                 () -> navigationState.stop("navigation stopped reason=" + failure.kind()));
@@ -170,15 +178,15 @@ public final class NavigationRuntime {
         if (frame.completed()) {
             if (session.goalPlan().filter(NavigationGoalPlan::needsReplanAfterCompletion).isPresent()) {
                 if (!navigationState.activatePreparedLookahead()) {
-                    navigationState.requestReplan(
+                    navigationState.requestLookaheadReplan(
                             session.goalPlan().orElseThrow(),
                             "navigation segment completed; replan requested",
                             replanStart(session));
                 }
             } else {
                 navigationState.stop("navigation completed");
+                releaseIfNeeded();
             }
-            releaseIfNeeded();
             return;
         }
         agentPort.apply(frame);

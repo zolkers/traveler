@@ -63,6 +63,25 @@ public final class TravelerNavigationState {
         latestMessage = message;
     }
 
+    public synchronized void requestSegmentRepair(
+            NavigationGoalPlan goalPlan,
+            String message,
+            NavigationPoint startOverride) {
+        NavigationGoalPlan plan = Objects.requireNonNull(goalPlan, "goalPlan");
+        if (pendingReplanRequest != null || preparedLookaheadSession != null) {
+            latestMessage = message;
+            return;
+        }
+        pendingReplanRequest = new NavigationReplanRequest(
+                plan.activeGoal(),
+                message,
+                Instant.now(),
+                NavigationReplanActivation.REPLACE_ACTIVE_SESSION,
+                Objects.requireNonNull(startOverride, "startOverride"),
+                plan);
+        latestMessage = message;
+    }
+
     public synchronized void requestLookaheadReplan(NavigationGoalPlan goalPlan, String message) {
         NavigationGoalPlan plan = Objects.requireNonNull(goalPlan, "goalPlan");
         if (pendingReplanRequest != null || preparedLookaheadSession != null) {
@@ -98,6 +117,20 @@ public final class TravelerNavigationState {
                 message,
                 Instant.now(),
                 Objects.requireNonNull(goalPlan, "goalPlan"));
+        pendingReplanRequest = null;
+        latestMessage = message;
+    }
+
+    public synchronized void replaceActiveSession(NavigationPath path, String message, NavigationGoalPlan goalPlan) {
+        if (activeSession == null) {
+            return;
+        }
+        activeSession = new NavigationSession(
+                Objects.requireNonNull(path, "path"),
+                message,
+                Instant.now(),
+                Objects.requireNonNull(goalPlan, "goalPlan"));
+        preparedLookaheadSession = null;
         pendingReplanRequest = null;
         latestMessage = message;
     }

@@ -15,6 +15,7 @@ import dev.traveler.core.navigation.recovery.MovementProgressMonitor;
 import dev.traveler.core.navigation.control.MovementIntent;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import dev.traveler.core.route.RouteGoal;
+import dev.traveler.core.world.behavior.decision.MovementAction;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -166,6 +167,45 @@ class NavigationRuntimeTest {
     }
 
     @Test
+    void repairsDivergenceTowardCurrentSegmentWithoutReleasingControls() {
+        TravelerNavigationState navigationState = new TravelerNavigationState();
+        TestAgentPort agent = new TestAgentPort(new NavigationPoint(2.0, 64.0, 2.0), new CameraAngles(-90.0, 0.0));
+        NavigationRuntime runtime = new NavigationRuntime(
+                navigationState,
+                agent,
+                NavigationController.standard(),
+                new PathfinderDebugState(),
+                new MovementProgressMonitor(new MovementHealthSettings(
+                        0.05,
+                        10.0,
+                        0.0,
+                        0.5,
+                        0.05,
+                        2.0,
+                        0.35)));
+        NavigationGoalPlan goalPlan = new NavigationGoalPlan(
+                RouteGoal.xz(100, 0),
+                RouteGoal.xz(20, 0),
+                false,
+                8.0);
+        navigationState.start(NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(20.0, 64.0, 0.0))), "test", goalPlan);
+
+        runtime.update(1_000_000_000L);
+        runtime.update(1_100_000_000L);
+
+        NavigationReplanRequest request = navigationState.pendingReplanRequest().orElseThrow();
+        assertEquals(RouteGoal.xz(20, 0), request.goal());
+        assertEquals(NavigationReplanActivation.REPLACE_ACTIVE_SESSION, request.activation());
+        assertEquals(new NavigationPoint(2.0, 64.0, 2.0), request.startOverride().orElseThrow());
+        assertTrue(request.preserveActiveSession());
+        assertEquals(goalPlan, request.goalPlanOverride().orElseThrow());
+        assertTrue(navigationState.activeSession().isPresent());
+        assertFalse(agent.released);
+    }
+
+    @Test
     void requestsLookaheadReplanBeforeSegmentCompletionWithoutStoppingCurrentSession() {
         TravelerNavigationState navigationState = new TravelerNavigationState();
         NavigationPoint segmentEnd = new NavigationPoint(20.25, 64.0, 0.75);
@@ -184,6 +224,7 @@ class NavigationRuntimeTest {
 
         NavigationReplanRequest request = navigationState.pendingReplanRequest().orElseThrow();
         assertEquals(RouteGoal.xz(100, 0), request.goal());
+        assertEquals(NavigationReplanActivation.PREPARE_LOOKAHEAD, request.activation());
         assertEquals(segmentEnd, request.startOverride().orElseThrow());
         assertTrue(request.preserveActiveSession());
         assertTrue(navigationState.activeSession().isPresent());
@@ -192,26 +233,31 @@ class NavigationRuntimeTest {
     }
 
     @Test
-    void requestsCompletionReplanFromCompletedSegmentEnd() {
+    void completedLongDistanceSegmentQueuesContinuityWithoutReleasingControls() {
         TravelerNavigationState navigationState = new TravelerNavigationState();
         NavigationPoint segmentEnd = new NavigationPoint(20.25, 64.0, 0.75);
-        TestAgentPort agent = new TestAgentPort(segmentEnd, new CameraAngles(0.0, 0.0));
+        TestAgentPort agent = new TestAgentPort(new NavigationPoint(14.0, 64.0, 0.0), new CameraAngles(0.0, 0.0));
         NavigationRuntime runtime = new NavigationRuntime(navigationState, agent);
         NavigationGoalPlan goalPlan = new NavigationGoalPlan(
                 RouteGoal.xz(100, 0),
                 RouteGoal.xz(20, 0),
                 false,
                 8.0);
-        navigationState.start(NavigationPath.of(List.of(
-                new NavigationPoint(0.0, 64.0, 0.0),
-                segmentEnd)), "test", goalPlan);
+        navigationState.start(NavigationPath.of(
+                List.of(new NavigationPoint(0.0, 64.0, 0.0), segmentEnd),
+                List.of(MovementAction.WALK)), "test", goalPlan);
 
         runtime.update(1_000_000_000L);
+        agent.position = segmentEnd;
+        runtime.update(1_100_000_000L);
 
         NavigationReplanRequest request = navigationState.pendingReplanRequest().orElseThrow();
         assertEquals(RouteGoal.xz(100, 0), request.goal());
+        assertEquals(NavigationReplanActivation.PREPARE_LOOKAHEAD, request.activation());
         assertEquals(segmentEnd, request.startOverride().orElseThrow());
-        assertFalse(request.preserveActiveSession());
+        assertTrue(request.preserveActiveSession());
+        assertTrue(navigationState.activeSession().isPresent());
+        assertFalse(agent.released);
     }
 
     @Test
@@ -247,7 +293,7 @@ class NavigationRuntimeTest {
         private final List<NavigationFrameInput> frames = new ArrayList<>();
         private final List<NavigationControlFrame> controlFrames = new ArrayList<>();
         private final List<MovementIntent> intents = new ArrayList<>();
-        private final NavigationPoint position;
+        private NavigationPoint position;
         private final CameraAngles cameraAngles;
         private boolean released;
 

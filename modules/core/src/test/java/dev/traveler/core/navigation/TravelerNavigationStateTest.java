@@ -92,6 +92,30 @@ class TravelerNavigationStateTest {
         assertFalse(state.hasPendingReplanRequest());
     }
 
+    @Test
+    void replacingActiveSessionClearsPreparedLookahead() {
+        TravelerNavigationState state = new TravelerNavigationState();
+        NavigationGoalPlan activePlan = goalPlan(100, 0, 4, 0);
+        NavigationPath activePath = NavigationPath.of(List.of(
+                new NavigationPoint(0.0, 64.0, 0.0),
+                new NavigationPoint(4.0, 64.0, 0.0)));
+        NavigationPath lookaheadPath = NavigationPath.of(List.of(
+                new NavigationPoint(4.0, 64.0, 0.0),
+                new NavigationPoint(8.0, 64.0, 0.0)));
+        NavigationPath repairPath = NavigationPath.of(List.of(
+                new NavigationPoint(1.0, 64.0, 1.0),
+                new NavigationPoint(4.0, 64.0, 0.0)));
+
+        state.start(activePath, "active", activePlan);
+        state.prepareLookahead(lookaheadPath, "lookahead", goalPlan(100, 0, 8, 0));
+        state.replaceActiveSession(repairPath, "repair", activePlan);
+
+        assertEquals(repairPath, state.activeSession().orElseThrow().path());
+        assertTrue(state.preparedLookaheadSession().isEmpty());
+        assertFalse(state.hasPendingReplanRequest());
+        assertEquals("repair", state.latestMessage().orElseThrow());
+    }
+
     private static NavigationGoalPlan goalPlan(int requestedX, int requestedZ, int activeX, int activeZ) {
         return new NavigationGoalPlan(
                 RouteGoal.xz(requestedX, requestedZ),
