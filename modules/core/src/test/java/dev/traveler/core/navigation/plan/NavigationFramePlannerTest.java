@@ -253,6 +253,24 @@ class NavigationFramePlannerTest {
     }
 
     @Test
+    void jumpSegmentStopsRejumpingAfterLandingOnTheTargetLevel() {
+        NavigationPath path = NavigationPath.of(List.of(
+                point(0.0, 64.0, 0.0),
+                point(0.0, 65.0, 1.0),
+                point(2.0, 65.0, 1.0)),
+                List.of(MovementAction.JUMP, MovementAction.WALK));
+        NavigationFrameInput input = new NavigationFrameInput(
+                point(0.35, 65.0, 0.85),
+                neutralCamera(),
+                0.016,
+                AgentMotionState.groundedStill());
+
+        NavigationFramePlan plan = planner.plan(path, input, NavigationControllerState.start());
+
+        assertFalse(plan.actionIntent().jumpRequested());
+    }
+
+    @Test
     void skippedNodeKeepsPlannerLookingForwardOnTheCorridor() {
         NavigationPath path = NavigationPath.of(List.of(
                 point(0.0, 64.0, 0.0),

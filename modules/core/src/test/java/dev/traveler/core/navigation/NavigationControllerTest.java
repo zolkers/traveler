@@ -232,7 +232,7 @@ class NavigationControllerTest {
     }
 
     @Test
-    void keepsJumpSegmentActiveUntilLandingIsActuallyReached() {
+    void keepsLandingTargetWithoutRejumpingUntilJumpSegmentIsActuallyReached() {
         NavigationPath path = NavigationPath.of(
                 List.of(
                         new NavigationPoint(0.0, 64.0, 0.0),
@@ -249,7 +249,8 @@ class NavigationControllerTest {
 
         assertEquals(1, frame.state().progress().nextNodeIndex());
         assertEquals(new NavigationPoint(0.0, 65.0, 1.0), frame.movementTarget().point());
-        assertTrue(frame.plan().actionIntent().jumpRequested());
+        assertFalse(frame.plan().actionIntent().jumpRequested());
+        assertFalse(frame.intent().jump());
     }
 
     @Test

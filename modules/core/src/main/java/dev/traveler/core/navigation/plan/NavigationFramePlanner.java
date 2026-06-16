@@ -88,23 +88,28 @@ public final class NavigationFramePlanner {
             NavigationControllerState state) {
         PathProgress progress = routeProgressPolicy.progress(path, input.position(), state.progress());
         NavigationPoint actionTarget = path.actionTargetBeforeNode(progress.nextNodeIndex());
-        LocomotionPlan requestedAction = actionPolicy.plan(
+        NavigationPoint segmentStart = path.nodeAt(progress.nextNodeIndex() - 1);
+        MovementActionDecision actionDecision = actionPolicy.decide(
                 input.position(),
+                segmentStart,
                 actionTarget,
                 input.motionState(),
                 path.actionBeforeNode(progress.nextNodeIndex()));
+        LocomotionPlan requestedAction = actionDecision.locomotionPlan();
         SteeringPlan steering = steeringController.plan(
                 path,
                 input.position(),
                 input.motionState(),
                 progress.nextNodeIndex());
-        SteeringPlan movementSteering = actionSteeringPolicy.steeringFor(
-                requestedAction,
-                path,
-                input.position(),
-                progress.nextNodeIndex(),
-                actionTarget,
-                steering);
+        SteeringPlan movementSteering = actionDecision.retainActionTarget()
+                ? SteeringPlan.seek(actionTarget, input.position().horizontalDistanceTo(actionTarget))
+                : actionSteeringPolicy.steeringFor(
+                        requestedAction,
+                        path,
+                        input.position(),
+                        progress.nextNodeIndex(),
+                        actionTarget,
+                        steering);
         MovementVectorIntent movementVector =
                 movementVectorPolicy.plan(input.position(), movementSteering, input.cameraAngles(), requestedAction);
         LocomotionPlan timedRequest = timedRequest(requestedAction, movementVector);
@@ -116,7 +121,7 @@ public final class NavigationFramePlanner {
         return new NavigationFramePlan(
                 phaseFor(actionIntent, movementVector),
                 progress,
-                movementTarget(timing.plan(), actionTarget, movementSteering),
+                movementTarget(timing.plan(), actionTarget, movementSteering, actionDecision.retainActionTarget()),
                 movementVector,
                 cameraTargetPolicy.target(path, input.position(), progress, input.cameraAngles()),
                 actionIntent,
@@ -155,7 +160,11 @@ public final class NavigationFramePlanner {
     private MovementTarget movementTarget(
             LocomotionPlan action,
             NavigationPoint actionTarget,
-            SteeringPlan steering) {
+            SteeringPlan steering,
+            boolean retainActionTarget) {
+        if (retainActionTarget) {
+            return MovementTarget.follow(actionTarget);
+        }
         if (usesSteeringTarget(action.action())) {
             return MovementTarget.follow(steering.steeringTarget());
         }
