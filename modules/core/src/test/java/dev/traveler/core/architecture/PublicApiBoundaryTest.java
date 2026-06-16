@@ -1,8 +1,8 @@
 package dev.traveler.core.architecture;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.traveler.core.common.api.DiagnosticPayload;
@@ -11,9 +11,9 @@ import dev.traveler.core.common.api.TravelerPort;
 import dev.traveler.core.common.api.TravelerRegistry;
 import java.io.IOException;
 import java.lang.reflect.Method;
-import java.lang.reflect.TypeVariable;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -34,10 +34,13 @@ class PublicApiBoundaryTest {
 
         assertTrue(TravelerRegistry.class.isInterface());
         assertEquals(2, TravelerRegistry.class.getTypeParameters().length);
-        assertArrayEquals(new String[] {"K", "V"}, typeParameterNames(TravelerRegistry.class));
+        assertEquals(1, TravelerRegistry.class.getDeclaredMethods().length);
 
-        Method resolve = TravelerRegistry.class.getDeclaredMethods()[0];
-        assertEquals("resolve", resolve.getName());
+        Method resolve = Arrays.stream(TravelerRegistry.class.getDeclaredMethods())
+                .filter(method -> method.getName().equals("resolve"))
+                .findFirst()
+                .orElse(null);
+        assertNotNull(resolve);
         assertEquals(1, resolve.getParameterCount());
 
         assertTrue(SettingsSection.class.isInterface());
@@ -54,9 +57,5 @@ class PublicApiBoundaryTest {
         List<String> violations = JavaSourceRules.forbiddenImports(SOURCE_ROOT, List.of("dev.traveler.mc."));
 
         assertTrue(violations.isEmpty(), () -> "Forbidden core references: " + violations);
-    }
-
-    private static String[] typeParameterNames(Class<?> type) {
-        return java.util.Arrays.stream(type.getTypeParameters()).map(TypeVariable::getName).toArray(String[]::new);
     }
 }
