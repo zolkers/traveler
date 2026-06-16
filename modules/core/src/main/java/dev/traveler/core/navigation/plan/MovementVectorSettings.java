@@ -8,7 +8,8 @@ public record MovementVectorSettings(
         double turnStrafeThreshold,
         double forwardArcMinimumForward,
         double backpedalMaximumDistance,
-        double specialActionLateralTolerance) {
+        double specialActionLateralTolerance,
+        double jumpActionLateralTolerance) {
     public MovementVectorSettings {
         requireThreshold(pressThreshold, "pressThreshold");
         requireThreshold(turnStrafeThreshold, "turnStrafeThreshold");
@@ -21,6 +22,9 @@ public record MovementVectorSettings(
         }
         if (!Double.isFinite(specialActionLateralTolerance) || specialActionLateralTolerance < 0.0) {
             throw new IllegalArgumentException("specialActionLateralTolerance must be non-negative.");
+        }
+        if (!Double.isFinite(jumpActionLateralTolerance) || jumpActionLateralTolerance < 0.0) {
+            throw new IllegalArgumentException("jumpActionLateralTolerance must be non-negative.");
         }
     }
 

@@ -139,6 +139,8 @@ public final class TravelerSettings {
             nonNegativeDouble("movement-vector.backpedal-maximum-distance", 0.8);
     public static final Setting<Double> MOVEMENT_VECTOR_SPECIAL_ACTION_LATERAL_TOLERANCE =
             nonNegativeDouble("movement-vector.special-action-lateral-tolerance", 1.0);
+    public static final Setting<Double> MOVEMENT_VECTOR_JUMP_ACTION_LATERAL_TOLERANCE =
+            nonNegativeDouble("movement-vector.jump-action-lateral-tolerance", 0.25);
 
     public static final Setting<Double> CONTROL_PRESS_THRESHOLD =
             boundedDouble("control.press-threshold", 0.32, 0.0, 1.0);
@@ -292,7 +294,8 @@ public final class TravelerSettings {
                 get(MOVEMENT_VECTOR_TURN_STRAFE_THRESHOLD),
                 get(MOVEMENT_VECTOR_FORWARD_ARC_MINIMUM_FORWARD),
                 get(MOVEMENT_VECTOR_BACKPEDAL_MAXIMUM_DISTANCE),
-                get(MOVEMENT_VECTOR_SPECIAL_ACTION_LATERAL_TOLERANCE));
+                get(MOVEMENT_VECTOR_SPECIAL_ACTION_LATERAL_TOLERANCE),
+                get(MOVEMENT_VECTOR_JUMP_ACTION_LATERAL_TOLERANCE));
     }
 
     public ControlProjectionSettings controlProjectionSettings() {

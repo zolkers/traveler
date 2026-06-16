@@ -26,6 +26,7 @@ public final class NavigationFramePlanner {
     private final RouteProgressPolicy routeProgressPolicy;
     private final MovementActionPolicy actionPolicy;
     private final PathSteeringController steeringController;
+    private final ActionSteeringPolicy actionSteeringPolicy;
     private final MovementVectorPolicy movementVectorPolicy;
     private final ActionTimingPolicy actionTimingPolicy;
     private final CameraTargetPolicy cameraTargetPolicy;
@@ -35,6 +36,7 @@ public final class NavigationFramePlanner {
             RouteProgressPolicy routeProgressPolicy,
             MovementActionPolicy actionPolicy,
             PathSteeringController steeringController,
+            ActionSteeringPolicy actionSteeringPolicy,
             MovementVectorPolicy movementVectorPolicy,
             ActionTimingPolicy actionTimingPolicy,
             CameraTargetPolicy cameraTargetPolicy) {
@@ -42,6 +44,7 @@ public final class NavigationFramePlanner {
         this.routeProgressPolicy = Objects.requireNonNull(routeProgressPolicy, "routeProgressPolicy");
         this.actionPolicy = Objects.requireNonNull(actionPolicy, "actionPolicy");
         this.steeringController = Objects.requireNonNull(steeringController, "steeringController");
+        this.actionSteeringPolicy = Objects.requireNonNull(actionSteeringPolicy, "actionSteeringPolicy");
         this.movementVectorPolicy = Objects.requireNonNull(movementVectorPolicy, "movementVectorPolicy");
         this.actionTimingPolicy = Objects.requireNonNull(actionTimingPolicy, "actionTimingPolicy");
         this.cameraTargetPolicy = Objects.requireNonNull(cameraTargetPolicy, "cameraTargetPolicy");
@@ -60,6 +63,7 @@ public final class NavigationFramePlanner {
                 new RouteProgressPolicy(settings.reachedDistance()),
                 new MovementActionPolicy(),
                 new PathSteeringController(steeringSettings),
+                new DefaultActionSteeringPolicy(),
                 new MovementVectorPolicy(traveler.movementVectorSettings()),
                 new ActionTimingPolicy(new LocomotionSequencer(traveler.locomotionSequencerSettings())),
                 new CameraTargetPolicy(new CameraTargetPlanner(traveler.cameraTargetSettings())));
@@ -94,8 +98,13 @@ public final class NavigationFramePlanner {
                 input.position(),
                 input.motionState(),
                 progress.nextNodeIndex());
-        SteeringPlan movementSteering =
-                movementSteering(requestedAction, input.position(), actionTarget, steering);
+        SteeringPlan movementSteering = actionSteeringPolicy.steeringFor(
+                requestedAction,
+                path,
+                input.position(),
+                progress.nextNodeIndex(),
+                actionTarget,
+                steering);
         MovementVectorIntent movementVector =
                 movementVectorPolicy.plan(input.position(), movementSteering, input.cameraAngles(), requestedAction);
         LocomotionPlan timedRequest = timedRequest(requestedAction, movementVector);
@@ -141,17 +150,6 @@ public final class NavigationFramePlanner {
             return requestedAction;
         }
         return LocomotionPlan.walk();
-    }
-
-    private static SteeringPlan movementSteering(
-            LocomotionPlan action,
-            NavigationPoint position,
-            NavigationPoint actionTarget,
-            SteeringPlan steering) {
-        if (action.action() == LocomotionAction.CLIMB) {
-            return SteeringPlan.seek(actionTarget, position.horizontalDistanceTo(actionTarget));
-        }
-        return steering;
     }
 
     private MovementTarget movementTarget(

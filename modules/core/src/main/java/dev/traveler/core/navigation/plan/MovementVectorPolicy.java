@@ -31,26 +31,26 @@ public final class MovementVectorPolicy {
         LocomotionPlan action = Objects.requireNonNull(actionPlan, "actionPlan");
         MovementVectorDecision decision = vectorDecision(currentPosition, steeringPlan, action);
         PlannedMovementMode mode = modeFor(decision, camera);
-        boolean actionAllowed = allowsSpecialAction(action, steeringPlan, decision);
+        boolean actionAllowed = allowsSpecialAction(action, currentPosition, steeringPlan);
         return new MovementVectorIntent(decision.desiredVector(), mode, actionAllowed);
     }
 
     private MovementVectorDecision vectorDecision(
             NavigationPoint position,
             SteeringPlan steering,
-            LocomotionPlan action) {
+        LocomotionPlan action) {
         if (shouldRecenter(steering, action)) {
-            return new MovementVectorDecision(steering.lateralCorrection(), false, true);
+            return new MovementVectorDecision(steering.lateralCorrection(), true);
         }
         if (!steering.tangent().isZero()) {
-            return new MovementVectorDecision(steering.desiredVectorFrom(position), true, false);
+            return new MovementVectorDecision(steering.desiredVectorFrom(position), false);
         }
-        return new MovementVectorDecision(position.horizontalVectorTo(steering.steeringTarget()), true, false);
+        return new MovementVectorDecision(position.horizontalVectorTo(steering.steeringTarget()), false);
     }
 
     private boolean shouldRecenter(SteeringPlan steering, LocomotionPlan action) {
         return steering.outsideCorridor()
-                && !nearEnoughForSpecialAction(action, steering)
+                && !nearEnoughForSpecialAction(action, null, steering)
                 && steering.lateralCorrection().length() >= settings.centeringCorrectionThreshold();
     }
 
@@ -97,19 +97,45 @@ public final class MovementVectorPolicy {
 
     private boolean allowsSpecialAction(
             LocomotionPlan action,
-            SteeringPlan steering,
-            MovementVectorDecision decision) {
-        if (action.action() == LocomotionAction.CLIMB) {
-            return nearEnoughForSpecialAction(action, steering);
+            NavigationPoint position,
+            SteeringPlan steering) {
+        if (isContinuousMovement(action.action())) {
+            return true;
         }
-        return isContinuousMovement(action.action())
-                || decision.specialActionAllowed()
-                || nearEnoughForSpecialAction(action, steering);
+        return nearEnoughForSpecialAction(action, position, steering);
     }
 
-    private boolean nearEnoughForSpecialAction(LocomotionPlan action, SteeringPlan steering) {
-        return !isContinuousMovement(action.action())
-                && steering.lateralError() <= settings.specialActionLateralTolerance();
+    private boolean nearEnoughForSpecialAction(
+            LocomotionPlan action,
+            NavigationPoint position,
+            SteeringPlan steering) {
+        if (isContinuousMovement(action.action())) {
+            return false;
+        }
+        if (steering.lateralError() <= specialActionLateralTolerance(action.action())) {
+            return true;
+        }
+        if (position == null) {
+            return false;
+        }
+        return actionCanStayCommitted(action.action(), position, steering);
+    }
+
+    private double specialActionLateralTolerance(LocomotionAction action) {
+        if (action == LocomotionAction.JUMP || action == LocomotionAction.STEP_UP) {
+            return settings.jumpActionLateralTolerance();
+        }
+        return settings.specialActionLateralTolerance();
+    }
+
+    private boolean actionCanStayCommitted(
+            LocomotionAction action,
+            NavigationPoint position,
+            SteeringPlan steering) {
+        if (action != LocomotionAction.JUMP && action != LocomotionAction.STEP_UP) {
+            return false;
+        }
+        return position.horizontalDistanceTo(steering.steeringTarget()) <= settings.specialActionLateralTolerance();
     }
 
     private static boolean isContinuousMovement(LocomotionAction action) {
@@ -118,6 +144,5 @@ public final class MovementVectorPolicy {
 
     private record MovementVectorDecision(
             HorizontalVector desiredVector,
-            boolean specialActionAllowed,
             boolean recentering) {}
 }

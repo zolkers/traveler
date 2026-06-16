@@ -13,6 +13,7 @@ import dev.traveler.core.navigation.control.MovementIntent;
 import dev.traveler.core.navigation.locomotion.AgentMotionState;
 import dev.traveler.core.navigation.locomotion.LocomotionExecutionState;
 import dev.traveler.core.navigation.locomotion.LocomotionAction;
+import dev.traveler.core.navigation.spatial.HorizontalVector;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import dev.traveler.core.world.behavior.decision.MovementAction;
 import java.util.List;
@@ -54,6 +55,24 @@ class NavigationFramePlannerTest {
 
         assertEquals(NavigationPhase.EXECUTE_ACTION, plan.phase());
         assertEquals(LocomotionAction.JUMP, plan.actionIntent().action());
+    }
+
+    @Test
+    void jumpMovementVectorTargetsLandingInsteadOfFollowingPostLandingTurn() {
+        NavigationPath path = NavigationPath.of(List.of(
+                point(0.0, 64.0, 0.0),
+                point(0.0, 65.0, 1.0),
+                point(3.0, 65.0, 1.0)),
+                List.of(MovementAction.JUMP, MovementAction.WALK));
+
+        NavigationFramePlan plan = planner.plan(
+                path,
+                frameInput(point(0.0, 64.0, 0.0), neutralCamera()),
+                NavigationControllerState.start());
+
+        assertEquals(NavigationPhase.EXECUTE_ACTION, plan.phase());
+        assertTrue(plan.actionIntent().jumpRequested());
+        assertEquals(new HorizontalVector(0.0, 1.0), plan.movementVector().desiredVector());
     }
 
     @Test
@@ -209,13 +228,28 @@ class NavigationFramePlannerTest {
                 point(0.0, 64.0, 0.0),
                 point(0.0, 65.0, 4.0)),
                 List.of(MovementAction.JUMP));
-        NavigationFrameInput input = frameInput(point(0.9, 64.0, 1.0), neutralCamera());
+        NavigationFrameInput input = frameInput(point(0.18, 64.0, 1.0), neutralCamera());
 
         NavigationFramePlan plan = planner.plan(path, input, NavigationControllerState.start());
 
         assertEquals(NavigationPhase.EXECUTE_ACTION, plan.phase());
         assertTrue(plan.actionIntent().jumpRequested());
         assertTrue(plan.movementVector().specialActionAllowed());
+    }
+
+    @Test
+    void jumpActionWaitsForCenterlineBeforePressingJump() {
+        NavigationPath path = NavigationPath.of(List.of(
+                point(0.0, 64.0, 0.0),
+                point(0.0, 65.0, 4.0)),
+                List.of(MovementAction.JUMP));
+        NavigationFrameInput input = frameInput(point(0.45, 64.0, 1.0), neutralCamera());
+
+        NavigationFramePlan plan = planner.plan(path, input, NavigationControllerState.start());
+
+        assertEquals(NavigationPhase.ALIGN, plan.phase());
+        assertFalse(plan.actionIntent().jumpRequested());
+        assertFalse(plan.movementVector().specialActionAllowed());
     }
 
     @Test
