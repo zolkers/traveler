@@ -91,7 +91,7 @@ public final class MovementActionPolicy {
         }
         if (!motionState.onGround()
                 || !JumpTraversalRules.hasReachedLandingHeight(position, target)
-                || !JumpTraversalRules.hasLeftTakeoffZone(position, segmentStart)) {
+                || !JumpTraversalRules.hasLeftTakeoffZone(position, segmentStart, target)) {
             return false;
         }
         if (position.horizontalDistanceTo(target) <= JumpTraversalRules.LANDING_DISTANCE_TOLERANCE) {

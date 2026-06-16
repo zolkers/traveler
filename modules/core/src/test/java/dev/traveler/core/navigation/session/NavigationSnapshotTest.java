@@ -176,8 +176,10 @@ class NavigationSnapshotTest {
 
     @Test
     void routePlanRequiresSegmentIndexesToMatchListOrder() {
-        RouteSegment first = new RouteSegment(0, new BlockPosition(0, 64, 0), new BlockPosition(1, 64, 0), TraversalKind.WALK);
-        RouteSegment second = new RouteSegment(1, new BlockPosition(1, 64, 0), new BlockPosition(2, 64, 0), TraversalKind.WALK);
+        RouteSegment first =
+                new RouteSegment(0, new BlockPosition(0, 64, 0), new BlockPosition(1, 64, 0), TraversalKind.WALK);
+        RouteSegment second =
+                new RouteSegment(1, new BlockPosition(1, 64, 0), new BlockPosition(2, 64, 0), TraversalKind.WALK);
 
         RoutePlan plan = new RoutePlan(List.of(first, second));
 
@@ -186,7 +188,11 @@ class NavigationSnapshotTest {
                 IllegalArgumentException.class,
                 () -> new RoutePlan(List.of(
                         first,
-                        new RouteSegment(2, new BlockPosition(1, 64, 0), new BlockPosition(2, 64, 0), TraversalKind.WALK))));
+                        new RouteSegment(
+                                2,
+                                new BlockPosition(1, 64, 0),
+                                new BlockPosition(2, 64, 0),
+                                TraversalKind.WALK))));
     }
 
     private static List<Class<?>> publicSnapshotTypes() {

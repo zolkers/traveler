@@ -253,6 +253,24 @@ class NavigationFramePlannerTest {
     }
 
     @Test
+    void jumpActionUsesSidestepRecenteringBeforeTakeoffInsteadOfGenericForwardArc() {
+        NavigationPath path = NavigationPath.of(List.of(
+                point(0.0, 64.0, 0.0),
+                point(0.0, 65.0, 4.0)),
+                List.of(MovementAction.JUMP));
+        NavigationFrameInput input = frameInput(point(0.35, 64.0, 0.2), neutralCamera());
+
+        NavigationFramePlan plan = planner.plan(path, input, NavigationControllerState.start());
+
+        assertEquals(NavigationPhase.ALIGN, plan.phase());
+        assertEquals(PlannedMovementMode.SIDESTEP_RECENTER, plan.movementVector().mode());
+        assertFalse(plan.actionIntent().jumpRequested());
+        assertTrue(plan.movementVector().desiredVector().x() < 0.0);
+        assertTrue(Math.abs(plan.movementVector().desiredVector().x())
+                > Math.abs(plan.movementVector().desiredVector().z()));
+    }
+
+    @Test
     void jumpSegmentStopsRejumpingAfterLandingOnTheTargetLevel() {
         NavigationPath path = NavigationPath.of(List.of(
                 point(0.0, 64.0, 0.0),
@@ -268,6 +286,26 @@ class NavigationFramePlannerTest {
         NavigationFramePlan plan = planner.plan(path, input, NavigationControllerState.start());
 
         assertFalse(plan.actionIntent().jumpRequested());
+    }
+
+    @Test
+    void jumpFollowThroughKeepsForwardLandingProfileInsteadOfPullingBackTowardTheTakeoffNode() {
+        NavigationPath path = NavigationPath.of(List.of(
+                point(0.0, 64.0, 0.0),
+                point(0.0, 65.0, 1.0),
+                point(2.0, 65.0, 1.0)),
+                List.of(MovementAction.JUMP, MovementAction.WALK));
+        NavigationFrameInput input = new NavigationFrameInput(
+                point(0.7, 65.0, 1.2),
+                neutralCamera(),
+                0.016,
+                AgentMotionState.groundedStill());
+
+        NavigationFramePlan plan = planner.plan(path, input, NavigationControllerState.start());
+
+        assertFalse(plan.actionIntent().jumpRequested());
+        assertEquals(PlannedMovementMode.DIRECT, plan.movementVector().mode());
+        assertTrue(plan.movementVector().desiredVector().z() > 0.0);
     }
 
     @Test

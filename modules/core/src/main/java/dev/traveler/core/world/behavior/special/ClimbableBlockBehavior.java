@@ -16,11 +16,6 @@ import java.util.Optional;
 import java.util.Set;
 
 public abstract class ClimbableBlockBehavior implements BlockBehavior {
-    @Override
-    public final boolean supportsStanding(MovementCapabilities capabilities) {
-        return false;
-    }
-
     public final boolean supportsClimbing(MovementCapabilities capabilities) {
         return SurfaceMovementRules.supportsWalking(capabilities);
     }

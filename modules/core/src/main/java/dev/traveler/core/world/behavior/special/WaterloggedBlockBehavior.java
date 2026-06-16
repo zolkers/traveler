@@ -5,7 +5,6 @@ import dev.traveler.core.world.behavior.BlockBehaviorKey;
 import dev.traveler.core.world.behavior.api.BehaviorTag;
 import dev.traveler.core.world.behavior.api.BlockSemantics;
 import dev.traveler.core.world.behavior.context.SurfaceMovementContext;
-import dev.traveler.core.world.movement.MovementCapabilities;
 import java.util.Objects;
 import java.util.Set;
 
@@ -23,11 +22,6 @@ public final class WaterloggedBlockBehavior implements BlockBehavior {
 
     public BlockBehavior delegate() {
         return delegate;
-    }
-
-    @Override
-    public boolean supportsStanding(MovementCapabilities capabilities) {
-        return delegate.supportsStanding(capabilities);
     }
 
     @Override

@@ -610,6 +610,21 @@ class RouteSearchServiceTest {
     }
 
     @Test
+    void waterSurfaceDoesNotCountAsJumpSupportForRaisedExit() {
+        Map<BlockPosition, SurfaceBlock> blocks = new HashMap<>();
+        BlockPosition waterBlock = new BlockPosition(0, 63, 0);
+        BlockPosition raisedExit = new BlockPosition(1, 64, 0);
+        blocks.put(waterBlock, water());
+        blocks.put(raisedExit, fullBlock());
+        TestSurfaceWorldLayer world = new TestSurfaceWorldLayer(blocks);
+        RouteSearchService service = new RouteSearchService(swimmingSettings());
+
+        RouteSearchResult result = service.search(world, new BlockPosition(0, 64, 0), raisedExit);
+
+        assertEquals(PathfinderStatus.NOT_FOUND, result.status());
+    }
+
+    @Test
     void standardClientCanSwimBecauseTheMinecraftPlayerCanSwim() {
         assertTrue(RouteSearchSettings.standardClient().movementProfile().capabilities().canSwim());
     }

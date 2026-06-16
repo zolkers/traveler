@@ -13,6 +13,7 @@ public final class DefaultSurfaceTransitionProvider implements SurfaceTransition
                 .map(direction -> evaluator.decision(
                         safeContext.from(),
                         safeContext.to(),
+                        safeContext.worldLayer().surfaceBlock(safeContext.from().blockPosition()),
                         safeContext.destinationBlock(),
                         direction))
                 .or(() -> Optional.of(MovementDecision.blocked()));

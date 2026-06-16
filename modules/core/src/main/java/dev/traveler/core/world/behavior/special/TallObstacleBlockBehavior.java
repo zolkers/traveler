@@ -6,16 +6,10 @@ import dev.traveler.core.world.behavior.api.CollisionSemantics;
 import dev.traveler.core.world.behavior.api.FluidSemantics;
 import dev.traveler.core.world.behavior.api.SupportSemantics;
 import dev.traveler.core.world.behavior.context.SurfaceMovementContext;
-import dev.traveler.core.world.movement.MovementCapabilities;
 import java.util.Objects;
 import java.util.Set;
 
 public abstract class TallObstacleBlockBehavior implements BlockBehavior {
-    @Override
-    public final boolean supportsStanding(MovementCapabilities capabilities) {
-        return false;
-    }
-
     @Override
     public final BlockSemantics describe(SurfaceMovementContext context) {
         Objects.requireNonNull(context, "context");

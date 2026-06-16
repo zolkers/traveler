@@ -23,4 +23,24 @@ public final class JumpTraversalRules {
         return current.horizontalDistanceTo(takeoff) >= TAKEOFF_EXIT_DISTANCE
                 || current.y() >= takeoff.y() + TAKEOFF_EXIT_HEIGHT;
     }
+
+    public static boolean hasLeftTakeoffZone(
+            NavigationPoint position,
+            NavigationPoint segmentStart,
+            NavigationPoint actionTarget) {
+        NavigationPoint current = Objects.requireNonNull(position, "position");
+        NavigationPoint takeoff = Objects.requireNonNull(segmentStart, "segmentStart");
+        NavigationPoint target = Objects.requireNonNull(actionTarget, "actionTarget");
+        double verticalExit = takeoff.y() + TAKEOFF_EXIT_HEIGHT;
+        if (current.y() >= verticalExit) {
+            return true;
+        }
+        dev.traveler.core.navigation.spatial.HorizontalVector axis =
+                takeoff.horizontalVectorTo(target);
+        if (axis.isZero()) {
+            return current.horizontalDistanceTo(takeoff) >= TAKEOFF_EXIT_DISTANCE;
+        }
+        double along = takeoff.horizontalVectorTo(current).dot(axis.normalized());
+        return along >= TAKEOFF_EXIT_DISTANCE;
+    }
 }

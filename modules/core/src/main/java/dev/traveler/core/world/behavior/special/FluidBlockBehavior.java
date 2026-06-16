@@ -8,7 +8,6 @@ import dev.traveler.core.world.behavior.api.FluidSemantics;
 import dev.traveler.core.world.behavior.api.SupportSemantics;
 import dev.traveler.core.world.behavior.api.TraversalAffordance;
 import dev.traveler.core.world.behavior.context.SurfaceMovementContext;
-import dev.traveler.core.world.movement.MovementCapabilities;
 import java.util.Objects;
 import java.util.Set;
 
@@ -19,22 +18,12 @@ public final class FluidBlockBehavior implements BlockBehavior {
     }
 
     @Override
-    public boolean supportsStanding(MovementCapabilities capabilities) {
-        return false;
-    }
-
-    @Override
-    public FluidSemantics fluidSemantics() {
-        return FluidSemantics.SWIMMABLE;
-    }
-
-    @Override
     public BlockSemantics describe(SurfaceMovementContext context) {
         Objects.requireNonNull(context, "context");
         return BlockSemantics.of(
                 CollisionSemantics.PASSABLE,
                 SupportSemantics.NONE,
-                fluidSemantics(),
+                FluidSemantics.SWIMMABLE,
                 Set.of(TraversalAffordance.SWIM));
     }
 }

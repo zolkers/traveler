@@ -20,7 +20,8 @@ public final class JumpMovementHealthPolicy implements MovementHealthPolicy {
         if (snapshot.onGround()
                 && !JumpTraversalRules.hasLeftTakeoffZone(
                         snapshot.position(),
-                        snapshot.segmentStart())) {
+                        snapshot.segmentStart(),
+                        snapshot.actionTarget())) {
             return MovementHealthEvaluation.setup(
                     snapshot.lateralDistance(),
                     settings.pathDivergenceDistance() * DIVERGENCE_MULTIPLIER);

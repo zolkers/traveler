@@ -3,10 +3,8 @@ package dev.traveler.core.world.behavior.special;
 import dev.traveler.core.world.behavior.BlockBehavior;
 import dev.traveler.core.world.behavior.BlockBehaviorKey;
 import dev.traveler.core.world.behavior.api.BlockSemantics;
-import dev.traveler.core.world.behavior.api.SupportSemantics;
 import dev.traveler.core.world.behavior.context.HorizontalFacing;
 import dev.traveler.core.world.behavior.context.SurfaceMovementContext;
-import dev.traveler.core.world.movement.MovementCapabilities;
 import java.util.Objects;
 
 public final class StairBlockBehavior implements BlockBehavior {
@@ -23,13 +21,6 @@ public final class StairBlockBehavior implements BlockBehavior {
 
     public HorizontalFacing facing() {
         return facing;
-    }
-
-    @Override
-    public SupportSemantics supportSemantics(MovementCapabilities capabilities) {
-        return SurfaceMovementRules.supportsWalking(capabilities)
-                ? SupportSemantics.STANDABLE
-                : SupportSemantics.NONE;
     }
 
     @Override

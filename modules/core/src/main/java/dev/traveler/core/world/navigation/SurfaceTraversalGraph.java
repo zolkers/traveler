@@ -1,8 +1,9 @@
 package dev.traveler.core.world.navigation;
 
-import dev.traveler.core.world.movement.FluidHandling;
+import dev.traveler.core.world.behavior.api.BlockSemantics;
 import dev.traveler.core.world.behavior.api.FluidSemantics;
 import dev.traveler.core.world.behavior.context.MovementDirection;
+import dev.traveler.core.world.behavior.context.SurfaceMovementContext;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.movement.EntityDimensions;
 import dev.traveler.core.world.movement.MovementCapabilities;
@@ -292,7 +293,9 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
                     ? swimSurfaceNode(block, blockX, blockY, blockZ, cellX, cellZ)
                     : null;
         }
-        if (!block.behavior().supportSemantics(capabilities).supportsStanding()) {
+        if (!restingSemantics(block, blockX, blockY, blockZ, cellX, cellZ, blockY + floorHeight)
+                .support()
+                .supportsStanding()) {
             return null;
         }
         BlockPosition position = new BlockPosition(blockX, blockY, blockZ);
@@ -307,20 +310,40 @@ public final class SurfaceTraversalGraph implements KeyedGraph<SurfaceNode>, Sur
             int cellX,
             int cellZ) {
         BlockPosition position = new BlockPosition(blockX, blockY, blockZ);
-        if (!isTopFluidSurface(block, position)) {
+        if (!isTopFluidSurface(block, position, cellX, cellZ)) {
             return null;
         }
         return new SurfaceNode(position, cellX, cellZ, blockY + 1.0);
     }
 
-    private boolean isTopFluidSurface(SurfaceBlock block, BlockPosition position) {
-        return hasFluid(block)
-                && !hasFluid(surfaceBlock(position.x(), position.y() + 1, position.z()));
+    private boolean isTopFluidSurface(SurfaceBlock block, BlockPosition position, int cellX, int cellZ) {
+        return hasFluid(block, position, cellX, cellZ)
+                && !hasFluid(
+                        surfaceBlock(position.x(), position.y() + 1, position.z()),
+                        position.above(),
+                        cellX,
+                        cellZ);
     }
 
-    private static boolean hasFluid(SurfaceBlock block) {
-        return block.behavior().fluidSemantics() == FluidSemantics.SWIMMABLE
-                || block.classification().fluidHandling() == FluidHandling.ALLOW;
+    private boolean hasFluid(SurfaceBlock block, BlockPosition position, int cellX, int cellZ) {
+        return restingSemantics(block, position.x(), position.y(), position.z(), cellX, cellZ, position.y() + 1.0)
+                        .fluid()
+                == FluidSemantics.SWIMMABLE;
+    }
+
+    private BlockSemantics restingSemantics(
+            SurfaceBlock block,
+            int blockX,
+            int blockY,
+            int blockZ,
+            int cellX,
+            int cellZ,
+            double floorY) {
+        BlockPosition position = new BlockPosition(blockX, blockY, blockZ);
+        SurfaceNode node = new SurfaceNode(position, cellX, cellZ, floorY);
+        SurfaceMovementContext context =
+                new SurfaceMovementContext(node, node, block, block, capabilities, MovementDirection.north());
+        return block.behavior().describe(context);
     }
 
     @Override

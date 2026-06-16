@@ -5,6 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 import dev.traveler.core.world.behavior.context.HorizontalFacing;
+import dev.traveler.core.world.behavior.api.BlockSemantics;
+import dev.traveler.core.world.behavior.api.CollisionSemantics;
+import dev.traveler.core.world.behavior.api.FluidSemantics;
+import dev.traveler.core.world.behavior.api.SupportSemantics;
+import dev.traveler.core.world.behavior.api.TraversalAffordance;
 import dev.traveler.core.world.behavior.context.SurfaceMovementContext;
 import dev.traveler.core.world.behavior.decision.MovementDecision;
 import dev.traveler.core.world.behavior.special.AirBlockBehavior;
@@ -18,7 +23,6 @@ import dev.traveler.core.world.behavior.special.StairBlockBehavior;
 import dev.traveler.core.world.behavior.special.VineBlockBehavior;
 import dev.traveler.core.world.behavior.special.WallBlockBehavior;
 import dev.traveler.core.world.behavior.special.WaterloggedBlockBehavior;
-import dev.traveler.core.world.movement.MovementCapabilities;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
@@ -94,8 +98,12 @@ class BlockBehaviorRegistryTest {
 
     private record TestBehavior(BlockBehaviorKey key) implements BlockBehavior {
         @Override
-        public boolean supportsStanding(MovementCapabilities capabilities) {
-            return true;
+        public BlockSemantics describe(SurfaceMovementContext context) {
+            return BlockSemantics.of(
+                    CollisionSemantics.SOLID,
+                    SupportSemantics.STANDABLE,
+                    FluidSemantics.NONE,
+                    Set.of(TraversalAffordance.WALK));
         }
 
         @Override

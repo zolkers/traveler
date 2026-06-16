@@ -78,7 +78,9 @@ public final class PathDebugRenderModel {
                 Objects.requireNonNull(navigationState, "navigationState");
         Optional<NavigationSession> active = travelerNavigationState.activeSession();
         Optional<NavigationSession> lookahead = travelerNavigationState.preparedLookaheadSession();
-        DebugRenderFrame frame = latestSearchFrameFor(debugState.snapshot());
+        DebugRenderFrame frame = active.isPresent() || lookahead.isPresent()
+                ? DebugRenderFrame.empty()
+                : latestSearchFrameFor(debugState.snapshot());
         if (active.isPresent()) {
             frame = combine(frame, navigationPathFrameFor(
                     active.orElseThrow().path(),

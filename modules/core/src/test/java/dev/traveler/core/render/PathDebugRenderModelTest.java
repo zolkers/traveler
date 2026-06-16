@@ -1,6 +1,7 @@
 package dev.traveler.core.render;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -202,7 +203,7 @@ class PathDebugRenderModelTest {
 
         assertTrue(frame.lines().stream().anyMatch(line -> line.color().equals(ACTIVE_SEGMENT_COLOR)));
         assertTrue(frame.lines().stream().anyMatch(line -> line.color().equals(LOOKAHEAD_SEGMENT_COLOR)));
-        assertTrue(frame.lines().stream().anyMatch(line -> line.color().equals(LATEST_SEARCH_COLOR)));
+        assertFalse(frame.lines().stream().anyMatch(line -> line.color().equals(LATEST_SEARCH_COLOR)));
     }
 
     @Test

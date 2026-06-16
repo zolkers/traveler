@@ -135,20 +135,22 @@ class BlockSemanticsTest {
 
     @Test
     void supportCompatibilityDerivesFromSupportSemantics() {
-        BlockBehavior behavior = new SemanticsOnlyBehavior(
+        BlockBehavior behavior = new SemanticsOnlyBehavior(BlockSemantics.of(
+                CollisionSemantics.SOLID,
                 SupportSemantics.STANDABLE,
                 FluidSemantics.NONE,
-                Set.of(TraversalAffordance.WALK));
+                Set.of(TraversalAffordance.WALK)));
 
         assertTrue(behavior.supportsStanding(WALKER));
     }
 
     @Test
     void movementContextFluidChecksUseFluidSemanticsInsteadOfLegacyKeys() {
-        BlockBehavior semanticFluid = new SemanticsOnlyBehavior(
+        BlockBehavior semanticFluid = new SemanticsOnlyBehavior(BlockSemantics.of(
+                CollisionSemantics.PASSABLE,
                 SupportSemantics.NONE,
                 FluidSemantics.SWIMMABLE,
-                Set.of(TraversalAffordance.SWIM));
+                Set.of(TraversalAffordance.SWIM)));
         SurfaceMovementContext context = context(
                 node(0, 0, 64.0),
                 node(1, 0, 64.0),
@@ -162,11 +164,15 @@ class BlockSemanticsTest {
     }
 
     @Test
-    void surfaceTraversalGraphUsesSupportSemanticsForStandableNodes() {
-        BlockBehavior semanticSupport = new SemanticsOnlyBehavior(
-                SupportSemantics.STANDABLE,
+    void surfaceTraversalGraphReadsDescribeForStandabilityInsteadOfSupportHelper() {
+        BlockBehavior semanticSupport = new MisleadingHelperBehavior(
+                SupportSemantics.NONE,
                 FluidSemantics.NONE,
-                Set.of(TraversalAffordance.WALK));
+                BlockSemantics.of(
+                        CollisionSemantics.SOLID,
+                        SupportSemantics.STANDABLE,
+                        FluidSemantics.NONE,
+                        Set.of(TraversalAffordance.WALK)));
         SurfaceWorldLayer world = new TestSurfaceWorldLayer(Map.of(
                 new BlockPosition(0, 63, 0),
                 solidBlock(semanticSupport)));
@@ -176,6 +182,45 @@ class BlockSemanticsTest {
         SurfaceNode surface = graph.surfaceNodeAt(0, 63, 0);
 
         assertEquals(anchor, surface);
+    }
+
+    @Test
+    void surfaceTraversalGraphReadsDescribeForSwimSurfaceDetection() {
+        BlockBehavior semanticFluid = new MisleadingHelperBehavior(
+                SupportSemantics.NONE,
+                FluidSemantics.NONE,
+                BlockSemantics.of(
+                        CollisionSemantics.PASSABLE,
+                        SupportSemantics.NONE,
+                        FluidSemantics.SWIMMABLE,
+                        Set.of(TraversalAffordance.SWIM)));
+        SurfaceWorldLayer world = new TestSurfaceWorldLayer(Map.of(
+                new BlockPosition(0, 63, 0),
+                passableBlock(semanticFluid, FluidHandling.AVOID)));
+        SurfaceNode anchor = new SurfaceNode(new BlockPosition(0, 63, 0), 0, 0, 64.0);
+        SurfaceTraversalGraph graph = new SurfaceTraversalGraph(world, anchor, anchor, SWIMMER, 1, 1);
+
+        SurfaceNode surface = graph.surfaceNodeAt(0, 63, 0);
+
+        assertEquals(anchor, surface);
+    }
+
+    @Test
+    void surfaceTraversalGraphDoesNotInferFluidFromClassificationAlone() {
+        BlockBehavior dryBehavior = new SemanticsOnlyBehavior(BlockSemantics.of(
+                CollisionSemantics.PASSABLE,
+                SupportSemantics.NONE,
+                FluidSemantics.NONE,
+                Set.of()));
+        SurfaceWorldLayer world = new TestSurfaceWorldLayer(Map.of(
+                new BlockPosition(0, 63, 0),
+                passableBlock(dryBehavior, FluidHandling.ALLOW)));
+        SurfaceNode anchor = new SurfaceNode(new BlockPosition(0, 63, 0), 0, 0, 64.0);
+        SurfaceTraversalGraph graph = new SurfaceTraversalGraph(world, anchor, anchor, SWIMMER, 1, 1);
+
+        SurfaceNode surface = graph.surfaceNodeAt(0, 63, 0);
+
+        assertEquals(null, surface);
     }
 
     private static SurfaceMovementContext context(
@@ -220,18 +265,11 @@ class BlockSemanticsTest {
         }
     }
 
-    private static final class SemanticsOnlyBehavior implements BlockBehavior {
-        private final SupportSemantics support;
-        private final FluidSemantics fluid;
-        private final Set<TraversalAffordance> affordances;
+    private static class SemanticsOnlyBehavior implements BlockBehavior {
+        private final BlockSemantics semantics;
 
-        private SemanticsOnlyBehavior(
-                SupportSemantics support,
-                FluidSemantics fluid,
-                Set<TraversalAffordance> affordances) {
-            this.support = support;
-            this.fluid = fluid;
-            this.affordances = affordances;
+        private SemanticsOnlyBehavior(BlockSemantics semantics) {
+            this.semantics = semantics;
         }
 
         @Override
@@ -240,29 +278,37 @@ class BlockSemanticsTest {
         }
 
         @Override
-        public SupportSemantics supportSemantics(MovementCapabilities capabilities) {
-            return support;
-        }
-
-        @Override
-        public FluidSemantics fluidSemantics() {
-            return fluid;
-        }
-
-        @Override
         public BlockSemantics describe(SurfaceMovementContext context) {
-            return BlockSemantics.of(
-                    support == SupportSemantics.STANDABLE
-                            ? CollisionSemantics.SOLID
-                            : CollisionSemantics.PASSABLE,
-                    support,
-                    fluid,
-                    affordances);
+            return semantics;
         }
 
         @Override
         public MovementDecision evaluateMovement(SurfaceMovementContext context) {
             return BlockBehavior.adaptMovementDecision(context, describe(context));
+        }
+    }
+
+    private static final class MisleadingHelperBehavior extends SemanticsOnlyBehavior {
+        private final SupportSemantics helperSupport;
+        private final FluidSemantics helperFluid;
+
+        private MisleadingHelperBehavior(
+                SupportSemantics helperSupport,
+                FluidSemantics helperFluid,
+                BlockSemantics semantics) {
+            super(semantics);
+            this.helperSupport = helperSupport;
+            this.helperFluid = helperFluid;
+        }
+
+        @Override
+        public SupportSemantics supportSemantics(MovementCapabilities capabilities) {
+            return helperSupport;
+        }
+
+        @Override
+        public FluidSemantics fluidSemantics() {
+            return helperFluid;
         }
     }
 }
