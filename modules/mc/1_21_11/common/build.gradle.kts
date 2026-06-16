@@ -10,4 +10,5 @@ dependencies {
     api(project(":core"))
     api(project(":command_buildmycommand"))
     testImplementation(testFixtures(project(":core")))
+    testImplementation(testFixtures(project(":command_buildmycommand")))
 }

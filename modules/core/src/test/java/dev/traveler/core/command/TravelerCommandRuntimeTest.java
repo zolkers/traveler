@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.layer.SnapshotCaptureSession;
-import dev.traveler.core.layer.SnapshotCapturableWorldLayer;
 import dev.traveler.core.layer.SurfaceBlock;
 import dev.traveler.core.layer.SurfaceWorldLayer;
 import dev.traveler.core.navigation.TravelerNavigationState;
@@ -89,12 +88,7 @@ class TravelerCommandRuntimeTest {
         }
     }
 
-    private static final class ExplodingWorld implements SnapshotCapturableWorldLayer {
-        @Override
-        public SurfaceBlock surfaceBlock(BlockPosition position) {
-            return SurfaceBlock.empty();
-        }
-
+    private static final class ExplodingWorld extends EmptySnapshotCapturableWorldLayer {
         @Override
         public SnapshotCaptureSession captureSession(
                 BlockPosition start,

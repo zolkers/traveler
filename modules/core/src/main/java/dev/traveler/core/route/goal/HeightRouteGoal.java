@@ -11,13 +11,7 @@ import java.util.Objects;
 public record HeightRouteGoal(int y) implements RouteGoal {
     @Override
     public List<SurfaceNode> surfaceGoals(SurfaceNodeResolver resolver, BlockPosition start) {
-        SurfaceNodeResolver safeResolver = Objects.requireNonNull(resolver, "resolver");
-        BlockPosition candidateFeet = preferredPosition(start);
-        List<SurfaceNode> standing = safeResolver.standingSurfaces(candidateFeet);
-        if (!standing.isEmpty()) {
-            return standing;
-        }
-        return safeResolver.surfaces(candidateFeet.below());
+        return RouteGoalSupport.standingSurfaceGoals(resolver, preferredPosition(start));
     }
 
     @Override

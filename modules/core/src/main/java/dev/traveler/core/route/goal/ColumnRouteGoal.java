@@ -11,17 +11,12 @@ import java.util.Objects;
 public record ColumnRouteGoal(int x, int z) implements RouteGoal {
     @Override
     public List<SurfaceNode> surfaceGoals(SurfaceNodeResolver resolver, BlockPosition start) {
-        SurfaceNodeResolver safeResolver = Objects.requireNonNull(resolver, "resolver");
         BlockPosition candidateFeet = preferredPosition(start);
-        List<SurfaceNode> standing = safeResolver.standingSurfaces(candidateFeet);
-        if (!standing.isEmpty()) {
-            return standing;
-        }
-        List<SurfaceNode> support = safeResolver.surfaces(candidateFeet.below());
+        List<SurfaceNode> support = RouteGoalSupport.standingSurfaceGoals(resolver, candidateFeet);
         if (!support.isEmpty()) {
             return support;
         }
-        return safeResolver.surfaces(candidateFeet);
+        return resolver.surfaces(candidateFeet);
     }
 
     @Override

@@ -1,10 +1,9 @@
 package dev.traveler.core.world.surface;
 
 import dev.traveler.core.world.block.BlockPosition;
-import dev.traveler.core.world.behavior.BlockBehavior;
+import dev.traveler.core.world.behavior.BlockBehaviors;
 import dev.traveler.core.world.behavior.context.HorizontalFacing;
 import dev.traveler.core.world.behavior.special.ClimbableBlockBehavior;
-import dev.traveler.core.world.behavior.special.WaterloggedBlockBehavior;
 import dev.traveler.core.layer.SurfaceWorldLayer;
 import dev.traveler.core.settings.TravelerSettings;
 import dev.traveler.core.world.movement.FluidHandling;
@@ -137,17 +136,7 @@ public final class SurfaceNodeResolver {
     }
 
     private Optional<ClimbableBlockBehavior> climbableBehaviorAt(BlockPosition position) {
-        return climbableBehavior(worldLayer.surfaceBlock(position).behavior());
-    }
-
-    private static Optional<ClimbableBlockBehavior> climbableBehavior(BlockBehavior behavior) {
-        if (behavior instanceof ClimbableBlockBehavior climbable) {
-            return Optional.of(climbable);
-        }
-        if (behavior instanceof WaterloggedBlockBehavior waterlogged) {
-            return climbableBehavior(waterlogged.delegate());
-        }
-        return Optional.empty();
+        return BlockBehaviors.climbable(worldLayer.surfaceBlock(position).behavior());
     }
 
     private void addSurfaceRow(List<SurfaceNode> nodes, BlockPosition supportPosition, int cellX) {

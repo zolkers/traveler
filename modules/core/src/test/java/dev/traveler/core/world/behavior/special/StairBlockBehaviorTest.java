@@ -3,10 +3,10 @@ package dev.traveler.core.world.behavior.special;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static dev.traveler.core.world.behavior.special.SurfaceMovementTestSupport.context;
 
 import dev.traveler.core.world.behavior.context.HorizontalFacing;
 import dev.traveler.core.world.behavior.context.MovementDirection;
-import dev.traveler.core.world.behavior.context.SurfaceMovementContext;
 import dev.traveler.core.world.behavior.decision.MovementAction;
 import dev.traveler.core.world.behavior.decision.MovementDecision;
 import dev.traveler.core.world.block.BlockPosition;
@@ -73,14 +73,6 @@ class StairBlockBehaviorTest {
 
         assertTrue(decision.allowed());
         assertEquals(MovementAction.JUMP, decision.action());
-    }
-
-    private static SurfaceMovementContext context(
-            SurfaceNode from,
-            SurfaceNode to,
-            MovementDirection direction,
-            MovementCapabilities capabilities) {
-        return new SurfaceMovementContext(from, to, capabilities, direction);
     }
 
     private static SurfaceNode node(int cellX, int cellZ, double floorY) {

@@ -6,8 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.traveler.core.layer.NavigationBudgetProvider;
 import dev.traveler.core.layer.SnapshotCaptureSession;
-import dev.traveler.core.layer.SnapshotCapturableWorldLayer;
-import dev.traveler.core.layer.SurfaceBlock;
 import dev.traveler.core.layer.SurfaceWorldLayer;
 import dev.traveler.core.layer.WorldNavigationBudget;
 import dev.traveler.core.world.block.BlockPosition;
@@ -93,7 +91,7 @@ class TravelerPathSearchServiceTest {
         assertEquals(16, captured.verticalMargin);
     }
 
-    private static class CapturableLayer implements SnapshotCapturableWorldLayer {
+    private static class CapturableLayer extends EmptySnapshotCapturableWorldLayer {
         private final long blockCount;
         private boolean captureStarted;
         private BlockPosition start;
@@ -103,11 +101,6 @@ class TravelerPathSearchServiceTest {
 
         private CapturableLayer(long blockCount) {
             this.blockCount = blockCount;
-        }
-
-        @Override
-        public SurfaceBlock surfaceBlock(BlockPosition position) {
-            return SurfaceBlock.empty();
         }
 
         @Override

@@ -3,11 +3,10 @@ package dev.traveler.core.world.navigation;
 import dev.traveler.core.layer.SurfaceBlock;
 import dev.traveler.core.layer.SurfaceWorldLayer;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
-import dev.traveler.core.world.behavior.BlockBehavior;
+import dev.traveler.core.world.behavior.BlockBehaviors;
 import dev.traveler.core.world.behavior.context.HorizontalFacing;
 import dev.traveler.core.world.behavior.special.ClimbableBlockBehavior;
 import dev.traveler.core.world.behavior.special.ClimbSurfaceGeometry;
-import dev.traveler.core.world.behavior.special.WaterloggedBlockBehavior;
 import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.movement.MovementCapabilities;
 import dev.traveler.core.world.surface.SurfaceNode;
@@ -82,7 +81,7 @@ public final class SurfaceClimbTraversal {
         BlockPosition position = Objects.requireNonNull(feetPosition, "feetPosition");
         MovementCapabilities safeCapabilities = Objects.requireNonNull(capabilities, "capabilities");
         Optional<ClimbableBlockBehavior> climbable =
-                climbableBehavior(layer.surfaceBlock(position).behavior());
+                BlockBehaviors.climbable(layer.surfaceBlock(position).behavior());
         if (climbable.isEmpty()) {
             return List.of();
         }
@@ -229,7 +228,7 @@ public final class SurfaceClimbTraversal {
             return Optional.empty();
         }
         Optional<ClimbableBlockBehavior> climbable =
-                climbableBehavior(worldLayer.surfaceBlock(safeNode.blockPosition()).behavior());
+                BlockBehaviors.climbable(worldLayer.surfaceBlock(safeNode.blockPosition()).behavior());
         if (climbable.isEmpty()) {
             return Optional.empty();
         }
@@ -399,7 +398,7 @@ public final class SurfaceClimbTraversal {
     }
 
     public static boolean isClimbable(SurfaceBlock block, MovementCapabilities capabilities) {
-        return climbableBehavior(block.behavior())
+        return BlockBehaviors.climbable(block.behavior())
                 .map(behavior -> behavior.supportsClimbing(capabilities))
                 .orElse(false);
     }
@@ -408,7 +407,7 @@ public final class SurfaceClimbTraversal {
             SurfaceBlock block,
             MovementCapabilities capabilities,
             HorizontalFacing face) {
-        return climbableBehavior(block.behavior())
+        return BlockBehaviors.climbable(block.behavior())
                 .flatMap(behavior -> behavior.climbSurface(face, capabilities));
     }
 
@@ -416,19 +415,9 @@ public final class SurfaceClimbTraversal {
             SurfaceBlock block,
             MovementCapabilities capabilities,
             HorizontalFacing face) {
-        return climbableBehavior(block.behavior())
+        return BlockBehaviors.climbable(block.behavior())
                 .filter(behavior -> !behavior.allowsRouteSmoothing(capabilities))
                 .flatMap(behavior -> behavior.climbSurface(face, capabilities));
-    }
-
-    private static Optional<ClimbableBlockBehavior> climbableBehavior(BlockBehavior behavior) {
-        if (behavior instanceof ClimbableBlockBehavior climbable) {
-            return Optional.of(climbable);
-        }
-        if (behavior instanceof WaterloggedBlockBehavior waterlogged) {
-            return climbableBehavior(waterlogged.delegate());
-        }
-        return Optional.empty();
     }
 
     private static int blockCoordinate(int globalCoordinate) {

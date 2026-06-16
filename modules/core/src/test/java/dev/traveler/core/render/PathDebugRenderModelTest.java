@@ -6,21 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.graph.MutableGraphPath;
-import dev.traveler.core.navigation.NavigationControlFrame;
-import dev.traveler.core.navigation.NavigationControllerState;
 import dev.traveler.core.navigation.NavigationFrameInput;
 import dev.traveler.core.navigation.camera.CameraAngles;
-import dev.traveler.core.navigation.control.MovementIntent;
-import dev.traveler.core.navigation.follow.MovementTarget;
-import dev.traveler.core.navigation.follow.PathProgress;
-import dev.traveler.core.navigation.locomotion.LocomotionExecutionState;
-import dev.traveler.core.navigation.plan.ActionIntent;
-import dev.traveler.core.navigation.plan.MovementVectorIntent;
-import dev.traveler.core.navigation.plan.NavigationFramePlan;
-import dev.traveler.core.navigation.plan.NavigationPhase;
-import dev.traveler.core.navigation.plan.PlannedMovementMode;
-import dev.traveler.core.navigation.plan.SpeedIntent;
-import dev.traveler.core.navigation.spatial.HorizontalVector;
+import dev.traveler.core.navigation.testing.NavigationDebugFrames;
 import dev.traveler.core.navigation.spatial.NavigationPoint;
 import dev.traveler.core.path.PathfinderResult;
 import dev.traveler.core.path.PathfinderStatus;
@@ -215,25 +203,7 @@ class PathDebugRenderModelTest {
         return new PathfinderResult<>(PathfinderStatus.FOUND, path);
     }
 
-    private static NavigationControlFrame navigationFrame() {
-        MovementIntent intent = new MovementIntent(true, false, false, false, false, true);
-        MovementTarget target = MovementTarget.follow(new NavigationPoint(1.0, 65.0, 3.0));
-        NavigationFramePlan plan = new NavigationFramePlan(
-                NavigationPhase.APPROACH,
-                PathProgress.start(),
-                target,
-                new MovementVectorIntent(new HorizontalVector(0.0, 1.0), PlannedMovementMode.DIRECT, true),
-                new CameraAngles(0.0, 0.0),
-                ActionIntent.none(),
-                new SpeedIntent(1.0, true),
-                LocomotionExecutionState.start(),
-                false);
-        return new NavigationControlFrame(
-                new NavigationControllerState(PathProgress.start(), intent, LocomotionExecutionState.start()),
-                intent,
-                new CameraAngles(0.0, 0.0),
-                target,
-                plan,
-                false);
+    private static dev.traveler.core.navigation.NavigationControlFrame navigationFrame() {
+        return NavigationDebugFrames.approachFrame(new NavigationPoint(1.0, 65.0, 3.0));
     }
 }

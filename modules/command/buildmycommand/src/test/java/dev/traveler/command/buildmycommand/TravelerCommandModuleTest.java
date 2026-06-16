@@ -4,9 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.riege.buildmycommand.api.CommandResult;
-import dev.riege.buildmycommand.api.CommandSource;
-import dev.traveler.core.command.TravelerCommandBlockPosition;
-import dev.traveler.core.command.TravelerCommandPosition;
+import dev.traveler.command.buildmycommand.testing.CommandModuleTestHarness;
+import dev.traveler.command.buildmycommand.testing.TestCommandSource;
 import dev.traveler.core.debug.snapshots.PathfinderDebugSnapshot;
 import dev.traveler.core.debug.PathfinderDebugState;
 import dev.traveler.core.graph.GraphPath;
@@ -26,14 +25,9 @@ import dev.traveler.core.world.block.BlockPosition;
 import dev.traveler.core.world.block.BlockPassability;
 import dev.traveler.core.world.geometry.BlockShape;
 import dev.traveler.core.world.movement.FluidHandling;
-import java.time.Duration;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
-import java.util.function.BooleanSupplier;
 import org.junit.jupiter.api.Test;
 
 class TravelerCommandModuleTest {
@@ -42,7 +36,7 @@ class TravelerCommandModuleTest {
         TravelerCommandModule module = new TravelerCommandModule();
 
         String schema = module.framework().schema();
-        CommandResult result = module.framework().dispatch(new TestSource(), "traveler path test");
+        CommandResult result = module.framework().dispatch(new TestCommandSource(), "traveler path test");
 
         assertTrue(schema.contains("command traveler path test"));
         assertTrue(schema.contains("command traveler path block"));
@@ -59,9 +53,10 @@ class TravelerCommandModuleTest {
     void adapterRoutesCommandSourcePositionIntoCoreHandlers() {
         TravelerCommandModule module = new TravelerCommandModule();
         BlockPosition start = new BlockPosition(8, 70, -4);
-        TestSource source = new TestSource(start);
+        TestCommandSource source = new TestCommandSource(start);
 
-        CommandResult result = dispatchAndDrain(module, source, "traveler navigate block 1 2 3");
+        CommandResult result = CommandModuleTestHarness.dispatchAndDrain(
+                module, source, "traveler navigate block 1 2 3");
 
         assertEquals(CommandResult.Status.SUCCESS, result.status());
         assertTrue(result.reply().orElseThrow().contains("navigate queued id="));
@@ -76,7 +71,7 @@ class TravelerCommandModuleTest {
         PathfinderDebugState debugState = new PathfinderDebugState();
         TravelerCommandModule module =
                 new TravelerCommandModule(debugState, new TravelerNavigationState(), () -> null);
-        TestSource source = new TestSource();
+        TestCommandSource source = new TestCommandSource();
         module.framework().dispatch(source, "traveler path test");
 
         CommandResult status = module.framework().dispatch(source, "traveler debug status");
@@ -95,7 +90,8 @@ class TravelerCommandModuleTest {
         BlockPosition wall = new BlockPosition(1, 64, 0);
         TravelerCommandModule module = new TravelerCommandModule(new TestWorldLayer(Set.of(wall, wall.above())));
 
-        dispatchAndDrain(module, new TestSource(start), "traveler path block 2 64 0");
+        CommandModuleTestHarness.dispatchAndDrain(
+                module, new TestCommandSource(start), "traveler path block 2 64 0");
 
         GraphPath<BlockPosition> path = module.debugState().latestResult().orElseThrow().path();
         assertTrue(path.nodeCount() > 3);
@@ -108,7 +104,8 @@ class TravelerCommandModuleTest {
         BlockPosition startFeet = new BlockPosition(0, 64, 0);
         TravelerCommandModule module = new TravelerCommandModule(new TestSurfaceWorldLayer(tallLadderSurface()));
 
-        dispatchAndDrain(module, new TestSource(startFeet), "traveler navigate block 1 82 0");
+        CommandModuleTestHarness.dispatchAndDrain(
+                module, new TestCommandSource(startFeet), "traveler navigate block 1 82 0");
 
         NavigationSession session = module.navigationState().activeSession().orElseThrow();
         assertTrue(session.path().segmentActions().contains(MovementAction.CLIMB));
@@ -126,7 +123,8 @@ class TravelerCommandModuleTest {
         BlockPosition startFeet = new BlockPosition(0, 64, 0);
         TravelerCommandModule module = new TravelerCommandModule(new TestSurfaceWorldLayer(waterLane(0, 4, 63)));
 
-        dispatchAndDrain(module, new TestSource(startFeet), "traveler navigate block 4 64 0");
+        CommandModuleTestHarness.dispatchAndDrain(
+                module, new TestCommandSource(startFeet), "traveler navigate block 4 64 0");
 
         NavigationSession session = module.navigationState().activeSession().orElseThrow();
         assertTrue(session.path().segmentActions().contains(MovementAction.SWIM));
@@ -134,21 +132,6 @@ class TravelerCommandModuleTest {
         PathfinderDebugSnapshot snapshot = module.debugState().latestSnapshot().orElseThrow();
         assertHasSurfaceNodes(snapshot);
         assertTrue(snapshot.surfaceNodes().stream().allMatch(node -> node.floorY() == 64.0));
-    }
-
-    private static CommandResult dispatchAndDrain(TravelerCommandModule module, TestSource source, String command) {
-        CommandResult result = module.framework().dispatch(source, command);
-        waitForJobs(module, () -> module.debugState().latestResult().isPresent());
-        return result;
-    }
-
-    private static void waitForJobs(TravelerCommandModule module, BooleanSupplier condition) {
-        long deadline = System.nanoTime() + Duration.ofSeconds(2L).toNanos();
-        while (!condition.getAsBoolean() && System.nanoTime() < deadline) {
-            module.drainPathJobs();
-            Thread.onSpinWait();
-        }
-        assertTrue(condition.getAsBoolean());
     }
 
     private static void assertPathAvoids(GraphPath<BlockPosition> path, BlockPosition blocked) {
@@ -201,42 +184,6 @@ class TravelerCommandModuleTest {
             blocks.put(new BlockPosition(x, y, 0), waterBlock());
         }
         return blocks;
-    }
-
-    private static final class TestSource implements CommandSource, TravelerCommandPosition {
-        private final List<String> replies = new ArrayList<>();
-        private final BlockPosition position;
-
-        private TestSource() {
-            this(null);
-        }
-
-        private TestSource(BlockPosition position) {
-            this.position = position;
-        }
-
-        @Override
-        public Optional<TravelerCommandBlockPosition> blockPosition() {
-            return Optional.ofNullable(position)
-                    .map(pos -> new TravelerCommandBlockPosition(pos.x(), pos.y(), pos.z()));
-        }
-
-        @Override
-        public <T> Optional<T> unwrap(Class<T> type) {
-            if (!type.isInstance(this)) {
-                return Optional.empty();
-            }
-            return Optional.of(type.cast(this));
-        }
-
-        @Override
-        public void reply(String message) {
-            replies.add(message);
-        }
-
-        private List<String> replies() {
-            return List.copyOf(replies);
-        }
     }
 
     private record TestWorldLayer(Set<BlockPosition> blockedFeet) implements WorldLayer {
