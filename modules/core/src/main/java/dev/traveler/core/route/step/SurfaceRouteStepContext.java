@@ -15,6 +15,8 @@ public record SurfaceRouteStepContext(
         SurfaceNode to,
         MovementProfile movementProfile,
         SurfaceTransitionEvaluator transitionEvaluator) {
+    private static final double FLOOR_EPSILON = 0.001;
+
     public SurfaceRouteStepContext {
         Objects.requireNonNull(worldLayer, "worldLayer");
         Objects.requireNonNull(from, "from");
@@ -38,6 +40,37 @@ public record SurfaceRouteStepContext(
     public NavigationPoint pointOf(SurfaceNode node) {
         SurfaceNode safeNode = Objects.requireNonNull(node, "node");
         return new NavigationPoint(safeNode.centerX(), safeNode.floorY(), safeNode.centerZ());
+    }
+
+    public NavigationPoint stableLandingPointOf(SurfaceNode node) {
+        SurfaceNode safeNode = Objects.requireNonNull(node, "node");
+        if (!hasUniformLandingFloor(safeNode)) {
+            return pointOf(safeNode);
+        }
+        return new NavigationPoint(
+                safeNode.blockPosition().x() + 0.5,
+                safeNode.floorY(),
+                safeNode.blockPosition().z() + 0.5);
+    }
+
+    private boolean hasUniformLandingFloor(SurfaceNode node) {
+        double localFloor = node.floorY() - node.blockPosition().y();
+        for (int cellX = 0; cellX <= 1; cellX++) {
+            for (int cellZ = 0; cellZ <= 1; cellZ++) {
+                if (!sameFloor(localFloor, blockFloorAt(node, cellX, cellZ))) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private double blockFloorAt(SurfaceNode node, int cellX, int cellZ) {
+        return worldLayer.surfaceBlock(node.blockPosition()).shape().floorHeightForCellOrNaN(cellX, cellZ);
+    }
+
+    private static boolean sameFloor(double expected, double actual) {
+        return Double.isFinite(actual) && Math.abs(expected - actual) <= FLOOR_EPSILON;
     }
 
     public static double surfaceDistance(SurfaceNode from, SurfaceNode to) {

@@ -651,6 +651,26 @@ class RouteSearchServiceTest {
                 && step.to().blockPosition().equals(highDiagonalBlock)));
     }
 
+    @Test
+    void jumpRouteTargetsStableBlockCenterInsteadOfSurfaceSubcell() {
+        BlockPosition startBlock = new BlockPosition(0, 63, 0);
+        BlockPosition highBlock = new BlockPosition(0, 64, 1);
+        Map<BlockPosition, SurfaceBlock> blocks = new HashMap<>();
+        blocks.put(startBlock, fullBlock());
+        blocks.put(highBlock, fullBlock());
+        TestSurfaceWorldLayer world = new TestSurfaceWorldLayer(blocks);
+        RouteSearchService service = new RouteSearchService(RouteSearchSettings.standardClient());
+
+        RouteSearchResult result = service.search(world, new BlockPosition(0, 64, 0), highBlock);
+
+        assertEquals(PathfinderStatus.FOUND, result.status());
+        RouteStep jumpStep = result.route().orElseThrow().steps().stream()
+                .filter(step -> step.action() == MovementAction.JUMP)
+                .findFirst()
+                .orElseThrow();
+        assertEquals(new NavigationPoint(0.5, 65.0, 1.5), jumpStep.targetPoint());
+    }
+
     private static Graph<SurfaceNode> directSurfaceGraph(SurfaceNode goal) {
         return node -> node.sameSubcell(goal) ? List.of() : List.of(new Connection<>(node, goal, 0.25));
     }
