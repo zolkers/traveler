@@ -103,6 +103,225 @@ Dependency rules:
 - `navigation` depends on `common` + `world` + `route`
 - `platform` depends on all core APIs, but core never depends on `platform`
 
+## Module Map
+
+Traveler is explicitly module-oriented.
+
+### 1. `common`
+
+Purpose:
+
+- tiny shared contracts
+- registries
+- settings section marker
+- diagnostic payload marker
+
+Exposes:
+
+- `TravelerPort`
+- `TravelerRegistry`
+- `SettingsSection`
+- `DiagnosticPayload`
+
+May depend on:
+
+- nothing
+
+Must not depend on:
+
+- `world`
+- `route`
+- `navigation`
+- `platform`
+
+### 2. `world`
+
+Purpose:
+
+- describe world semantics
+- expose collision/support/fluid/climb meaning
+- resolve block affordances
+- stay ignorant of player-control logic
+
+Exposes:
+
+- `BlockBehavior`
+- `BehaviorResolver`
+- `BlockSemantics`
+- `CollisionSemantics`
+- `SupportSemantics`
+- `FluidSemantics`
+- `TraversalAffordance`
+
+May depend on:
+
+- `common`
+
+Must not depend on:
+
+- `route.internal`
+- `navigation.api`
+- `navigation.internal`
+- `platform`
+
+### 3. `route`
+
+Purpose:
+
+- compute coarse pathfinding results
+- support long-distance routing
+- segment long routes into manageable route sections
+- consume world semantics but not execution details
+
+Exposes:
+
+- `RouteGoal`
+- `RoutePlanner`
+- `RoutePlan`
+- `RouteSegment`
+- `LongDistancePlanner`
+
+May depend on:
+
+- `common`
+- `world.api`
+
+Must not depend on:
+
+- `world.internal`
+- `navigation.internal`
+- `platform`
+
+### 4. `navigation`
+
+Purpose:
+
+- turn route segments into executable traversals
+- control per-frame movement
+- evaluate progress
+- recover from failure
+- expose stable debug snapshots
+
+Exposes:
+
+- `TraversalKind`
+- `Traversal`
+- `TraversalGeometry`
+- `TraversalController`
+- `TraversalProgressPolicy`
+- `TraversalRecoveryPolicy`
+- `NavigationSession`
+- `NavigationSnapshot`
+- `RecoveryAction`
+
+May depend on:
+
+- `common`
+- `world.api`
+- `route.api`
+
+Must not depend on:
+
+- `world.internal`
+- `route.internal`
+- `platform`
+
+### 5. `platform`
+
+Purpose:
+
+- bridge Minecraft/Fabric to core
+- read game state
+- apply inputs
+- write reports
+- register commands
+- render debug primitives in the game
+
+Exposes:
+
+- nothing to core
+
+May depend on:
+
+- `common.api`
+- `world.api`
+- `route.api`
+- `navigation.api`
+- selected internal entrypoints only through explicit composition roots if absolutely necessary during migration
+
+Must not be depended on by:
+
+- any core package
+
+## Module Dependency Matrix
+
+Allowed:
+
+```text
+common -> nothing
+world -> common
+route -> common + world.api
+navigation -> common + world.api + route.api
+platform -> common.api + world.api + route.api + navigation.api
+```
+
+Forbidden:
+
+```text
+world -> route
+world -> navigation
+route -> navigation.internal
+route -> platform
+navigation -> platform
+core(any) -> mc/fabric
+api(any) -> internal(other)
+```
+
+## Official Extension Points
+
+This is where new logic is allowed to attach.
+
+### World extension points
+
+- new `BlockBehavior`
+- new `TraversalAffordance`
+- new semantics resolver rules
+
+### Route extension points
+
+- new `RouteGoal`
+- new `RoutePlanner` strategy
+- new long-distance planner
+- new segmentation strategy
+
+### Navigation extension points
+
+- new `Traversal` kind
+- new `TraversalController`
+- new `TraversalProgressPolicy`
+- new `TraversalRecoveryPolicy`
+- new debug layer producer
+
+### Platform extension points
+
+- new game version adapter
+- new command bridge
+- new report sink
+- new render sink
+
+## Composition Rule
+
+Composition happens at the edges, not inside domain code.
+
+That means:
+
+- `world` does not instantiate `navigation`
+- `route` does not instantiate `platform`
+- `navigation` does not reach into Minecraft directly
+- `platform` wires the concrete implementations together
+
+During migration we may temporarily keep composition helpers in core, but the target remains the same: domain modules expose contracts, and the outer runtime assembles them.
+
 ## Package Strategy: `api` and `internal`
 
 This is the most important structural rule.
