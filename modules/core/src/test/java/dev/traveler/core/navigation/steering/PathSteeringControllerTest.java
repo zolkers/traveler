@@ -7,6 +7,7 @@ import dev.traveler.core.navigation.follow.NavigationPath;
 import dev.traveler.core.navigation.locomotion.AgentMotionState;
 import dev.traveler.core.common.geometry.HorizontalVector;
 import dev.traveler.core.common.geometry.WorldPoint;
+import dev.traveler.core.world.behavior.decision.MovementAction;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -102,5 +103,75 @@ class PathSteeringControllerTest {
 
         assertTrue(plan.clearanceWarning());
         assertEquals(0.75, plan.lateralCorrection().length());
+    }
+
+    @Test
+    void dampsLateralCorrectionWhenMotionAlreadyConvergesTowardLine() {
+        PathSteeringController controller = new PathSteeringController(
+                new PathSteeringSettings(2.0, 0.0, 0.6, 1.0, 1.0, 0.65, 0.08, 0.35, 2.0, 0.0, 2.0));
+        NavigationPath path = NavigationPath.of(List.of(
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 64.0, 8.0)));
+        WorldPoint position = new WorldPoint(0.4, 64.0, 2.0);
+
+        SteeringPlan still = controller.plan(path, position, AgentMotionState.groundedStill(), 1);
+        SteeringPlan movingAway = controller.plan(
+                path,
+                position,
+                new AgentMotionState(true, false, new HorizontalVector(1.0, 0.0), 0.0),
+                1);
+        SteeringPlan movingToward = controller.plan(
+                path,
+                position,
+                new AgentMotionState(true, false, new HorizontalVector(-1.0, 0.0), 0.0),
+                1);
+
+        assertTrue(movingAway.lateralCorrection().length() > still.lateralCorrection().length());
+        assertTrue(movingToward.lateralCorrection().length() < still.lateralCorrection().length());
+    }
+
+    @Test
+    void shortensLookaheadWhenLateralErrorIsHigh() {
+        PathSteeringController controller = new PathSteeringController(
+                new PathSteeringSettings(4.0, 0.0, 0.6, 1.0, 1.0, 0.65, 0.08, 0.0, 1.0, 2.0, 4.0));
+        NavigationPath path = NavigationPath.of(List.of(
+                new WorldPoint(0.0, 64.0, 0.0),
+                new WorldPoint(0.0, 64.0, 10.0)));
+
+        SteeringPlan centered = controller.plan(
+                path,
+                new WorldPoint(0.0, 64.0, 1.0),
+                AgentMotionState.groundedStill(),
+                1);
+        SteeringPlan displaced = controller.plan(
+                path,
+                new WorldPoint(1.5, 64.0, 1.0),
+                AgentMotionState.groundedStill(),
+                1);
+
+        assertEquals(5.0, centered.distanceOnPath());
+        assertTrue(displaced.distanceOnPath() < centered.distanceOnPath());
+        assertTrue(displaced.distanceOnPath() <= 2.2);
+    }
+
+    @Test
+    void shortensLookaheadBeforeNonWalkAction() {
+        PathSteeringController controller = new PathSteeringController(
+                new PathSteeringSettings(4.0, 0.0, 0.6, 1.0, 1.0, 0.65, 0.08, 0.0, 1.0, 0.0, 1.25));
+        NavigationPath path = NavigationPath.of(
+                List.of(
+                        new WorldPoint(0.0, 64.0, 0.0),
+                        new WorldPoint(0.0, 64.0, 3.0),
+                        new WorldPoint(0.0, 65.0, 4.0)),
+                List.of(MovementAction.WALK, MovementAction.JUMP));
+
+        SteeringPlan plan = controller.plan(
+                path,
+                new WorldPoint(0.0, 64.0, 1.0),
+                AgentMotionState.groundedStill(),
+                1);
+
+        assertTrue(plan.distanceOnPath() < 3.0);
+        assertTrue(plan.pathTarget().z() < 3.0);
     }
 }

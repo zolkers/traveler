@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.traveler.core.navigation.follow.PathFollowSettings;
+import dev.traveler.core.navigation.steering.PathSteeringSettings;
 import dev.traveler.core.route.RouteSearchSettings;
 import org.junit.jupiter.api.Test;
 
@@ -61,9 +62,15 @@ class TravelerSettingsTest {
                 .with(TravelerSettings.NAVIGATION_LOOK_AHEAD_DISTANCE, 3.0);
 
         PathFollowSettings follow = settings.pathFollowSettings();
+        PathSteeringSettings steering = settings.pathSteeringSettings();
 
         assertEquals(0.5, follow.reachedDistance());
         assertEquals(3.0, follow.lookAheadDistance());
+        assertEquals(3.0, steering.pathOffset());
+        assertEquals(0.35, steering.lateralCorrectionDerivativeGain());
+        assertEquals(0.75, steering.minimumPathOffset());
+        assertEquals(1.0, steering.lateralErrorLookaheadReductionGain());
+        assertEquals(1.25, steering.actionApproachPathOffset());
     }
 
     @Test

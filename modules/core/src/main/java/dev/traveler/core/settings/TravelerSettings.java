@@ -136,6 +136,14 @@ public final class TravelerSettings {
             nonNegativeDouble("steering.clearance-warning-lateral-error", 0.65);
     public static final Setting<Double> STEERING_LATERAL_CORRECTION_DEADBAND =
             nonNegativeDouble("steering.lateral-correction-deadband", 0.08);
+    public static final Setting<Double> STEERING_LATERAL_CORRECTION_DERIVATIVE_GAIN =
+            nonNegativeDouble("steering.lateral-correction-derivative-gain", 0.35);
+    public static final Setting<Double> STEERING_MINIMUM_PATH_OFFSET =
+            nonNegativeDouble("steering.minimum-path-offset", 0.75);
+    public static final Setting<Double> STEERING_LATERAL_ERROR_LOOKAHEAD_REDUCTION_GAIN =
+            nonNegativeDouble("steering.lateral-error-lookahead-reduction-gain", 1.0);
+    public static final Setting<Double> STEERING_ACTION_APPROACH_PATH_OFFSET =
+            nonNegativeDouble("steering.action-approach-path-offset", 1.25);
 
     public static final Setting<Double> MOVEMENT_VECTOR_PRESS_THRESHOLD =
             boundedDouble("movement-vector.press-threshold", 0.32, 0.0, 1.0);
@@ -277,14 +285,19 @@ public final class TravelerSettings {
     }
 
     public PathSteeringSettings pathSteeringSettings() {
+        double pathOffset = get(NAVIGATION_LOOK_AHEAD_DISTANCE);
         return new PathSteeringSettings(
-                get(NAVIGATION_LOOK_AHEAD_DISTANCE),
+                pathOffset,
                 get(STEERING_PREDICTION_SECONDS),
                 get(STEERING_CORRIDOR_RADIUS),
                 get(STEERING_LATERAL_CORRECTION_GAIN),
                 get(STEERING_MAX_CORRECTION_DISTANCE),
                 get(STEERING_CLEARANCE_WARNING_LATERAL_ERROR),
-                get(STEERING_LATERAL_CORRECTION_DEADBAND));
+                get(STEERING_LATERAL_CORRECTION_DEADBAND),
+                get(STEERING_LATERAL_CORRECTION_DERIVATIVE_GAIN),
+                Math.min(get(STEERING_MINIMUM_PATH_OFFSET), pathOffset),
+                get(STEERING_LATERAL_ERROR_LOOKAHEAD_REDUCTION_GAIN),
+                Math.min(get(STEERING_ACTION_APPROACH_PATH_OFFSET), pathOffset));
     }
 
     public MovementHealthSettings movementHealthSettings() {
